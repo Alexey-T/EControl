@@ -2800,7 +2800,8 @@ begin
   N := FSubLexerBlocks.PriorAt(APos);
   if N < 0 then Exit;
   Rng := FSubLexerBlocks.Items[N];
-  if (Rng.Range.StartPos<=APos) and (APos<Rng.Range.EndPos) then
+  if (Rng.Range.StartPos<=APos) and
+     ((Rng.Range.EndPos<0){Rng is not closed} or (APos<Rng.Range.EndPos)) then
     Result := Rng.Rule.SyntAnalyzer;
  {
  for i := 0 to FSubLexerBlocks.Count - 1 do
