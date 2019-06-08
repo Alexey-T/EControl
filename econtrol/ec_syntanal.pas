@@ -3050,6 +3050,7 @@ begin
   try
     while not FTimerIdleMustStop and not FFinished do
     begin
+      if FBuffer=nil then exit;
       tmp := GetLastPos(FBuffer.FText);
       if tmp > FPos then FPos := tmp;
 
