@@ -188,11 +188,11 @@ begin
     end;
 
     if Names.Count=0 then exit;
+    Names.Sort;
 
     if (Names.Count=1) or not Assigned(AChooseFunc) then
       exit(TecSyntAnalyzer(Names.Objects[0]));
 
-    Names.Sort;
     i:= AChooseFunc(AFilename, Names);
     if i>=0 then
       exit(TecSyntAnalyzer(Names.Objects[i]));
