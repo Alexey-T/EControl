@@ -16,6 +16,9 @@ uses
   ec_SyntAnal;
 
 type
+  TecLexerChooseFunc = function(const Filename: string; Lexers: TStringList): integer of object;
+
+type
   { TecLexerList }
 
   TecLexerList = class(TComponent)
@@ -32,7 +35,7 @@ type
     property Modified: boolean read FModified write FModified;
     function AddLexer: TecSyntAnalyzer;
     procedure DeleteLexer(An: TecSyntAnalyzer);
-    function FindLexerByFilename(AFilename: string): TecSyntAnalyzer;
+    function FindLexerByFilename(AFilename: string; AChooseFunc: TecLexerChooseFunc): TecSyntAnalyzer;
     function FindLexerByName(const AName: string): TecSyntAnalyzer;
     procedure SetSublexersFromString(An: TecSyntAnalyzer; const ALinks: string; ASep: char);
   end;
@@ -117,7 +120,8 @@ begin
 end;
 
 
-function TecLexerList.FindLexerByFilename(AFilename: string): TecSyntAnalyzer;
+function TecLexerList.FindLexerByFilename(AFilename: string;
+  AChooseFunc: TecLexerChooseFunc): TecSyntAnalyzer;
 {
 This finds lexer by Extensions-property of lexer.
 It is space-separated items. In lower case.
@@ -129,6 +133,7 @@ Items are
 }
 var
   An: TecSyntAnalyzer;
+  Names: TStringList;
   fname, ext1, ext2: string;
   i: integer;
 begin
@@ -172,12 +177,27 @@ begin
     end;
 
   //find by usual extension
-  for i:= 0 to LexerCount-1 do
-  begin
-    An:= Lexers[i];
-    if not An.Internal then
-      if SItemListed(ext1, An.Extentions) then
-        Exit(An);
+  Names:= TStringList.Create;
+  try
+    for i:= 0 to LexerCount-1 do
+    begin
+      An:= Lexers[i];
+      if not An.Internal then
+        if SItemListed(ext1, An.Extentions) then
+          Names.AddObject(An.LexerName, An);
+    end;
+
+    if Names.Count=0 then exit;
+
+    if (Names.Count=1) or not Assigned(AChooseFunc) then
+      exit(TecSyntAnalyzer(Names.Objects[0]));
+
+    Names.Sort;
+    i:= AChooseFunc(AFilename, Names);
+    if i>=0 then
+      exit(TecSyntAnalyzer(Names.Objects[i]));
+  finally
+    FreeAndNil(Names);
   end;
 end;
 
