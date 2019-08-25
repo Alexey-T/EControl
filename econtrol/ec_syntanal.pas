@@ -709,7 +709,7 @@ type
     procedure Analyze(ResetContent: Boolean = True); // Requires analyzed all text
     procedure IdleAppend;                 // Start idle analysis
 
-    procedure CompleteAnalysis;
+    //procedure CompleteAnalysis;
 
     function CloseRange(Cond: TecTagBlockCondition; RefTag: integer): Boolean;
     function DetectTag(Rule: TecTagBlockCondition; RefTag: integer): Boolean;
@@ -3236,6 +3236,8 @@ begin
     end;
 end;
 
+(*
+//not needed in CudaText
 procedure TecClientSyntAnalyzer.CompleteAnalysis;
 var own: TecSyntAnalyzer;
     i: integer;
@@ -3252,6 +3254,7 @@ begin
       Finished;
      end;
 end;
+*)
 
 function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
   Range: TecTextRange): ecString;
