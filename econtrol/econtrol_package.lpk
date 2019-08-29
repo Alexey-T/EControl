@@ -15,7 +15,7 @@
     <Description Value="Core of EControl Syntax Editor SDK. Contains parser (syntax analyzer) of source codes."/>
     <License Value="Licensed for open-source only. See readme.txt."/>
     <Version Major="1" Minor="2"/>
-    <Files Count="13">
+    <Files Count="12">
       <Item1>
         <Filename Value="ec_gramma.pas"/>
         <UnitName Value="ec_Gramma"/>
@@ -45,29 +45,25 @@
         <UnitName Value="ec_RegExpr"/>
       </Item7>
       <Item8>
-        <Filename Value="ec_rules.pas"/>
-        <UnitName Value="ec_rules"/>
-      </Item8>
-      <Item9>
         <Filename Value="ec_strutils.pas"/>
         <UnitName Value="ec_StrUtils"/>
-      </Item9>
-      <Item10>
+      </Item8>
+      <Item9>
         <Filename Value="ec_syntanal.pas"/>
         <UnitName Value="ec_SyntAnal"/>
-      </Item10>
-      <Item11>
+      </Item9>
+      <Item10>
         <Filename Value="ec_syntax_collection.pas"/>
         <UnitName Value="ec_syntax_collection"/>
-      </Item11>
-      <Item12>
+      </Item10>
+      <Item11>
         <Filename Value="ec_syntax_format.pas"/>
         <UnitName Value="ec_syntax_format"/>
-      </Item12>
-      <Item13>
+      </Item11>
+      <Item12>
         <Filename Value="ec_syntax_item.pas"/>
         <UnitName Value="ec_syntax_item"/>
-      </Item13>
+      </Item12>
     </Files>
     <RequiredPkgs Count="3">
       <Item1>
