@@ -10,7 +10,7 @@
 
 {$mode delphi}
 
-unit ec_SyntGramma;
+unit ec_Gramma;
 
 interface
 

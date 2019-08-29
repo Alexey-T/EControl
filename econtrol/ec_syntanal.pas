@@ -23,7 +23,7 @@ uses
   ec_RegExpr,
   ec_StrUtils,
   ec_Lists,
-  ec_SyntGramma,
+  ec_gramma,
   ec_syntax_item,
   ec_syntax_collection,
   ec_syntax_format,

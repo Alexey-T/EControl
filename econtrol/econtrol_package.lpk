@@ -29,8 +29,8 @@
         <UnitName Value="ec_SyntAnal"/>
       </Item3>
       <Item4>
-        <Filename Value="ec_syntgramma.pas"/>
-        <UnitName Value="ec_SyntGramma"/>
+        <Filename Value="ec_gramma.pas"/>
+        <UnitName Value="ec_Gramma"/>
       </Item4>
       <Item5>
         <Filename Value="ec_regexpr.pas"/>
