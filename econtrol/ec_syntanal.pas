@@ -24,6 +24,7 @@ uses
   ec_StrUtils,
   ec_Lists,
   ec_SyntGramma,
+  ec_parser_rule,
   ATStringProc_TextBuffer,
   ec_proc_StreamComponent;
 
