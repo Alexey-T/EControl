@@ -39,8 +39,7 @@ type
     property Branch: TParserRuleBranch read FBranch write FBranch;
     property RepMin: integer read FRepMin write FRepMin;
     property RepMax: integer read FRepMax write FRepMax;
-    property IsSubRule: Boolean read FOwnRule;
-    property OwnRule: Boolean read FOwnRule write FOwnRule;
+    property IsSubRule: Boolean read FOwnRule write FOwnRule;
   end;
 
   TParserRuleBranch = class

@@ -355,7 +355,7 @@ var Lex: TecSyntAnalyzer;
     Result.ItemType := t;
     Result.Terminal := s;
     Result.ParserRule := R;
-    Result.OwnRule := R <> nil;
+    Result.IsSubRule := R <> nil;
     Inc(Cur);
     ReadRepeater(Result);
   end;
@@ -388,7 +388,7 @@ var Lex: TecSyntAnalyzer;
                (last.ItemType = itParserRule) then
              begin
                Cur := sv_pos;
-               Result.ItemsList.Delete(Result.ItemsList.Count - 1);
+               Result.ItemsList.Delete(Result.Count - 1);
                Exit;
              end;
             Break;
