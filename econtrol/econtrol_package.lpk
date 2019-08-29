@@ -14,52 +14,60 @@
     </CompilerOptions>
     <Description Value="Core of EControl Syntax Editor SDK. Contains parser (syntax analyzer) of source codes."/>
     <License Value="Licensed for open-source only. See readme.txt."/>
-    <Version Major="1" Minor="1"/>
-    <Files Count="11">
+    <Version Major="1" Minor="2"/>
+    <Files Count="13">
       <Item1>
-        <Filename Value="ec_lists.pas"/>
-        <UnitName Value="ec_Lists"/>
-      </Item1>
-      <Item2>
-        <Filename Value="ec_strutils.pas"/>
-        <UnitName Value="ec_StrUtils"/>
-      </Item2>
-      <Item3>
-        <Filename Value="ec_syntanal.pas"/>
-        <UnitName Value="ec_SyntAnal"/>
-      </Item3>
-      <Item4>
         <Filename Value="ec_gramma.pas"/>
         <UnitName Value="ec_Gramma"/>
-      </Item4>
-      <Item5>
-        <Filename Value="ec_regexpr.pas"/>
-        <UnitName Value="ec_RegExpr"/>
-      </Item5>
-      <Item6>
-        <Filename Value="ec_proc_lexer.pas"/>
-        <UnitName Value="ec_proc_lexer"/>
-      </Item6>
-      <Item7>
-        <Filename Value="ec_proc_streamcomponent.pas"/>
-        <UnitName Value="ec_proc_StreamComponent"/>
-      </Item7>
-      <Item8>
+      </Item1>
+      <Item2>
         <Filename Value="ec_lexerlist.pas"/>
         <UnitName Value="ec_LexerList"/>
-      </Item8>
-      <Item9>
+      </Item2>
+      <Item3>
+        <Filename Value="ec_lists.pas"/>
+        <UnitName Value="ec_Lists"/>
+      </Item3>
+      <Item4>
+        <Filename Value="ec_parser_rule.pas"/>
+        <UnitName Value="ec_parser_rule"/>
+      </Item4>
+      <Item5>
+        <Filename Value="ec_proc_lexer.pas"/>
+        <UnitName Value="ec_proc_lexer"/>
+      </Item5>
+      <Item6>
+        <Filename Value="ec_proc_streamcomponent.pas"/>
+        <UnitName Value="ec_proc_StreamComponent"/>
+      </Item6>
+      <Item7>
+        <Filename Value="ec_regexpr.pas"/>
+        <UnitName Value="ec_RegExpr"/>
+      </Item7>
+      <Item8>
         <Filename Value="ec_rules.pas"/>
         <UnitName Value="ec_rules"/>
+      </Item8>
+      <Item9>
+        <Filename Value="ec_strutils.pas"/>
+        <UnitName Value="ec_StrUtils"/>
       </Item9>
       <Item10>
-        <Filename Value="ec_syntaxclient.pas"/>
-        <UnitName Value="ec_syntaxclient"/>
+        <Filename Value="ec_syntanal.pas"/>
+        <UnitName Value="ec_SyntAnal"/>
       </Item10>
       <Item11>
+        <Filename Value="ec_syntax_collection.pas"/>
+        <UnitName Value="ec_syntax_collection"/>
+      </Item11>
+      <Item12>
         <Filename Value="ec_syntax_format.pas"/>
         <UnitName Value="ec_syntax_format"/>
-      </Item11>
+      </Item12>
+      <Item13>
+        <Filename Value="ec_syntax_item.pas"/>
+        <UnitName Value="ec_syntax_item"/>
+      </Item13>
     </Files>
     <RequiredPkgs Count="3">
       <Item1>
