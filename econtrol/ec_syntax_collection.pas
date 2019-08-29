@@ -19,12 +19,12 @@ type
   protected
     procedure Update(Item: TCollectionItem); override;
     function  GetOwner: TPersistent; override;
-    procedure Loaded;
   public
     constructor Create(ItemClass: TCollectionItemClass);
     function ItemByName(const AName: string): TSyntCollectionItem;
     function ValidItem(Item: TSyntCollectionItem): Boolean;
     function GetUniqueName(const Base: string): string;
+    procedure Loaded;
 
     property SyntOwner: TPersistent read FSyntOwner write FSyntOwner;
     property Items[Index: integer]: TSyntCollectionItem read GetItems; default;
