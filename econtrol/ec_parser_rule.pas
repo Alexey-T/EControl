@@ -1,6 +1,6 @@
 unit ec_parser_rule;
 
-{$mode delphi}{$H+}
+{$mode Delphi}{$H+}
 
 interface
 

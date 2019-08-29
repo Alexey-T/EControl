@@ -24,6 +24,8 @@ uses
   ec_StrUtils,
   ec_Lists,
   ec_SyntGramma,
+  ec_syntax_item,
+  ec_syntax_collection,
   ec_parser_rule,
   ATStringProc_TextBuffer,
   ec_proc_StreamComponent;
@@ -58,48 +60,6 @@ type
       const Text: ecString; var RefIdx: integer; var Accept: Boolean) of object;
 
   TBoundDefEvent = procedure(Sender: TecClientSyntAnalyzer; Range: TecTextRange; var sIdx, eIdx: integer) of object;
-
-  TSyntCollectionItem = class(TCollectionItem)
-  private
-    FName: string;
-    FEnabled: Boolean;
-    procedure SetEnabled(const Value: Boolean);
-  protected
-    procedure AssignTo(Dest: TPersistent); override;
-    function GetItemBaseName: string; virtual;
-    function GetDisplayName: string; override;
-    procedure SetDisplayName(const Value: string); override;
-    procedure Loaded; virtual;
-    function GetIsInvalid: Boolean; virtual;
-  public
-    constructor Create(Collection: TCollection); override;
-    property IsInvalid: Boolean read GetIsInvalid;
-  published
-    property DisplayName;
-    property Enabled: Boolean read FEnabled write SetEnabled default True;
-  end;
-
-  TSyntItemChanged = procedure(Sender: TCollection; Item: TSyntCollectionItem) of object;
-
-  TSyntCollection = class(TCollection)
-  private
-    FSyntOwner: TecSyntAnalyzer;
-    FOnChange: TSyntItemChanged;
-    function GetItems(Index: integer): TSyntCollectionItem;
-  protected
-    procedure Update(Item: TCollectionItem); override;
-    function  GetOwner: TPersistent; override;
-    procedure Loaded;
-  public
-    constructor Create(ItemClass: TCollectionItemClass);
-    function ItemByName(const AName: string): TSyntCollectionItem;
-    function ValidItem(Item: TSyntCollectionItem): Boolean;
-    function GetUniqueName(const Base: string): string;
-
-    property SyntOwner: TecSyntAnalyzer read FSyntOwner write FSyntOwner;
-    property Items[Index: integer]: TSyntCollectionItem read GetItems; default;
-    property OnChange: TSyntItemChanged read FOnChange write FOnChange;
-  end;
 
   TRuleCollectionItem = class(TSyntCollectionItem)
   private
@@ -1089,138 +1049,6 @@ begin
    end;
 end;
 
-{ TSyntCollectionItem }
-
-procedure TSyntCollectionItem.AssignTo(Dest: TPersistent);
-begin
-  if Dest is TSyntCollectionItem then
-   begin
-    (Dest as TSyntCollectionItem).DisplayName := DisplayName;
-    (Dest as TSyntCollectionItem).Enabled := Enabled;
-   end;
-end;
-
-constructor TSyntCollectionItem.Create(Collection: TCollection);
-var NewName: string;
-    n: integer;
-begin
-  inherited;
-  FEnabled := True;
-  if Collection = nil then Exit;
-  n := 1;
-  repeat
-    NewName  := GetItemBaseName + ' ' + IntToStr(n);
-    inc(n);
-  until TSyntCollection(Collection).ItemByName(NewName) = nil;
-  FName := NewName;
-end;
-
-function TSyntCollectionItem.GetDisplayName: string;
-begin
-  Result := FName;
-end;
-
-function TSyntCollectionItem.GetIsInvalid: Boolean;
-begin
-  Result := False;
-end;
-
-function TSyntCollectionItem.GetItemBaseName: string;
-begin
-  Result := 'Item';
-end;
-
-procedure TSyntCollectionItem.Loaded;
-begin
-
-end;
-
-procedure TSyntCollectionItem.SetDisplayName(const Value: string);
-var i: integer;
-begin
-  if Collection <> nil then
-  for i := 0 to Collection.Count - 1 do
-   if Collection.Items[i] <> Self then
-    if Collection.Items[i].DisplayName = Value then
-      Exit;
-  FName := Value;
-end;
-
-procedure TSyntCollectionItem.SetEnabled(const Value: Boolean);
-begin
-  if FEnabled <> Value then
-   begin
-     FEnabled := Value;
-     Changed(False);
-   end;
-end;
-
-{ TSyntCollection }
-
-constructor TSyntCollection.Create(ItemClass: TCollectionItemClass);
-begin
-  if not ItemClass.InheritsFrom(TSyntCollectionItem) then
-   raise Exception.Create('Allow only TSyntCollectionItem Class');
-  inherited;
-end;
-
-function TSyntCollection.GetItems(Index: integer): TSyntCollectionItem;
-begin
-  Result := (inherited Items[Index]) as TSyntCollectionItem;
-end;
-
-function TSyntCollection.GetOwner: TPersistent;
-begin
-  Result := FSyntOwner;
-end;
-
-function TSyntCollection.GetUniqueName(const Base: string): string;
-var n: integer;
-begin
-  Result := Base;
-  n := 0;
-  while ItemByName(Result) <> nil do
-   begin
-    Inc(n);
-    Result := Base + IntToStr(n);
-   end;
-end;
-
-function TSyntCollection.ItemByName(const AName: string): TSyntCollectionItem;
-var i: integer;
-begin
-  for i := 0 to Count - 1 do
-   if Items[i].DisplayName = AName then
-    begin
-      Result := Items[i] as TSyntCollectionItem;
-      Exit;
-    end;
-  Result := nil;
-end;
-
-procedure TSyntCollection.Loaded;
-var i: integer;
-begin
-  for i := 0 to Count - 1 do
-   Items[i].Loaded;
-end;
-
-procedure TSyntCollection.Update(Item: TCollectionItem);
-begin
-  inherited;
-  if Assigned(FOnChange) then FOnChange(Self, TSyntCollectionItem(Item));
-end;
-
-function TSyntCollection.ValidItem(Item: TSyntCollectionItem): Boolean;
-var i: integer;
-begin
-  Result := True;
-  if Item <> nil then
-   for i := 0 to Count - 1 do
-    if Items[i] = Item then Exit;
-  Result := False;
-end;
-
 { TecSyntaxFormat }
 
 constructor TecSyntaxFormat.Create(Collection: TCollection);
@@ -1883,7 +1711,7 @@ end;
 function TecTagBlockCondition.GetBlockEndName: string;
 var FSynt: TecSyntAnalyzer;
 begin
-  FSynt := TSyntCollection(Collection).SyntOwner;
+  FSynt := TSyntCollection(Collection).SyntOwner as TecSyntAnalyzer;
   if not Assigned(FSynt) then Exit;
 
   if csLoading in FSynt.ComponentState then
@@ -1898,7 +1726,7 @@ end;
 procedure TecTagBlockCondition.SetBlockEndName(const Value: string);
 var FSynt: TecSyntAnalyzer;
 begin
-  FSynt := TSyntCollection(Collection).SyntOwner;
+  FSynt := TSyntCollection(Collection).SyntOwner as TecSyntAnalyzer;
   if not Assigned(FSynt) then Exit;
   if csLoading in FSynt.ComponentState then
     FBlockEndName := Value
@@ -1911,7 +1739,7 @@ procedure TecTagBlockCondition.Loaded;
 var FSynt: TecSyntAnalyzer;
 begin
   inherited;
-  FSynt := TSyntCollection(Collection).SyntOwner;
+  FSynt := TSyntCollection(Collection).SyntOwner as TecSyntAnalyzer;
   if not Assigned(FSynt) then Exit;
   if FBlockEndName <> '' then
     FBlockEndCond := TecTagBlockCondition(FSynt.FBlockRules.ItemByName(FBlockEndName));
@@ -2149,7 +1977,7 @@ begin
    begin
     FGrammaRuleName := Value;
     FGrammaRule :=
-      TSyntCollection(Collection).SyntOwner.Gramma.ParserRuleByName(Value);
+      (TSyntCollection(Collection).SyntOwner as TecSyntAnalyzer).Gramma.ParserRuleByName(Value);
    end;
 end;
 
@@ -2359,7 +2187,7 @@ function TRuleCollectionItem.ValidStyleName(const AStyleName: string;
   AStyle: TecSyntaxFormat): string;
 var FSynt: TecSyntAnalyzer;
 begin
-  FSynt := TSyntCollection(Collection).SyntOwner;
+  FSynt := TSyntCollection(Collection).SyntOwner as TecSyntAnalyzer;
   Result := '';
   if not Assigned(FSynt) then Exit;
 
@@ -2375,7 +2203,7 @@ function TRuleCollectionItem.ValidSetStyle(const AStyleName: string;
 var FSynt: TecSyntAnalyzer;
 begin
   Result := '';
-  FSynt := TSyntCollection(Collection).SyntOwner;
+  FSynt := TSyntCollection(Collection).SyntOwner as TecSyntAnalyzer;
   if not Assigned(FSynt) then Exit;
   if csLoading in FSynt.ComponentState then
     AStyleField := AStyleName
@@ -2397,7 +2225,7 @@ end;
 procedure TRuleCollectionItem.Loaded;
 var FSynt: TecSyntAnalyzer;
 begin
-  FSynt := TSyntCollection(Collection).SyntOwner;
+  FSynt := TSyntCollection(Collection).SyntOwner as TecSyntAnalyzer;
   if not Assigned(FSynt) then Exit;
   if FStyleName <> '' then
     FFormat := TecSyntaxFormat(FSynt.FFormats.ItemByName(FStyleName));
@@ -2408,7 +2236,7 @@ end;
 function TRuleCollectionItem.GetBlockName: string;
 var FSynt: TecSyntAnalyzer;
 begin
-  FSynt := TSyntCollection(Collection).SyntOwner;
+  FSynt := TSyntCollection(Collection).SyntOwner as TecSyntAnalyzer;
   if not Assigned(FSynt) then Exit;
 
   if csLoading in FSynt.ComponentState then
@@ -2423,7 +2251,7 @@ end;
 procedure TRuleCollectionItem.SetBlockName(const Value: string);
 var FSynt: TecSyntAnalyzer;
 begin
-  FSynt := TSyntCollection(Collection).SyntOwner;
+  FSynt := TSyntCollection(Collection).SyntOwner as TecSyntAnalyzer;
   if not Assigned(FSynt) then Exit;
   if csLoading in FSynt.ComponentState then
     FBlockName := Value
@@ -2483,7 +2311,7 @@ end;
 
 function TRuleCollectionItem.GetSyntOwner: TecSyntAnalyzer;
 begin
-  Result := TSyntCollection(Collection).SyntOwner;
+  Result := TSyntCollection(Collection).SyntOwner as TecSyntAnalyzer;
 end;
 
 procedure TRuleCollectionItem.SetStatesAdd(const Value: integer);
@@ -4976,7 +4804,7 @@ var own: TecSyntAnalyzer;
 begin
   if FSyntAnalyzer <> Value then
    begin
-     own := (Collection as TSyntCollection).SyntOwner;
+     own := (Collection as TSyntCollection).SyntOwner as TecSyntAnalyzer;
      if Assigned(FSyntAnalyzer) and (FSyntAnalyzer <> own) and not IsLinked(FSyntAnalyzer) then
        FSyntAnalyzer.RemoveMasterLexer(own);
      FSyntAnalyzer := Value;
