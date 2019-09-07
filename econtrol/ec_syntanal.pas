@@ -2374,15 +2374,18 @@ procedure TecClientSyntAnalyzer.TimerIdleTick(Sender: TObject);
 var FPos, tmp, i: integer;
     own: TecSyntAnalyzer;
     Progress: integer;
+    BufLen: integer;
 const
-  ProgressStep = 3;
+  ProgressStep = 4;
   ProgressMinPos = 2000;
+  ProcessMsgStep = 500;
 begin
   if FTimerIdleIsBusy or FDisableIdleAppend then Exit;
   FTimerIdle.Enabled := False;
   FTimerIdleMustStop := False;
   FTimerIdleIsBusy := True;
   FPos := 0;
+  BufLen := FBuffer.TextLength;
 
   try
     while not FTimerIdleMustStop and not FFinished do
@@ -2394,7 +2397,7 @@ begin
       if FPos < ProgressMinPos then
         Progress := 0
       else
-        Progress := FPos * 100 div FBuffer.TextLength div ProgressStep * ProgressStep;
+        Progress := FPos * 100 div BufLen div ProgressStep * ProgressStep;
       if Progress <> FPrevProgress then
       begin
         FPrevProgress := Progress;
@@ -2412,21 +2415,23 @@ begin
               if own <> FOwner then
                 own.SelectTokenFormat(Self, FBuffer.FText, False, i);
 
-              if i mod 500 = 0 then
+              if i mod ProcessMsgStep = 0 then
+              begin
                 Application.ProcessMessages;
-
-              if Application.Terminated then Exit;
-              if FTimerIdleMustStop then Exit;
+                if Application.Terminated then Exit;
+                if FTimerIdleMustStop then Exit;
+              end;
             end;
         Finished;
       end
       else
       begin
-        if TagCount mod 500 = 0 then
+        if TagCount mod ProcessMsgStep = 0 then
+        begin
           Application.ProcessMessages;
-
-        if Application.Terminated then Exit;
-        if FTimerIdleMustStop then Exit;
+          if Application.Terminated then Exit;
+          if FTimerIdleMustStop then Exit;
+        end;
       end;
     end;
   finally
