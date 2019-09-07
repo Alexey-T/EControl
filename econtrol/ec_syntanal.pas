@@ -2412,7 +2412,9 @@ begin
               if own <> FOwner then
                 own.SelectTokenFormat(Self, FBuffer.FText, False, i);
 
-              Application.ProcessMessages;
+              if i mod 500 = 0 then
+                Application.ProcessMessages;
+
               if Application.Terminated then Exit;
               if FTimerIdleMustStop then Exit;
             end;
@@ -2420,7 +2422,9 @@ begin
       end
       else
       begin
-        Application.ProcessMessages;
+        if TagCount mod 500 = 0 then
+          Application.ProcessMessages;
+
         if Application.Terminated then Exit;
         if FTimerIdleMustStop then Exit;
       end;
