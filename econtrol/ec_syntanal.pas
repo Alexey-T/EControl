@@ -2790,7 +2790,7 @@ begin
     while (j + N) <= length( FmtStrNumber ) do
     begin
       ch := FmtStrNumber[j + N];
-      if (ch >= '0') and (ch <= '9') or (N = 0) and
+      if IsDigitChar(ch) or (N = 0) and
          ((ch = '+') or (ch = '-'))
          then inc(N) else Break;
     end;
@@ -2904,7 +2904,7 @@ begin
      // HAW: now allow an explicit "to_idx" range by using "%from-idx~to-idx"
      if  (j < length( Result ))  and  (Result[j] = '~')  then
        // a numeric value alone sets just the maximum tokens to use
-       if (Result[j+1] >= '0') and (Result[j+1] <= '9')  then  begin  // only positive values !
+       if IsDigitChar(Result[j+1]) then  begin  // only positive values !
          to_idx := to_rng.EndIdx + to_rng.Rule.BlockEndCond.BlockOffset;
          LineMode := plmExplicitRange;
        end else
@@ -2977,7 +2977,7 @@ begin
 
      if  (j < length( Result ))  and
          (Result[j] = '~')         and
-         (Result[j+1] >= '0') and (Result[j+1] <= '9')  // only positive values !
+         IsDigitChar(Result[j+1]) // only positive values !
      then  begin  // we hav a "maximum" range value attached
        inc( j );
        if  not RangeNumber( Result, rngmax ) then
