@@ -44,19 +44,19 @@ type
     FReadOnly: Boolean;
     FChangeCase: TecChangeCase;
     FFormatFlags: TecFormatFlags;
-    procedure SetFont(const Value: TFont);
-    procedure SetBgColor(const Value: TColor);
+    procedure SetFont(Value: TFont);
+    procedure SetBgColor(Value: TColor);
     procedure FontChanged(Sender: TObject);
-    procedure SetVertAlign(const Value: TecVertAlignment);
-    procedure SetFormatType(const Value: TecFormatType);
-    procedure SetHidden(const Value: Boolean);
+    procedure SetVertAlign(Value: TecVertAlignment);
+    procedure SetFormatType(Value: TecFormatType);
+    procedure SetHidden(Value: Boolean);
     function GetBorderColor(Index: Integer): TColor;
     function GetBorderType(Index: Integer): TecBorderLineType;
-    procedure SetBorderColor(Index: Integer; const Value: TColor);
+    procedure SetBorderColor(Index: Integer; Value: TColor);
     procedure SetBorderType(Index: Integer;
       const Value: TecBorderLineType);
-    procedure SetMultiLineBorder(const Value: Boolean);
-    procedure SetReadOnly(const Value: Boolean);
+    procedure SetMultiLineBorder(Value: Boolean);
+    procedure SetReadOnly(Value: Boolean);
     procedure SetFormatFlags(const Value: TecFormatFlags);
     function GetHidden: Boolean;
   protected
@@ -168,13 +168,13 @@ begin
     end;
 end;
 
-procedure TecSyntaxFormat.SetBgColor(const Value: TColor);
+procedure TecSyntaxFormat.SetBgColor(Value: TColor);
 begin
   FBgColor := Value;
   Change;
 end;
 
-procedure TecSyntaxFormat.SetFont(const Value: TFont);
+procedure TecSyntaxFormat.SetFont(Value: TFont);
 begin
   FFont.Assign(Value);
   Change;
@@ -185,7 +185,7 @@ begin
   Change;
 end;
 
-procedure TecSyntaxFormat.SetVertAlign(const Value: TecVertAlignment);
+procedure TecSyntaxFormat.SetVertAlign(Value: TecVertAlignment);
 begin
   FVertAlign := Value;
   Change;
@@ -196,7 +196,7 @@ begin
   Result := 'Style';
 end;
 
-procedure TecSyntaxFormat.SetFormatType(const Value: TecFormatType);
+procedure TecSyntaxFormat.SetFormatType(Value: TecFormatType);
 begin
   FFormatType := Value;
   Change;
@@ -208,7 +208,7 @@ begin
   if Assigned(FOnChange) then FOnChange(Self);
 end;
 
-procedure TecSyntaxFormat.SetHidden(const Value: Boolean);
+procedure TecSyntaxFormat.SetHidden(Value: Boolean);
 begin
   FHidden := Value;
   Change;
@@ -231,7 +231,7 @@ begin
 end;
 
 procedure TecSyntaxFormat.SetBorderColor(Index: Integer;
-  const Value: TColor);
+  Value: TColor);
 begin
   if (Index >= 0) and (Index <= 3) then
    begin
@@ -250,13 +250,13 @@ begin
    end;
 end;
 
-procedure TecSyntaxFormat.SetMultiLineBorder(const Value: Boolean);
+procedure TecSyntaxFormat.SetMultiLineBorder(Value: Boolean);
 begin
   FMultiLineBorder := Value;
   Change;
 end;
 
-procedure TecSyntaxFormat.SetReadOnly(const Value: Boolean);
+procedure TecSyntaxFormat.SetReadOnly(Value: Boolean);
 begin
   FReadOnly := Value;
   Change;
