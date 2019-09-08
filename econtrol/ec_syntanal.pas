@@ -619,6 +619,8 @@ type
 
   TecSeparateBlocksMode = (sbmUnknown, sbmEnabled, sbmDisabled);
 
+  TecParserLineMode = (plmNone, plmFromStart, plmToEnd, plmExplicitRange);
+
   { TecSyntAnalyzer }
 
   TecSyntAnalyzer = class(TLoadableComponent)
@@ -2606,7 +2608,7 @@ function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
   Range: TecTextRange): ecString;
 var i, j, idx, N, to_idx: integer;
     rng: TecTextRange;
-    LineMode: integer;
+    LineMode: TecParserLineMode;
 
 { HAW: hans@werschner.de [Oct'07] ......... additions to formatting token parts ......
 
@@ -2848,14 +2850,14 @@ begin
      inc(j);
 
      case ecUpCase(Result[j]) of // <== v2.35
-       'L': LineMode := 1; // from start of line
-       'Z': LineMode := 2; // to end of line
-       else LineMode := 0;
+       'L': LineMode := plmFromStart; // from start of line
+       'Z': LineMode := plmToEnd; // to end of line
+       else LineMode := plmNone;
      end;
-     if LineMode <> 0 then Inc(j);
+     if LineMode <> plmNone then Inc(j);
 
      // HAW: check for "...s[token]..." instead of numeric index
-     if  LineMode = 0  then
+     if  LineMode = plmNone  then
        if  (j < length( Result ))  and  (Result[j] = '[')  then  begin
          inc( j );  rngtoken := '';
          while  (j < length( Result ))  and  (Result[j] <> ']')  do  begin
@@ -2898,11 +2900,11 @@ begin
        // a numeric value alone sets just the maximum tokens to use
        if (Result[j+1] >= '0') and (Result[j+1] <= '9')  then  begin  // only positive values !
          to_idx := to_rng.EndIdx + to_rng.Rule.BlockEndCond.BlockOffset;
-         LineMode := 3;
+         LineMode := plmExplicitRange;
        end else
        begin
 
-         if  LineMode <> 0  then  // not a good combination
+         if  LineMode <> plmNone  then  // not a good combination
            continue;
          // ... otherwise we have a real end-token clause
          inc( j );  // skip over the [
@@ -2964,7 +2966,7 @@ begin
          end  else
            to_idx := to_idx - rngoffset;
 
-         LineMode := 3;  // enforce new mode as we have an explicit range
+         LineMode := plmExplicitRange;  // enforce new mode as we have an explicit range
        end;
 
      if  (j < length( Result ))  and
@@ -2981,19 +2983,23 @@ begin
 
      if (idx >= 0) and (idx < FTagList.Count) then
        case LineMode of
-         0: Insert(TagStr[idx], Result, i);
-         1: begin
+         plmNone:
+            Insert(TagStr[idx], Result, i);
+         plmFromStart:
+           begin
               N := FBuffer.OffsetToOffsetOfLineStart(Tags[idx].Range.StartPos);
               to_idx := Tags[idx].Range.EndPos;
               Insert(FBuffer.SubString(N, to_idx - N + 1), Result, i);
             end;
-         2: begin
+         plmToEnd:
+           begin
               to_idx := FBuffer.OffsetToOffsetOfLineEnd(Tags[idx].Range.EndPos);
               N := Tags[idx].Range.StartPos;
               Insert(FBuffer.SubString(N+1, to_idx - N + 1), Result, i); //AT: fixed substring offset/len (2 patches)
             end;
          // HAW: new mode = 3 --- explicit range  idx...to_idx
-         3: if  (to_idx >= 0)  and  (to_idx < FTagList.Count)  then  begin
+         plmExplicitRange:
+           if  (to_idx >= 0)  and  (to_idx < FTagList.Count)  then  begin
               if  to_idx < idx  then  begin
                 swp_idx := idx;  idx := to_idx;  to_idx := swp_idx;
               end;
