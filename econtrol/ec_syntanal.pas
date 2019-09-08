@@ -617,6 +617,8 @@ type
 
   TecParseProgressEvent = procedure(Sender: TObject; AProgress: integer) of object;
 
+  TecSeparateBlocksMode = (sbmUnknown, sbmEnabled, sbmDisabled);
+
   { TecSyntAnalyzer }
 
   TecSyntAnalyzer = class(TLoadableComponent)
@@ -654,7 +656,7 @@ type
     FGrammaParser: TGrammaAnalyzer;
     FLineComment: ecString;
     FCharset: TFontCharSet;
-    FSeparateBlocks: integer;
+    FSeparateBlocks: TecSeparateBlocksMode;
     FAlwaysSyncBlockAnal: Boolean;   // Indicates that blocks analysis may after tokens
     FOnGetCollapseRange: TBoundDefEvent;
     FOnCloseTextRange: TBoundDefEvent;
@@ -2564,13 +2566,13 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.Analyze(ResetContent: Boolean);
-var OldSep: integer;
+var OldSep: TecSeparateBlocksMode;
 begin
   if IsFinished then Exit;
   if ResetContent then
     begin
       OldSep := FOwner.FSeparateBlocks;
-      FOwner.FSeparateBlocks := 2; // disanle separation analysis
+      FOwner.FSeparateBlocks := sbmDisabled;
       Clear;
       AppendToPos(FBuffer.TextLength);
       FOwner.FSeparateBlocks := OldSep;
@@ -3826,7 +3828,7 @@ function TecSyntAnalyzer.GetSeparateBlocks: Boolean;
   end;
 var i: integer;
 begin
-  if FSeparateBlocks = 0 then
+  if FSeparateBlocks = sbmUnknown then
     begin
       Result := not FAlwaysSyncBlockAnal and
                 not HasStateModif(FBlockRules) and
@@ -3847,17 +3849,17 @@ begin
               Break;
             end;
       if Result then
-        FSeparateBlocks := 1
+        FSeparateBlocks := sbmEnabled
       else
-        FSeparateBlocks := 2;
+        FSeparateBlocks := sbmDisabled;
     end
   else
-    Result := FSeparateBlocks = 1;
+    Result := FSeparateBlocks = sbmEnabled;
 end;
 
 procedure TecSyntAnalyzer.DetectBlockSeparate;
 begin
-  FSeparateBlocks := 0;
+  FSeparateBlocks := sbmUnknown;
 end;
 
 procedure TecSyntAnalyzer.SetAlwaysSyncBlockAnal(const Value: Boolean);
