@@ -36,7 +36,6 @@ type
     FBgColor: TColor;
     FVertAlign: TecVertAlignment;
     FFormatType: TecFormatType;
-    //FOnChange: TNotifyEvent;
     FHidden: Boolean;
     FBorderTypes: array[0..3] of TecBorderLineType;
     FBorderColors: array[0..3] of TColor;
@@ -45,24 +44,15 @@ type
     FChangeCase: TecChangeCase;
     FFormatFlags: TecFormatFlags;
     procedure SetFont(Value: TFont);
-    procedure SetBgColor(Value: TColor);
-    procedure FontChanged(Sender: TObject);
-    procedure SetVertAlign(Value: TecVertAlignment);
-    procedure SetFormatType(Value: TecFormatType);
-    procedure SetHidden(Value: Boolean);
     function GetBorderColor(Index: Integer): TColor;
     function GetBorderType(Index: Integer): TecBorderLineType;
     procedure SetBorderColor(Index: Integer; Value: TColor);
     procedure SetBorderType(Index: Integer;
       const Value: TecBorderLineType);
-    procedure SetMultiLineBorder(Value: Boolean);
-    procedure SetReadOnly(Value: Boolean);
-    procedure SetFormatFlags(const Value: TecFormatFlags);
     function GetHidden: Boolean;
   protected
     procedure AssignTo(Dest: TPersistent); override;
     function GetItemBaseName: string; override;
-    //procedure Change; dynamic;
   public
     constructor Create(Collection: TCollection); override;
     destructor Destroy; override;
@@ -76,16 +66,15 @@ type
     // Save only common properties
     procedure Intersect(Over: TecSyntaxFormat);
 
-    //property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property BorderTypes[Index: integer]: TecBorderLineType read GetBorderType write SetBorderType;
     property BorderColors[Index: integer]: TColor read GetBorderColor write SetBorderColor;
     property IsBlock: Boolean read FIsBlock write FIsBlock;
   published
     property Font: TFont read FFont write SetFont;
-    property BgColor: TColor read FBgColor write SetBgColor default clNone;
-    property VertAlignment: TecVertAlignment read FVertAlign write SetVertAlign default vaCenter;
-    property FormatType: TecFormatType read FFormatType write SetFormatType default ftFontAttr;
-    property Hidden: Boolean read GetHidden write SetHidden default False;
+    property BgColor: TColor read FBgColor write FBgColor default clNone;
+    property VertAlignment: TecVertAlignment read FVertAlign write FVertAlign default vaCenter;
+    property FormatType: TecFormatType read FFormatType write FFormatType default ftFontAttr;
+    property Hidden: Boolean read GetHidden write FHidden default False;
     property BorderTypeLeft: TecBorderLineType index 0 read GetBorderType write SetBorderType default blNone;
     property BorderColorLeft: TColor index 0 read GetBorderColor write SetBorderColor default clBlack;
     property BorderTypeTop: TecBorderLineType index 1 read GetBorderType write SetBorderType default blNone;
@@ -94,10 +83,10 @@ type
     property BorderColorRight: TColor index 2 read GetBorderColor write SetBorderColor default clBlack;
     property BorderTypeBottom: TecBorderLineType index 3 read GetBorderType write SetBorderType default blNone;
     property BorderColorBottom: TColor index 3 read GetBorderColor write SetBorderColor default clBlack;
-    property MultiLineBorder: Boolean read FMultiLineBorder write SetMultiLineBorder default False;
-    property ReadOnly: Boolean read FReadOnly write SetReadOnly default False;
+    property MultiLineBorder: Boolean read FMultiLineBorder write FMultiLineBorder default False;
+    property ReadOnly: Boolean read FReadOnly write FReadOnly default False;
     property ChangeCase: TecChangeCase read FChangeCase write FChangeCase default ccNone;
-    property FormatFlags: TecFormatFlags read FFormatFlags write SetFormatFlags
+    property FormatFlags: TecFormatFlags read FFormatFlags write FFormatFlags
                  default [ffBold, ffItalic, ffUnderline, ffStrikeOut, ffReadOnly,
                           ffHidden, ffFontName, ffFontSize, ffFontCharset, ffVertAlign];
   end;
@@ -134,7 +123,7 @@ begin
   FFormatFlags := [ffBold, ffItalic, ffUnderline, ffStrikeOut, ffReadOnly,
                    ffHidden, ffFontName, ffFontSize, ffFontCharset, ffVertAlign];
   inherited;
-  FFont.OnChange := FontChanged;
+  //FFont.OnChange := FontChanged;
 end;
 
 destructor TecSyntaxFormat.Destroy;
@@ -168,52 +157,14 @@ begin
     end;
 end;
 
-procedure TecSyntaxFormat.SetBgColor(Value: TColor);
-begin
-  FBgColor := Value;
-  //Change;
-end;
-
 procedure TecSyntaxFormat.SetFont(Value: TFont);
 begin
   FFont.Assign(Value);
-  //Change;
-end;
-
-procedure TecSyntaxFormat.FontChanged(Sender: TObject);
-begin
-  //Change;
-end;
-
-procedure TecSyntaxFormat.SetVertAlign(Value: TecVertAlignment);
-begin
-  FVertAlign := Value;
-  //Change;
 end;
 
 function TecSyntaxFormat.GetItemBaseName: string;
 begin
   Result := 'Style';
-end;
-
-procedure TecSyntaxFormat.SetFormatType(Value: TecFormatType);
-begin
-  FFormatType := Value;
-  //Change;
-end;
-
-{
-procedure TecSyntaxFormat.Change;
-begin
-  Changed(False);
-  //if Assigned(FOnChange) then FOnChange(Self);
-end;
-}
-
-procedure TecSyntaxFormat.SetHidden(Value: Boolean);
-begin
-  FHidden := Value;
-  //Change;
 end;
 
 function TecSyntaxFormat.GetBorderColor(Index: Integer): TColor;
@@ -238,7 +189,6 @@ begin
   if (Index >= 0) and (Index <= 3) then
    begin
     FBorderColors[Index] := Value;
-    //Change;
    end;
 end;
 
@@ -248,29 +198,8 @@ begin
   if (Index >= 0) and (Index <= 3) then
    begin
     FBorderTypes[Index] := Value;
-    //Change;
    end;
 end;
-
-procedure TecSyntaxFormat.SetMultiLineBorder(Value: Boolean);
-begin
-  FMultiLineBorder := Value;
-  //Change;
-end;
-
-procedure TecSyntaxFormat.SetReadOnly(Value: Boolean);
-begin
-  FReadOnly := Value;
-  //Change;
-end;
-
-{
-procedure TecSyntaxFormat.SetChangeCase(const Value: TecChangeCase);
-begin
-  FChangeCase := Value;
-  Change;
-end;
-}
 
 function TecSyntaxFormat.HasBorder: Boolean;
 var i: integer;
@@ -282,15 +211,6 @@ begin
       Exit;
      end;
   Result := False;
-end;
-
-procedure TecSyntaxFormat.SetFormatFlags(const Value: TecFormatFlags);
-begin
-  if FFormatFlags <> Value then
-    begin
-      FFormatFlags := Value;
-      //Change;
-    end;
 end;
 
 procedure TecSyntaxFormat.ApplyTo(Canvas: TCanvas; AllowChangeFont: Boolean);
