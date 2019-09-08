@@ -3273,10 +3273,13 @@ procedure TecSyntAnalyzer.HighlightKeywords(Client: TecParserResults;
 var i, N, ki, RefIdx: integer;
     Accept: Boolean;
     Tag: TecSyntToken;
+    Rule: TecTagBlockCondition;
 begin
   N := Client.TagCount;
   for i := 0 to FBlockRules.Count - 1 do
-   with FBlockRules[i] do
+  begin
+    Rule := FBlockRules[i];
+    with Rule do
     if Enabled and (BlockType = btTagDetect) and
        (Block = nil) and (FGrammaRule = nil) then
       begin
@@ -3284,14 +3287,14 @@ begin
        RefIdx := 0;
        Accept := Check(Source, TecClientSyntAnalyzer(Client), N, RefIdx);
        if Assigned(OnBlockCheck) then
-         OnBlockCheck(FBlockRules[i], TecClientSyntAnalyzer(Client), Source, RefIdx, Accept);
+         OnBlockCheck(Rule, TecClientSyntAnalyzer(Client), Source, RefIdx, Accept);
        if Accept then
          begin
            if FRefToCondEnd then ki := RefIdx - IdentIndex
              else ki := N - 1 - CheckOffset - IdentIndex;
 
            Tag := TecClientSyntAnalyzer(Client).Tags[ki];
-           Tag.Rule := FBlockRules[i];
+           Tag.Rule := Rule;
            if TokenType >= 0 then
               Tag.TokenType := TokenType;
            TecClientSyntAnalyzer(Client).Tags[ki] := Tag;
@@ -3299,6 +3302,7 @@ begin
            if CancelNextRules then Exit;   // 2.27
          end;
       end;
+  end;
 end;
 
 procedure TecSyntAnalyzer.SelectTokenFormat(Client: TecParserResults;
@@ -3307,6 +3311,7 @@ var i, li, ki, strt, RefIdx: integer;
     Range: TecTextRange;
     Accept: Boolean;
     RClient: TecClientSyntAnalyzer;
+    Rule: TecTagBlockCondition;
 
   function CheckIndex(Idx: integer): Boolean; inline;
   begin
@@ -3321,10 +3326,12 @@ begin
   RClient.FStartSepRangeAnal := N + 1;
   try
     for i := 0 to FBlockRules.Count - 1 do
-      with FBlockRules[i] do
+    begin
+      Rule := FBlockRules[i];
+      with Rule do
        if not SeparateBlockAnalysis or (BlockType <> btTagDetect) or
           (Block = nil) or (FGrammaRule = nil) then
-       if Client.IsEnabled(FBlockRules[i], OnlyGlobal) then
+       if Client.IsEnabled(Rule, OnlyGlobal) then
         begin
           RefIdx := 0;
           if FGrammaRule <> nil then
@@ -3335,11 +3342,11 @@ begin
              Accept := Check(Source, RClient, N, RefIdx);
 
           if Assigned(OnBlockCheck) then
-            OnBlockCheck(FBlockRules[i], RClient, Source, RefIdx, Accept);
+            OnBlockCheck(Rule, RClient, Source, RefIdx, Accept);
 
           if Accept then
           begin
-           Client.ApplyStates(FBlockRules[i]);
+           Client.ApplyStates(Rule);
            if FRefToCondEnd then strt := RefIdx
              else strt := N - 1 - CheckOffset;
       //    strt := N - 1 - CheckOffset;
@@ -3347,18 +3354,18 @@ begin
            if CheckIndex(ki) then
             case BlockType of
                btTagDetect: // Tag detection
-                 if not RClient.DetectTag(FBlockRules[i], ki) then
+                 if not RClient.DetectTag(Rule, ki) then
                    Continue;
                btRangeStart: // Start of block
                 begin
-                  if FBlockRules[i].SelfClose then
-                    RClient.CloseRange(FBlockRules[i], strt);
+                  if Rule.SelfClose then
+                    RClient.CloseRange(Rule, strt);
                   li := strt - BlockOffset;
                   if CheckIndex(li) then
                    begin
                     Range := TecTextRange.Create(li, RClient.Tags[li].Range.StartPos);
                     Range.IdentIdx := ki;
-                    Range.Rule := FBlockRules[i];
+                    Range.Rule := Rule;
                     Range.FCondIndex := N - 1;
                     if NoEndRule then
                      begin
@@ -3370,7 +3377,7 @@ begin
                    end;
                 end;
                btRangeEnd:  // End of block
-                 if not RClient.CloseRange(FBlockRules[i], strt) then
+                 if not RClient.CloseRange(Rule, strt) then
                    Continue;
                btLineBreak:
                  begin
@@ -3380,6 +3387,7 @@ begin
            if CancelNextRules then Break;
           end;
         end;
+    end;
   except
     Application.HandleException(Self);
   end;
@@ -3463,6 +3471,7 @@ end;
 
 procedure TecSyntAnalyzer.FormatsChanged(Sender: TCollection; Item: TSyntCollectionItem);
 var i: integer;
+    Rule: TecTagBlockCondition;
 begin
   ClearClientContents;
   if Item = nil then
@@ -3473,9 +3482,10 @@ begin
     if not FFormats.ValidItem(FSearchMatch) then FSearchMatch := nil;
     for i := 0 to FBlockRules.Count - 1 do
      begin
-      if not FFormats.ValidItem(FBlockRules[i].Style) then FBlockRules[i].Style := nil;
-      if not FFormats.ValidItem(FBlockRules[i].TreeItemStyleObj) then FBlockRules[i].FTreeItemStyleObj := nil;
-      if not FFormats.ValidItem(FBlockRules[i].TreeGroupStyleObj) then FBlockRules[i].FTreeGroupStyleObj := nil;
+      Rule := FBlockRules[i];
+      if not FFormats.ValidItem(Rule.Style) then Rule.Style := nil;
+      if not FFormats.ValidItem(Rule.TreeItemStyleObj) then Rule.FTreeItemStyleObj := nil;
+      if not FFormats.ValidItem(Rule.TreeGroupStyleObj) then Rule.FTreeGroupStyleObj := nil;
      end;
     for i := 0 to FTokenRules.Count - 1 do
      if not FFormats.ValidItem(FTokenRules[i].Style) then FTokenRules[i].Style := nil;
@@ -3489,14 +3499,16 @@ end;
 procedure TecSyntAnalyzer.BlocksChanged(Sender: TCollection;
   Item: TSyntCollectionItem);
 var i: integer;
+    Rule: TecTagBlockCondition;
 begin
   ClearClientContents;
   if Item = nil then
    begin
     for i := 0 to FBlockRules.Count - 1 do
      begin
-      if not FBlockRules.ValidItem(FBlockRules[i].Block) then FBlockRules[i].Block := nil;
-      if not FBlockRules.ValidItem(FBlockRules[i].BlockEndCond) then FBlockRules[i].BlockEndCond := nil;
+      Rule := FBlockRules[i];
+      if not FBlockRules.ValidItem(Rule.Block) then Rule.Block := nil;
+      if not FBlockRules.ValidItem(Rule.BlockEndCond) then Rule.BlockEndCond := nil;
      end;
     for i := 0 to FTokenRules.Count - 1 do
      if not FBlockRules.ValidItem(FTokenRules[i].Block) then FTokenRules[i].Block := nil;
@@ -3790,11 +3802,15 @@ end;
 
 procedure TecSyntAnalyzer.CompileGramma;
 var i: integer;
+    Rule: TecTagBlockCondition;
 begin
   FGrammaParser.CompileGramma(FTokenTypeNames);
   for i := 0 to FBlockRules.Count - 1 do
-    FBlockRules[i].FGrammaRule :=
-     FGrammaParser.ParserRuleByName(FBlockRules[i].FGrammaRuleName);
+  begin
+    Rule := FBlockRules[i];
+    Rule.FGrammaRule :=
+     FGrammaParser.ParserRuleByName(Rule.FGrammaRuleName);
+  end;
 end;
 
 procedure TecSyntAnalyzer.TokenNamesChanged(Sender: TObject);
