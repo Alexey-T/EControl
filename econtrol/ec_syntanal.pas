@@ -2781,7 +2781,7 @@ var rngstyle: string;                      // HAW: add style identifier to range
     swp_idx, rngdir, rngoffset, rngmax: integer;
     to_rng: TecTextRange;
 
-function RangeNumber( const FmtStrNumber: string; var gotnbr: integer ): boolean;
+function RangeNumber( const FmtStrNumber: ecString; var gotnbr: integer ): boolean;
 begin
     N := 0; Result := false;
     while (j + N) <= length( FmtStrNumber ) do
