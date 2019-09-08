@@ -85,11 +85,11 @@ type
     function ValidStyleName(const AStyleName: string; AStyle: TecSyntaxFormat): string;
     function ValidSetStyle(const AStyleName: string; var AStyleField: string; var AStyle: TecSyntaxFormat): string;
     procedure AssignTo(Dest: TPersistent); override;
-    procedure Loaded; override;
   public
     property Style: TecSyntaxFormat read FFormat write FFormat;
     property Block: TecTagBlockCondition read FBlock write FBlock;
     property SyntOwner: TecSyntAnalyzer read GetSyntOwner;
+    procedure Loaded; override;
   published
     property StyleName: string read GetStyleName write SetStyleName;
     property BlockName: string read GetBlockName write SetBlockName;
@@ -290,7 +290,6 @@ type
   protected
     procedure AssignTo(Dest: TPersistent); override;
     function GetItemBaseName: string; override;
-    procedure Loaded; override;
     function CheckOffset: integer;
   public
     constructor Create(Collection: TCollection); override;
@@ -300,6 +299,7 @@ type
     property BlockEndCond: TecTagBlockCondition read FBlockEndCond write SetBlockEndCond;
     property TreeItemStyleObj: TecSyntaxFormat read FTreeItemStyleObj;
     property TreeGroupStyleObj: TecSyntaxFormat read FTreeGroupStyleObj;
+    procedure Loaded; override;
   published
     property BlockType: TecTagBlockType read FBlockType write SetBlockType default btRangeStart;
     property ConditionList: TecConditionCollection read FConditions write SetConditions;

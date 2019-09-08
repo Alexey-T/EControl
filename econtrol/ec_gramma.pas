@@ -281,7 +281,7 @@ var Lex: TecSyntAnalyzer;
     Cur, i: integer;
     Rule: TParserRule;
 
-  procedure AddTokenRule(ATokenType: integer; Expr: string);
+  procedure AddTokenRule(ATokenType: integer; const Expr: ecString);
   var TokenRule: TecTokenRule;
   begin
     TokenRule := Lex.TokenRules.Add;
