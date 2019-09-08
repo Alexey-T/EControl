@@ -1967,7 +1967,7 @@ end;
 function TecParserResults.ExtractTag(const Source: ecString; var FPos: integer
   ): Boolean;
 var N: integer;
-    p: TecSyntToken;
+    CurToken: TecSyntToken;
     own: TecSyntAnalyzer;
 
    // Select current lexer
@@ -2023,10 +2023,10 @@ var N: integer;
     for i := FSubLexerBlocks.Count - 1 downto 0 do
     begin
       Sub := FSubLexerBlocks[i];
-      if (p.Range.EndPos > Sub.Range.StartPos) and (p.Range.StartPos < Sub.Range.StartPos) then
+      if (CurToken.Range.EndPos > Sub.Range.StartPos) and (CurToken.Range.StartPos < Sub.Range.StartPos) then
        begin
-        p.Range.EndPos := Sub.Range.StartPos;
-        p.Range.PointEnd := FBuffer.StrToCaret(p.Range.EndPos);
+        CurToken.Range.EndPos := Sub.Range.StartPos;
+        CurToken.Range.PointEnd := FBuffer.StrToCaret(CurToken.Range.EndPos);
         Exit;
        end;
     end;
@@ -2094,10 +2094,10 @@ begin
   Result := N = -1;
   if Result then Exit;
 
-  p := FOwner.GetToken(Self, Source, FPos, own <> FOwner);
-  if (own <> FOwner) and (p.Range.StartPos < 0) then
-    p := own.GetToken(Self, Source, FPos, False);
-  if p.Range.StartPos < 0 then  // no token
+  CurToken := FOwner.GetToken(Self, Source, FPos, own <> FOwner);
+  if (own <> FOwner) and (CurToken.Range.StartPos < 0) then
+    CurToken := own.GetToken(Self, Source, FPos, False);
+  if CurToken.Range.StartPos < 0 then  // no token
    begin
      NNextPos := FPos;
      SkipSpaces(Source, NNextPos); // needed for huge space-only lines, where Inc(FPos) is very slow
@@ -2109,7 +2109,7 @@ begin
    begin
     CheckIntersect;
     SaveState;
-    FTagList.Add(p);
+    FTagList.Add(CurToken);
     if not FOwner.SeparateBlockAnalysis then
      begin
       FOwner.SelectTokenFormat(Self, Source, own <> FOwner);
@@ -2122,7 +2122,7 @@ begin
       if own <> FOwner then
         own.HighlightKeywords(Self, Source, False);
      end;
-    FPos := p.Range.EndPos + 1;
+    FPos := CurToken.Range.EndPos + 1;
    end;
    FLastAnalPos := FPos;
 end;
