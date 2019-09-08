@@ -1970,11 +1970,11 @@ function TecParserResults.ExtractTag(const Source: ecString; var FPos: integer
 var
   CurToken: TecSyntToken;
   own: TecSyntAnalyzer;
-  Sub: TecSubLexerRange; // common for 3 nested functions
 
    // Select current lexer
    procedure GetOwner;
    var i, N: integer;
+       Sub: TecSubLexerRange;
    begin
     own := FOwner;
     for i := FSubLexerBlocks.Count - 1 downto 0 do
@@ -2019,6 +2019,7 @@ var
 
    procedure CheckIntersect;
    var i: integer;
+       Sub: TecSubLexerRange;
    begin
     for i := FSubLexerBlocks.Count - 1 downto 0 do
     begin
@@ -2034,6 +2035,7 @@ var
 
    function CanOpen(Rule: TecSubAnalyzerRule): Boolean;
    var N: integer;
+       Sub: TecSubLexerRange;
    begin
      Result := IsEnabled(Rule, False) and (Rule.SyntAnalyzer <> nil);
      if not Result then Exit;
