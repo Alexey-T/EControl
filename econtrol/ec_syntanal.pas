@@ -619,8 +619,6 @@ type
 
   TecSeparateBlocksMode = (sbmUnknown, sbmEnabled, sbmDisabled);
 
-  TecParserLineMode = (plmNone, plmFromStart, plmToEnd, plmExplicitRange);
-
   { TecSyntAnalyzer }
 
   TecSyntAnalyzer = class(TLoadableComponent)
@@ -2603,6 +2601,9 @@ begin
      end;
 end;
 *)
+
+type
+  TecParserLineMode = (plmNone, plmFromStart, plmToEnd, plmExplicitRange);
 
 function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
   Range: TecTextRange): ecString;
