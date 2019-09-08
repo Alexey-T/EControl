@@ -2183,13 +2183,18 @@ begin
 end;
 
 procedure TecParserResults.RestoreState;
-var i: integer;
+var i, NCount: integer;
 begin
+  NCount := 0;
   for i := FStateChanges.Count - 1 downto 0 do
     if FStateChanges[i].TokenCount >= TagCount then
-      FStateChanges.Delete(i)
+      Inc(NCount)
     else
       Break;
+
+  if NCount > 0 then
+    FStateChanges.DeleteRange(FStateChanges.Count-NCount, FStateChanges.Count-1);
+
   if FStateChanges.Count > 0 then
     FCurState := FStateChanges.Last.State
   else
