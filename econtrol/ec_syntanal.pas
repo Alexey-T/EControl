@@ -166,6 +166,7 @@ type
     FTagList: TStrings;
     FCondType: TecTagConditionType;
     FTokenTypes: DWORD;
+    FRegex: TecRegExpr;
     procedure SetTagList(const Value: TStrings);
     procedure SetIgnoreCase(const Value: Boolean);
     procedure SetTokenTypes(const Value: DWORD);
@@ -968,7 +969,6 @@ end;
 function TecSingleTagCondition.CheckToken(const Source: ecString; const Token: TecSyntToken): Boolean;
 var s: ecString;
     i, N: integer;
-    RE: TecRegExpr;
 begin
   Result := False;
   if FTokenTypes <> 0 then
@@ -991,18 +991,16 @@ begin
     s := Trim(s); //AT
     if FCondType in [tcMask, tcStrictMask] then
      begin
-       RE := TecRegExpr.Create;
-       SetDefaultModifiers(RE);
        try
          for i := 0 to FTagList.Count - 1 do
           begin
-            RE.Expression := FTagList[i];
+            FRegex.Expression := FTagList[i];
             if FCondType = tcMask then
-              Result := RE.MatchLength(s, 1) > 0
+              Result := FRegex.MatchLength(s, 1) > 0
             else
               begin
                 N := 1;
-                Result := RE.Match(s, N);
+                Result := FRegex.Match(s, N);
                 if Result then
                   Result := N > Length(S);
               end;
@@ -1011,7 +1009,7 @@ begin
           end;
        except
        end;
-       FreeAndNil(RE);
+       FRegex.Compile(''); //clear
      end else
      begin
        Result := FTagList.IndexOf(s) <> -1;
@@ -1031,10 +1029,13 @@ begin
   TStringList(FTagList).CaseSensitive := True;
   TStringList(FTagList).OnChange := TagListChanged;
   TStringList(FTagList).QuoteChar := ' ';
+  FRegex := TecRegExpr.Create;
+  SetDefaultModifiers(FRegex);
 end;
 
 destructor TecSingleTagCondition.Destroy;
 begin
+  FreeAndNil(FRegex);
   FreeAndNil(FTagList);
   inherited;
 end;
