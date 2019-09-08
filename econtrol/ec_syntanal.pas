@@ -2790,13 +2790,12 @@ begin
          then inc(N) else Break;
     end;
     if  N > 0  then  begin
-      NumValue := StrToInt( copy( FmtStrNumber, j, N ) );
+      NumValue := StrToIntDef( copy( FmtStrNumber, j, N ), 0 );
       inc( j, N );
       Result := true;
     end;
 end;
 
-//var S_: string;
 begin
   idx := 0;
   Result := FmtStr;
