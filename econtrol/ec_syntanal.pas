@@ -1966,10 +1966,10 @@ end;
 // True if end of the text
 function TecParserResults.ExtractTag(const Source: ecString; var FPos: integer
   ): Boolean;
-var N: integer;
-    CurToken: TecSyntToken;
-    own: TecSyntAnalyzer;
-    Sub: TecSubLexerRange; // common for 3 nested functions
+var
+  CurToken: TecSyntToken;
+  own: TecSyntAnalyzer;
+  Sub: TecSubLexerRange; // common for 3 nested functions
 
    // Select current lexer
    procedure GetOwner;
@@ -2075,7 +2075,7 @@ var N: integer;
    end;
 
 var
-  NNextPos: integer;
+  N, NNextPos: integer;
 begin
   GetOwner;
   TryOpenSubLexer;
