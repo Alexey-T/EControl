@@ -2221,11 +2221,9 @@ end;
 
 destructor TecClientSyntAnalyzer.Destroy;
 begin
+  DoStopTimer(True);
   if Assigned(FTimerIdle) then
-  begin
-    DoStopTimer(true);
     FreeAndNil(FTimerIdle);
-  end;
 
   FreeAndNil(FRanges);
   FreeAndNil(FOpenedBlocks);
@@ -2234,8 +2232,8 @@ end;
 
 function TecClientSyntAnalyzer.Stop: boolean;
 begin
-  FFinished := true;
-  Result := DoStopTimer(true);
+  FFinished := True;
+  Result := DoStopTimer(True);
 end;
 
 procedure TecClientSyntAnalyzer.Clear;
@@ -2246,7 +2244,7 @@ begin
   FRanges.Clear;
   FOpenedBlocks.Clear;
 
-  DoStopTimer(false);
+  DoStopTimer(False);
   FFinished := False;
   FLastAnalPos := 0;
   FStartSepRangeAnal := 0;
@@ -2386,8 +2384,12 @@ begin
   BufLen := FBuffer.TextLength;
 
   try
-    while not FTimerIdleMustStop and not FFinished do
+    while True do
     begin
+      if FTimerIdleMustStop then exit;
+      if FFinished then exit;
+      if Application.Terminated then exit;
+
       if FBuffer=nil then exit;
       tmp := GetLastPos(FBuffer.FText);
       if tmp > FPos then FPos := tmp;
@@ -2425,11 +2427,7 @@ begin
       else
       begin
         if TagCount mod ProcessMsgStep = 0 then
-        begin
           Application.ProcessMessages;
-          if Application.Terminated then Exit;
-          if FTimerIdleMustStop then Exit;
-        end;
       end;
     end;
   finally
@@ -2498,7 +2496,7 @@ begin
    Dec(APos);
    if APos<0 then
      APos := 0;
-   DoStopTimer(false);
+   DoStopTimer(False);
 
    if FBuffer.TextLength <= Owner.FullRefreshSize then
      APos := 0
@@ -2594,7 +2592,7 @@ begin
       FOwner.SelectTokenFormat(Self, FBuffer.FText, own <> FOwner, i);
       if own <> FOwner then
         own.SelectTokenFormat(Self, FBuffer.FText, False, i);
-      DoStopTimer(true);
+      DoStopTimer(True);
       Finished;
      end;
 end;
