@@ -2065,12 +2065,16 @@ var
 
    procedure TryOpenSubLexer;
    var i: integer;
+       Rule: TecSubAnalyzerRule;
    begin
      for i := 0 to own.SubAnalyzers.Count - 1 do
       if CanOpen(own.SubAnalyzers[i]) then Exit;
      if own <> FOwner then
       for i := 0 to FOwner.SubAnalyzers.Count - 1 do
-       if FOwner.SubAnalyzers[i].AlwaysEnabled and CanOpen(FOwner.SubAnalyzers[i]) then Exit;
+      begin
+       Rule := FOwner.SubAnalyzers[i];
+       if Rule.AlwaysEnabled and CanOpen(Rule) then Exit;
+      end;
    end;
 
 var
@@ -2191,9 +2195,10 @@ function TecParserResults.ParserStateAtPos(TokenIndex: integer): integer;
 var i: integer;
 begin
    for i := FStateChanges.Count - 1 downto 0 do
-     if FStateChanges[i].StartPos <= TokenIndex then
+     with FStateChanges[i] do
+       if StartPos <= TokenIndex then
        begin
-         Result := FStateChanges[i].EndPos;
+         Result := EndPos;
          Exit;
        end;
    Result := 0;
@@ -3488,9 +3493,11 @@ begin
       if not FFormats.ValidItem(Rule.TreeGroupStyleObj) then Rule.FTreeGroupStyleObj := nil;
      end;
     for i := 0 to FTokenRules.Count - 1 do
-     if not FFormats.ValidItem(FTokenRules[i].Style) then FTokenRules[i].Style := nil;
+      with FTokenRules[i] do
+        if not FFormats.ValidItem(Style) then Style := nil;
     for i := 0 to FSubAnalyzers.Count - 1 do
-     if not FFormats.ValidItem(FSubAnalyzers[i].Style) then FSubAnalyzers[i].Style := nil;
+      with FSubAnalyzers[i] do
+        if not FFormats.ValidItem(Style) then Style := nil;
    end;
 //  UpdateClients;
   Change;
@@ -3511,9 +3518,11 @@ begin
       if not FBlockRules.ValidItem(Rule.BlockEndCond) then Rule.BlockEndCond := nil;
      end;
     for i := 0 to FTokenRules.Count - 1 do
-     if not FBlockRules.ValidItem(FTokenRules[i].Block) then FTokenRules[i].Block := nil;
+     with FTokenRules[i] do
+      if not FBlockRules.ValidItem(Block) then Block := nil;
     for i := 0 to FSubAnalyzers.Count - 1 do
-     if not FSubAnalyzers.ValidItem(FSubAnalyzers[i].Block) then FSubAnalyzers[i].Block := nil;
+     with FSubAnalyzers[i] do
+      if not FSubAnalyzers.ValidItem(Block) then Block := nil;
    end;
 //  UpdateClients;
   Change;
@@ -3634,8 +3643,9 @@ begin
      Assigned(FSubAnalyzers) and Assigned(FMasters) then
    begin
      for i := 0 to FSubAnalyzers.Count - 1 do
-      if FSubAnalyzers[i].FSyntAnalyzer = AComponent then
-       FSubAnalyzers[i].FSyntAnalyzer := nil;
+      with FSubAnalyzers[i] do
+       if FSyntAnalyzer = AComponent then
+        FSyntAnalyzer := nil;
      FMasters.Remove(AComponent);
    end;
 end;
@@ -4054,13 +4064,17 @@ end;
 function TecSyntaxManager.FindAnalyzer(
   const LexerName: string): TecSyntAnalyzer;
 var i: integer;
+    An: TecSyntAnalyzer;
 begin
   for i := 0 to GetCount - 1 do
-   if SameText(Analyzers[i].LexerName, LexerName) then
+  begin
+   An := Analyzers[i];
+   if SameText(An.LexerName, LexerName) then
      begin
-      Result := Analyzers[i];
+      Result := An;
       Exit;
      end;
+  end;
   Result := nil;
 end;
 
