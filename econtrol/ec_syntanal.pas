@@ -2781,15 +2781,21 @@ var rngstyle: string;                      // HAW: add style identifier to range
     swp_idx, rngdir, rngoffset, rngmax: integer;
     to_rng: TecTextRange;
 
-function RangeNumber( const FmtStrNumber: ecString; var gotnbr: integer ): boolean;
+function RangeNumber( const FmtStrNumber: ecString; var NumValue: integer ): boolean;
+var
+  ch: ecChar;
 begin
-    N := 0; Result := false;
+    N := 0;
+    Result := false;
     while (j + N) <= length( FmtStrNumber ) do
-      if (FmtStrNumber[j + N] >= '0') and (FmtStrNumber[j + N] <= '9') or (N = 0) and
-         ((FmtStrNumber[j + N] = '+') or (FmtStrNumber[j + N] = '-'))
+    begin
+      ch := FmtStrNumber[j + N];
+      if (ch >= '0') and (ch <= '9') or (N = 0) and
+         ((ch = '+') or (ch = '-'))
          then inc(N) else Break;
+    end;
     if  N > 0  then  begin
-      gotnbr := StrToInt( copy( FmtStrNumber, j, N ) );
+      NumValue := StrToInt( copy( FmtStrNumber, j, N ) );
       inc( j, N );
       Result := true;
     end;
