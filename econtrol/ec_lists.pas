@@ -85,11 +85,28 @@ type
 
   TecRangeList = GRangeList<TRange>;
 
+  { TecStateChange }
+
+  TecStateChange = record
+    TokenCount: integer;
+    State: integer;
+    class operator=(const a, b: TecStateChange): boolean;
+  end;
+
+  TecStateChanges = TFPGList<TecStateChange>;
+
 implementation
 
 uses
   //Math, Dialogs,
   SysUtils, Contnrs;
+
+{ TecStateChange }
+
+class operator TecStateChange.=(const a, b: TecStateChange): boolean;
+begin
+  Result := False;
+end;
 
 { TRange }
 

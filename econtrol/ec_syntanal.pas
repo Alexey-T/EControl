@@ -485,7 +485,7 @@ type
     FSubLexerBlocks: TecSubLexerRanges;
     FTagList: TecTokenList;
     FCurState: integer;
-    FStateChanges: TecRangeList;
+    FStateChanges: TecStateChanges;
     function GetLastPos(const Source: ecString): integer;
     function ExtractTag(const Source: ecString; var FPos: integer): Boolean;
     function GetTags(Index: integer): TecSyntToken;
@@ -510,7 +510,7 @@ type
     procedure Clear; virtual;
 
     function AnalyzerAtPos(APos: integer): TecSyntAnalyzer;
-    function ParserStateAtPos(TokenIndex: integer): integer;
+    function ParserStateAtPos(ATokenIndex: integer): integer;
 
     property Owner: TecSyntAnalyzer read FOwner;
     property Buffer: TATStringBuffer read FBuffer;
@@ -1887,7 +1887,7 @@ begin
   FSubLexerBlocks := TecSubLexerRanges.Create;
   FOwner.FClientList.Add(Self);
   FCurState := 0;
-  FStateChanges := TecRangeList.Create;
+  FStateChanges := TecStateChanges.Create;
 end;
 
 destructor TecParserResults.Destroy;
@@ -1951,13 +1951,18 @@ end;
 
 procedure TecParserResults.SaveState;
 var b: Boolean;
+    Item: TecStateChange;
 begin
  if FStateChanges.Count = 0 then
    b := FCurState <> 0
  else
-   b := FCurState <> FStateChanges.Last.EndPos;
+   b := FCurState <> FStateChanges.Last.State;
  if b then
-   FStateChanges.Add(TRange.Create(FTagList.Count, FCurState));
+ begin
+   Item.TokenCount := FTagList.Count;
+   Item.State := FCurState;
+   FStateChanges.Add(Item);
+ end;
 end;
 
 // True if end of the text
@@ -2181,26 +2186,29 @@ procedure TecParserResults.RestoreState;
 var i: integer;
 begin
   for i := FStateChanges.Count - 1 downto 0 do
-    if FStateChanges.Last.StartPos >= TagCount then
+    if FStateChanges.Last.TokenCount >= TagCount then
       FStateChanges.Delete(FStateChanges.Count - 1)
     else
       Break;
   if FStateChanges.Count > 0 then
-    FCurState := FStateChanges.Last.EndPos
+    FCurState := FStateChanges.Last.State
   else
     FCurState := 0;
 end;
 
-function TecParserResults.ParserStateAtPos(TokenIndex: integer): integer;
+function TecParserResults.ParserStateAtPos(ATokenIndex: integer): integer;
 var i: integer;
+    Item: TecStateChange;
 begin
    for i := FStateChanges.Count - 1 downto 0 do
-     with FStateChanges[i] do
-       if StartPos <= TokenIndex then
-       begin
-         Result := EndPos;
-         Exit;
-       end;
+   begin
+     Item := FStateChanges[i];
+     if Item.TokenCount <= ATokenIndex then
+     begin
+       Result := Item.State;
+       Exit;
+     end;
+   end;
    Result := 0;
 end;
 
