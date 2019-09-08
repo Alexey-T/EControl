@@ -1945,7 +1945,7 @@ end;
 function TecParserResults.GetLastPos(const Source: ecString): integer;
 begin
   if FTagList.Count = 0 then Result := 1 else
-    Result := FTagList[FTagList.Count - 1].Range.EndPos + 1;
+    Result := FTagList.Last.Range.EndPos + 1;
   if FLastAnalPos > Result then Result := FLastAnalPos;
 end;
 
