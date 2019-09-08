@@ -36,7 +36,7 @@ type
     FBgColor: TColor;
     FVertAlign: TecVertAlignment;
     FFormatType: TecFormatType;
-    FOnChange: TNotifyEvent;
+    //FOnChange: TNotifyEvent;
     FHidden: Boolean;
     FBorderTypes: array[0..3] of TecBorderLineType;
     FBorderColors: array[0..3] of TColor;
@@ -62,7 +62,7 @@ type
   protected
     procedure AssignTo(Dest: TPersistent); override;
     function GetItemBaseName: string; override;
-    procedure Change; dynamic;
+    //procedure Change; dynamic;
   public
     constructor Create(Collection: TCollection); override;
     destructor Destroy; override;
@@ -76,7 +76,7 @@ type
     // Save only common properties
     procedure Intersect(Over: TecSyntaxFormat);
 
-    property OnChange: TNotifyEvent read FOnChange write FOnChange;
+    //property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property BorderTypes[Index: integer]: TecBorderLineType read GetBorderType write SetBorderType;
     property BorderColors[Index: integer]: TColor read GetBorderColor write SetBorderColor;
     property IsBlock: Boolean read FIsBlock write FIsBlock;
@@ -171,24 +171,24 @@ end;
 procedure TecSyntaxFormat.SetBgColor(Value: TColor);
 begin
   FBgColor := Value;
-  Change;
+  //Change;
 end;
 
 procedure TecSyntaxFormat.SetFont(Value: TFont);
 begin
   FFont.Assign(Value);
-  Change;
+  //Change;
 end;
 
 procedure TecSyntaxFormat.FontChanged(Sender: TObject);
 begin
-  Change;
+  //Change;
 end;
 
 procedure TecSyntaxFormat.SetVertAlign(Value: TecVertAlignment);
 begin
   FVertAlign := Value;
-  Change;
+  //Change;
 end;
 
 function TecSyntaxFormat.GetItemBaseName: string;
@@ -199,19 +199,21 @@ end;
 procedure TecSyntaxFormat.SetFormatType(Value: TecFormatType);
 begin
   FFormatType := Value;
-  Change;
+  //Change;
 end;
 
+{
 procedure TecSyntaxFormat.Change;
 begin
   Changed(False);
-  if Assigned(FOnChange) then FOnChange(Self);
+  //if Assigned(FOnChange) then FOnChange(Self);
 end;
+}
 
 procedure TecSyntaxFormat.SetHidden(Value: Boolean);
 begin
   FHidden := Value;
-  Change;
+  //Change;
 end;
 
 function TecSyntaxFormat.GetBorderColor(Index: Integer): TColor;
@@ -236,7 +238,7 @@ begin
   if (Index >= 0) and (Index <= 3) then
    begin
     FBorderColors[Index] := Value;
-    Change;
+    //Change;
    end;
 end;
 
@@ -246,20 +248,20 @@ begin
   if (Index >= 0) and (Index <= 3) then
    begin
     FBorderTypes[Index] := Value;
-    Change;
+    //Change;
    end;
 end;
 
 procedure TecSyntaxFormat.SetMultiLineBorder(Value: Boolean);
 begin
   FMultiLineBorder := Value;
-  Change;
+  //Change;
 end;
 
 procedure TecSyntaxFormat.SetReadOnly(Value: Boolean);
 begin
   FReadOnly := Value;
-  Change;
+  //Change;
 end;
 
 {
@@ -287,7 +289,7 @@ begin
   if FFormatFlags <> Value then
     begin
       FFormatFlags := Value;
-      Change;
+      //Change;
     end;
 end;
 
