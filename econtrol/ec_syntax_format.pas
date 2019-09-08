@@ -57,7 +57,6 @@ type
       const Value: TecBorderLineType);
     procedure SetMultiLineBorder(const Value: Boolean);
     procedure SetReadOnly(const Value: Boolean);
-    procedure SetChangeCase(const Value: TecChangeCase);
     procedure SetFormatFlags(const Value: TecFormatFlags);
     function GetHidden: Boolean;
   protected
@@ -97,7 +96,7 @@ type
     property BorderColorBottom: TColor index 3 read GetBorderColor write SetBorderColor default clBlack;
     property MultiLineBorder: Boolean read FMultiLineBorder write SetMultiLineBorder default False;
     property ReadOnly: Boolean read FReadOnly write SetReadOnly default False;
-    property ChangeCase: TecChangeCase read FChangeCase write SetChangeCase default ccNone;
+    property ChangeCase: TecChangeCase read FChangeCase write FChangeCase default ccNone;
     property FormatFlags: TecFormatFlags read FFormatFlags write SetFormatFlags
                  default [ffBold, ffItalic, ffUnderline, ffStrikeOut, ffReadOnly,
                           ffHidden, ffFontName, ffFontSize, ffFontCharset, ffVertAlign];
@@ -263,11 +262,13 @@ begin
   Change;
 end;
 
+{
 procedure TecSyntaxFormat.SetChangeCase(const Value: TecChangeCase);
 begin
   FChangeCase := Value;
   Change;
 end;
+}
 
 function TecSyntaxFormat.HasBorder: Boolean;
 var i: integer;
