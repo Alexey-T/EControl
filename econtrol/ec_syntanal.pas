@@ -2777,7 +2777,7 @@ var i, j, idx, N, to_idx: integer;
     Hans L. Werschner, Oct '07
 }
 var rngstyle: string;                      // HAW: add style identifier to range expression
-    rngtoken, rngResult: string;           //      a few more vars
+    rngtoken, rngResult: ecString;         //      a few more vars
     swp_idx, rngdir, rngoffset, rngmax: integer;
     to_rng: TecTextRange;
 
