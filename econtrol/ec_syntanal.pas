@@ -2294,9 +2294,12 @@ end;
 function TecClientSyntAnalyzer.CloseRange(Cond: TecTagBlockCondition; RefTag: integer): Boolean;
 var j: integer;
     b: boolean;
+    Range: TecTextRange;
 begin
   for j := FOpenedBlocks.Count - 1 downto 0 do
-   with TecTextRange(FOpenedBlocks[j]) do
+  begin
+   Range := TecTextRange(FOpenedBlocks[j]);
+   with Range do
      if Assigned(Rule) then
        begin
          if Cond.BlockType = btRangeStart then
@@ -2310,12 +2313,13 @@ begin
              if (Rule = Cond) and (EndIdx > 0) then Dec(EndIdx); // for self closing
              FEndCondIndex := RefTag;
              if Assigned(Owner.OnCloseTextRange) then
-               Owner.OnCloseTextRange(Self, TecTextRange(FOpenedBlocks[j]), StartIdx, EndIdx);
+               Owner.OnCloseTextRange(Self, Range, StartIdx, EndIdx);
              FOpenedBlocks.Delete(j);
              Result := True;
              Exit;
            end;
        end;
+  end;
   Result := False;
 end;
 
