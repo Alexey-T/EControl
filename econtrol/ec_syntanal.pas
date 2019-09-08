@@ -2394,7 +2394,8 @@ var FPos, tmp, i: integer;
 const
   ProgressStep = 4;
   ProgressMinPos = 2000;
-  ProcessMsgStep = 500;
+  ProcessMsgStep1 = 1000; //stage1: finding tokens
+  ProcessMsgStep2 = 1000; //stage2: finding ranges
 begin
   if FTimerIdleIsBusy or FDisableIdleAppend then Exit;
   FTimerIdle.Enabled := False;
@@ -2435,7 +2436,7 @@ begin
               if own <> FOwner then
                 own.SelectTokenFormat(Self, FBuffer.FText, False, i);
 
-              if i mod ProcessMsgStep = 0 then
+              if i mod ProcessMsgStep2 = 0 then
               begin
                 Application.ProcessMessages;
                 if Application.Terminated then Exit;
@@ -2446,7 +2447,7 @@ begin
       end
       else
       begin
-        if TagCount mod ProcessMsgStep = 0 then
+        if TagCount mod ProcessMsgStep1 = 0 then
           Application.ProcessMessages;
       end;
     end;
