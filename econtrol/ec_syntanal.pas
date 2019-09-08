@@ -852,12 +852,6 @@ const
                              'Number'  + #13#10 +
                              'Preprocessor';
 
-// Local copy of ecUpCase. it is faster, uses AnsiChar UpCase
-function ecUpCase(ch: WideChar): char; inline;
-begin
-  Result:= System.UpCase(char(ch));
-end;
-
 procedure SetDefaultModifiers(RE: TecRegExpr);
 begin
   RE.ModifierI := True;
@@ -2837,14 +2831,14 @@ begin
                                       //      negative for "..e.." clauses
      rngmax := 1000000000;            // HAW: allow a great amount of tokens
 
-     while ecUpCase(Result[j]) = 'P' do
+     while UpCase(Result[j]) = 'P' do
       begin
        rng := rng.Parent;
        if (rng = nil) or (j = Length(Result)) then Continue;
        inc(j);
       end;
 
-     case ecUpCase(Result[j]) of
+     case UpCase(Result[j]) of
        'S': idx := rng.StartIdx + rng.Rule.BlockOffset;
        'E': begin  rngdir := -1;      // HAW: mark downwards direction
                    if (rng.EndIdx <> -1) and Assigned(rng.Rule.BlockEndCond) then
@@ -2856,7 +2850,7 @@ begin
      end;
      inc(j);
 
-     case ecUpCase(Result[j]) of // <== v2.35
+     case UpCase(Result[j]) of // <== v2.35
        'L': LineMode := plmFromStart; // from start of line
        'Z': LineMode := plmToEnd; // to end of line
        else LineMode := plmNone;
@@ -2919,14 +2913,14 @@ begin
          rngdir := 1;
          if  Result[j] <> '['   then  begin
            // to_rng := Range;  // be sure that we start with the range itself
-           while ecUpCase(Result[j]) = 'P' do
+           while UpCase(Result[j]) = 'P' do
             begin
              to_rng := rng.Parent;
              if (to_rng = nil) or (j = Length(Result)) then Continue;
              inc(j);
             end;
 
-           case ecUpCase(Result[j]) of
+           case UpCase(Result[j]) of
              'S': to_idx := to_rng.StartIdx + to_rng.Rule.BlockOffset;
              'E': begin
                     rngdir := -1;       // HAW: mark downwards direction
