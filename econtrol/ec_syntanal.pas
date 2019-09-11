@@ -583,6 +583,7 @@ type
     property RangeCount: integer read GetRangeCount;
     property Ranges[Index: integer]: TecTextRange read GetRanges;
     property DisableIdleAppend: Boolean read FDisableIdleAppend write SetDisableIdleAppend;
+    property TimerIdleIsBusy: Boolean read FTimerIdleIsBusy;
   end;
 
 // *******************************************************************
