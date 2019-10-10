@@ -1966,6 +1966,11 @@ begin
  end;
 end;
 
+function IsCharSurrogateHigh(ch: WideChar): boolean; inline;
+begin
+  Result := (ch>=#$D800) and (ch<=#$DBFF);
+end;
+
 // True if end of the text
 function TecParserResults.ExtractTag(const Source: ecString; var FPos: integer
   ): Boolean;
@@ -2115,6 +2120,14 @@ begin
    begin
     CheckIntersect;
     SaveState;
+
+    // special case: Pascal lexer finds surrogate pairs and makes too short tokens (1 wordchar) from them
+    if (CurToken.Range.Size=1) and IsCharSurrogateHigh(Source[FPos]) then
+    begin
+      CurToken.Range.EndPos += 1;
+      CurToken.Range.PointEnd.X += 1;
+    end;
+
     FTagList.Add(CurToken);
     if not FOwner.SeparateBlockAnalysis then
      begin
