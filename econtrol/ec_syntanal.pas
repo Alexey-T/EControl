@@ -19,7 +19,6 @@ interface
 uses
   Classes, Graphics, Controls, ExtCtrls,
   Contnrs,
-  LazUTF8Classes, //TFileStreamUTF8
   ec_RegExpr,
   ec_StrUtils,
   ec_Lists,
@@ -591,20 +590,32 @@ type
 //            container of syntax rules
 // *******************************************************************
 
+  { TLoadableComponent }
+
   TLoadableComponent = class(TComponent)
   private
     FSkipNewName: Boolean;
     FFileName: string;
     FIgnoreAll: Boolean;
     FSaving: Boolean;
+    procedure LoadExtraData(const AFileName: string);
   protected
     procedure OnReadError(Reader: TReader; const Message: string;
                           var Handled: Boolean); virtual;
     function NotStored: Boolean;
   public
+    CommentRangeBegin: string;
+    CommentRangeEnd: string;
+    CommentFullLinesBegin: string;
+    CommentFullLinesEnd: string;
+    StylesOfComments: string;
+    StylesOfStrings: string;
+    ThemeMappingCount: integer;
+    ThemeMapping: array[0..40] of record StrFrom, StrTo: string; end;
+  public
     procedure SaveToFile(const FileName: string); virtual;
     procedure SaveToStream(Stream: TStream); virtual;
-    procedure LoadFromFile(const FileName: string); virtual;
+    procedure LoadFromFile(const AFileName: string); virtual;
     procedure LoadFromResourceID(Instance: Cardinal; ResID: Integer; ResType: string); virtual;
     procedure LoadFromResourceName(Instance: Cardinal; const ResName: string; ResType: string); virtual;
     procedure LoadFromStream(const Stream: TStream); virtual;
@@ -4178,14 +4189,92 @@ end;
 var
   CheckExistingName: Boolean = False;
 
-procedure TLoadableComponent.LoadFromFile(const FileName: string);
+procedure _GetIniValue(const SItem: string; out SKey, SValue: string); inline;
 var
-  Stream: TFileStreamUTF8;
+  N: integer;
 begin
-  FFileName := FileName; //AT
-  Stream := TFileStreamUTF8.Create(FileName, fmOpenRead or fmShareDenyWrite);
+  N := Pos('=', SItem);
+  if N=0 then
+  begin
+    SKey := '';
+    SValue := '';
+  end
+  else
+  begin
+    SKey:= Copy(SItem, 1, N-1);
+    SValue := Copy(SItem, N+1, MaxInt);
+  end;
+end;
+
+procedure TLoadableComponent.LoadExtraData(const AFileName: string);
+var
+  L: TStringList;
+  SItem, SKey, SValue: string;
+  Section: (secNone, secComments, secMap);
+begin
+  if not FileExists(AFileName) then exit;
+  Section:= secNone;
+  L := TStringList.Create;
+  try
+    L.LoadFromFile(AFileName);
+    for SItem in L do
+    begin
+      if SItem='' then Continue;
+      if SItem='[comments]' then
+      begin
+        Section := secComments;
+        Continue;
+      end;
+      if SItem='[map]' then
+      begin
+        Section := secMap;
+        Continue;
+      end;
+      if SItem[1]='[' then
+      begin
+        Section := secNone;
+        Continue;
+      end;
+
+      _GetIniValue(SItem, SKey, SValue);
+      case Section of
+        secComments:
+          begin
+            if SKey='str1' then CommentRangeBegin := SValue else
+            if SKey='str2' then CommentRangeEnd := SValue else
+            if SKey='full1' then CommentFullLinesBegin := SValue else
+            if SKey='full2' then CommentFullLinesEnd := SValue else
+            if SKey='styles_cmt' then StylesOfComments := SValue else
+            if SKey='styles_str' then StylesOfStrings := SValue;
+          end;
+        secMap:
+          begin
+            if ThemeMappingCount<High(ThemeMapping) then
+            begin
+              Inc(ThemeMappingCount);
+              ThemeMapping[ThemeMappingCount-1].StrFrom := SKey;
+              ThemeMapping[ThemeMappingCount-1].StrTo := SValue;
+            end;
+          end;
+        secNone:
+          begin
+          end;
+      end;
+    end;
+  finally
+    FreeAndNil(L);
+  end;
+end;
+
+procedure TLoadableComponent.LoadFromFile(const AFileName: string);
+var
+  Stream: TFileStream;
+begin
+  FFileName := AFileName;
+  Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
   try
     LoadFromStream(Stream);
+    LoadExtraData(ChangeFileExt(AFileName, '.cuda-lexmap'));
   finally
     FreeAndNil(Stream);
   end;
@@ -4257,7 +4346,7 @@ procedure TLoadableComponent.SaveToFile(const FileName: string);
 var
   Stream: TStream;
 begin
-  Stream := TFileStreamUTF8.Create(FileName, fmCreate);
+  Stream := TFileStream.Create(FileName, fmCreate);
   try
     SaveToStream(Stream);
   finally
