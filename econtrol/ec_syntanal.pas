@@ -603,6 +603,10 @@ type
     procedure OnReadError(Reader: TReader; const Message: string;
                           var Handled: Boolean); virtual;
     function NotStored: Boolean;
+  private
+    ThemeMappingCount: integer;
+    ThemeMapping: array[0..40] of record StrFrom, StrTo: string; end;
+    SubLexerNames: array[0..12] of string;
   public
     CommentRangeBegin: string;
     CommentRangeEnd: string;
@@ -610,9 +614,7 @@ type
     CommentFullLinesEnd: string;
     StylesOfComments: string;
     StylesOfStrings: string;
-    ThemeMappingCount: integer;
-    ThemeMapping: array[0..40] of record StrFrom, StrTo: string; end;
-    SubLexerNames: array[0..12] of string;
+    function SubLexerName(Index: integer): string;
     function ThemeMappingOfStyle(const AName: string): string;
   public
     procedure SaveToFile(const FileName: string); virtual;
@@ -4347,6 +4349,14 @@ end;
 function TLoadableComponent.NotStored: Boolean;
 begin
   Result := not FSaving;
+end;
+
+function TLoadableComponent.SubLexerName(Index: integer): string;
+begin
+  if (Index>=0) and (Index<=High(SubLexerNames)) then
+    Result := SubLexerNames[Index]
+  else
+    Result := '';
 end;
 
 function TLoadableComponent.ThemeMappingOfStyle(const AName: string): string;
