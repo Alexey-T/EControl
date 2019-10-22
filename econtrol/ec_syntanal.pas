@@ -625,7 +625,7 @@ type
     procedure LoadFromStream(const Stream: TStream); virtual;
   protected
     procedure SetName(const NewName: TComponentName); override;
-    property FileName: string read FFileName write LoadFromFile;
+    property FileName: string read FFileName;
   end;
 
   TParseTokenEvent = procedure(Client: TecParserResults; const Text: ecString; Pos: integer;
