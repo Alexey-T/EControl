@@ -605,7 +605,7 @@ type
     function NotStored: Boolean;
   private
     ThemeMappingCount: integer;
-    ThemeMapping: array[0..40] of record StrFrom, StrTo: string; end;
+    ThemeMappingArray: array[0..40] of record StrFrom, StrTo: string; end;
     SubLexerNames: array[0..12] of string;
   public
     CommentRangeBegin: string;
@@ -4263,11 +4263,11 @@ begin
           end;
         secMap:
           begin
-            if ThemeMappingCount<High(ThemeMapping) then
+            if ThemeMappingCount<High(ThemeMappingArray) then
             begin
               Inc(ThemeMappingCount);
-              ThemeMapping[ThemeMappingCount-1].StrFrom := SKey;
-              ThemeMapping[ThemeMappingCount-1].StrTo := SValue;
+              ThemeMappingArray[ThemeMappingCount-1].StrFrom := SKey;
+              ThemeMappingArray[ThemeMappingCount-1].StrTo := SValue;
             end;
           end;
         secRef:
@@ -4364,8 +4364,8 @@ var
   i: integer;
 begin
   for i := 0 to ThemeMappingCount-1 do
-    if AName=ThemeMapping[i].StrFrom then
-      exit(ThemeMapping[i].StrTo);
+    if AName=ThemeMappingArray[i].StrFrom then
+      exit(ThemeMappingArray[i].StrTo);
   Result := '';
 end;
 
