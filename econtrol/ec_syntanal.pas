@@ -613,6 +613,7 @@ type
     ThemeMappingCount: integer;
     ThemeMapping: array[0..40] of record StrFrom, StrTo: string; end;
     SubLexerNames: array[0..12] of string;
+    function ThemeMappingOfStyle(const AName: string): string;
   public
     procedure SaveToFile(const FileName: string); virtual;
     procedure SaveToStream(Stream: TStream); virtual;
@@ -4346,6 +4347,16 @@ end;
 function TLoadableComponent.NotStored: Boolean;
 begin
   Result := not FSaving;
+end;
+
+function TLoadableComponent.ThemeMappingOfStyle(const AName: string): string;
+var
+  i: integer;
+begin
+  for i := 0 to ThemeMappingCount-1 do
+    if AName=ThemeMapping[i].StrFrom then
+      exit(ThemeMapping[i].StrTo);
+  Result := '';
 end;
 
 procedure TLoadableComponent.OnReadError(Reader: TReader;
