@@ -612,6 +612,7 @@ type
     StylesOfStrings: string;
     ThemeMappingCount: integer;
     ThemeMapping: array[0..40] of record StrFrom, StrTo: string; end;
+    SubLexerNames: array[0..12] of string;
   public
     procedure SaveToFile(const FileName: string); virtual;
     procedure SaveToStream(Stream: TStream); virtual;
@@ -4210,7 +4211,8 @@ procedure TLoadableComponent.LoadExtraData(const AFileName: string);
 var
   L: TStringList;
   SItem, SKey, SValue: string;
-  Section: (secNone, secComments, secMap);
+  Section: (secNone, secComments, secMap, secRef);
+  N: integer;
 begin
   if not FileExists(AFileName) then exit;
   Section:= secNone;
@@ -4228,6 +4230,11 @@ begin
       if SItem='[map]' then
       begin
         Section := secMap;
+        Continue;
+      end;
+      if SItem='[ref]' then
+      begin
+        Section := secRef;
         Continue;
       end;
       if SItem[1]='[' then
@@ -4255,6 +4262,12 @@ begin
               ThemeMapping[ThemeMappingCount-1].StrFrom := SKey;
               ThemeMapping[ThemeMappingCount-1].StrTo := SValue;
             end;
+          end;
+        secRef:
+          begin
+            N := StrToIntDef(SKey, -1);
+            if (N>=0) and (N<=High(SubLexerNames)) then
+             SubLexerNames[N] := SValue;
           end;
         secNone:
           begin
