@@ -4209,19 +4209,23 @@ end;
 
 procedure TLoadableComponent.LoadExtraData(const AFileName: string);
 var
-  L: TStringList;
+  F: TextFile;
   SItem, SKey, SValue: string;
   Section: (secNone, secComments, secMap, secRef);
   N: integer;
 begin
-  if not FileExists(AFileName) then exit;
+  {$Push}
+  {$IOChecks off}
+  AssignFile(F, AFileName);
+  Reset(F);
+  if IOResult<>0 then exit;
+  {$Pop}
   Section:= secNone;
-  L := TStringList.Create;
-  try
-    L.LoadFromFile(AFileName);
-    for SItem in L do
+  while not EOF(F) do
     begin
+      Readln(F, SItem);
       if SItem='' then Continue;
+      if SItem[1]=';' then Continue;
       if SItem='[comments]' then
       begin
         Section := secComments;
@@ -4274,9 +4278,6 @@ begin
           end;
       end;
     end;
-  finally
-    FreeAndNil(L);
-  end;
 end;
 
 procedure TLoadableComponent.LoadFromFile(const AFileName: string);
@@ -4288,6 +4289,13 @@ begin
   try
     LoadFromStream(Stream);
     LoadExtraData(ChangeFileExt(AFileName, '.cuda-lexmap'));
+    {
+    ShowMessage(ExtractFileName(AFileName)+#10+
+      CommentRangeBegin+' '+CommentRangeEnd+#10+
+      StylesOfComments+#10+
+      StylesOfStrings
+      );
+      }
   finally
     FreeAndNil(Stream);
   end;
