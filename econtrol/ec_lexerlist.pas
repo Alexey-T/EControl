@@ -13,6 +13,7 @@ interface
 
 uses
   Classes, SysUtils,
+  ATStringProc,
   ec_SyntAnal;
 
 type
@@ -45,16 +46,6 @@ implementation
 function SBeginsWith(const S, SubStr: string): boolean;
 begin
   Result:= (SubStr<>'') and (Copy(S, 1, Length(SubStr))=SubStr);
-end;
-
-function SGetItem(var S: string; const sep: Char = ','): string;
-var
-  i: integer;
-begin
-  i:= Pos(sep, s);
-  if i=0 then i:= MaxInt;
-  Result:= Copy(s, 1, i-1);
-  Delete(s, 1, i);
 end;
 
 function SItemListed(const AItem, AList: string): boolean;
@@ -219,13 +210,14 @@ end;
 
 procedure TecLexerList.SetSublexersFromString(An: TecSyntAnalyzer; const ALinks: string; ASep: char);
 var
-  S, SItem: string;
+  Sep: TATStringSeparator;
+  SItem: string;
   Cnt: Integer;
 begin
-  S:= ALinks;
   Cnt:= 0;
+  Sep.Init(ALinks, ASep);
   repeat
-    SItem:= SGetItem(S, ASep);
+    if not Sep.GetItemStr(SItem) then Break;
     if Cnt>=An.SubAnalyzers.Count then Break;
     An.SubAnalyzers[Cnt].SyntAnalyzer:= FindLexerByName(SItem);
     Inc(Cnt);
