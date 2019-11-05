@@ -570,14 +570,13 @@ type
     procedure AppendToPos(APos: integer; AUseTimer: boolean= true); // Requires analyzed to APos
     procedure Analyze(ResetContent: Boolean = True); // Requires analyzed all text
     procedure IdleAppend;                 // Start idle analysis
-
     //procedure CompleteAnalysis;
 
     function CloseRange(Cond: TecTagBlockCondition; RefTag: integer): Boolean;
     function DetectTag(Rule: TecTagBlockCondition; RefTag: integer): Boolean;
 
-    property OpenCount: integer read GetOpenedCount;
-    property Opened[Index: integer]: TecTextRange read GetOpened;
+    //property OpenCount: integer read GetOpenedCount;
+    //property Opened[Index: integer]: TecTextRange read GetOpened;
 
     property RangeCount: integer read GetRangeCount;
     property Ranges[Index: integer]: TecTextRange read GetRanges;
