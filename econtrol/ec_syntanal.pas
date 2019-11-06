@@ -122,6 +122,8 @@ type
     class operator =(const A,B: TecSyntToken): boolean;
   end;
 
+  { TecTextRange }
+
   TecTextRange = class(TSortedItem)
   private
     FCondIndex: integer;
@@ -141,6 +143,7 @@ type
     constructor Create(AStartIdx, AStartPos: integer);
     property Level: integer read GetLevel;
     property IsClosed: Boolean read GetIsClosed;
+    procedure Assign(R: TecTextRange);
   end;
 
   { TecSubLexerRange }
@@ -582,6 +585,8 @@ type
     property Ranges[Index: integer]: TecTextRange read GetRanges;
     property DisableIdleAppend: Boolean read FDisableIdleAppend write SetDisableIdleAppend;
     property TimerIdleIsBusy: Boolean read FTimerIdleIsBusy;
+
+    procedure CopyRanges(L: TSortedList);
   end;
 
 // *******************************************************************
@@ -938,6 +943,19 @@ begin
   EndIdx := -1;
   FEndCondIndex := -1;
   Index := -1;
+end;
+
+procedure TecTextRange.Assign(R: TecTextRange);
+begin
+  StartPos := R.StartPos;
+  StartIdx := R.StartIdx;
+  EndIdx := R.EndIdx;
+  IdentIdx := R.IdentIdx;
+  Rule := R.Rule;
+  Parent := R.Parent;
+  Index := R.Index;
+  FCondIndex := R.FCondIndex;
+  FEndCondIndex := R.FEndCondIndex;
 end;
 
 function TecTextRange.GetIsClosed: Boolean;
@@ -3158,6 +3176,21 @@ begin
     Tag.TokenType := Rule.TokenType;
   Tags[RefTag] := Tag;
   Result := True;
+end;
+
+procedure TecClientSyntAnalyzer.CopyRanges(L: TSortedList);
+var
+  R, RR: TecTextRange;
+  i: integer;
+begin
+  L.Clear;
+  for i := 0 to FRanges.Count-1 do
+  begin
+    R := TecTextRange(FRanges[i]);
+    RR := TecTextRange.Create(0, 0);
+    RR.Assign(R);
+    L.Add(RR);
+  end;
 end;
 
 procedure TecClientSyntAnalyzer.CloseAtEnd(StartTagIdx: integer);
