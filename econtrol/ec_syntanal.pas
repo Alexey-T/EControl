@@ -524,6 +524,9 @@ type
     property SubLexerRanges[Index: integer]: TecSubLexerRange read GetSubLexerRange;
     property ParserState: integer read FCurState write FCurState;
     //property TagIndexes[Index: integer]: TRangeListIndex read GetTagIndexes;
+
+    procedure CopyTags(L: TecTokenList);
+    procedure CopyRangesSublexer(L: TecSubLexerRanges);
   end;
 
   { TecClientSyntAnalyzer }
@@ -2261,6 +2264,16 @@ begin
      end;
    end;
    Result := 0;
+end;
+
+procedure TecParserResults.CopyTags(L: TecTokenList);
+begin
+  L.Assign(FTagList);
+end;
+
+procedure TecParserResults.CopyRangesSublexer(L: TecSubLexerRanges);
+begin
+  L.Assign(FSubLexerBlocks);
 end;
 
 { TecClientSyntAnalyzer }
