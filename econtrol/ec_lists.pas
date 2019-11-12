@@ -64,7 +64,7 @@ type
   GRangeList<GRange> = class (TFPGList<GRange>)
   private
     FUnionSiblings: Boolean;
-    FPrevIdx: integer;
+    //FPrevIdx: integer;
     //FSorted: boolean;
   protected
     // Union ranges with the [Index] and [Index + 1]
@@ -216,6 +216,7 @@ function GRangeList<GRange>.PriorAt(APos: integer): integer;
 var
   H, I, C: Integer;
 begin
+  {
   if (FPrevIdx >= 0) and (FPrevIdx < Count - 1) and (TRange(InternalItems[FPrevIdx]^).StartPos <= APos)then
   begin
       if (FPrevIdx >= Count - 1) or (TRange(InternalItems[FPrevIdx + 1]^).StartPos > APos) then
@@ -229,9 +230,10 @@ begin
         Exit;
       end;
   end;
+  }
   if Count = 0 then
   begin
-    FPrevIdx := -1;
+    //FPrevIdx := -1;
     Exit(-1);
   end
   else
@@ -248,7 +250,7 @@ begin
       begin
         if C = 0 then
         begin
-          FPrevIdx := I;
+          //FPrevIdx := I;
           Exit(I);
         end;
         H := I - 1;
@@ -260,7 +262,7 @@ begin
       if CompProc(TRange(InternalItems[i]^), APos) > 0 then
         dec(Result);
 
-    FPrevIdx := Result;
+    //FPrevIdx := Result;
   end;
 end;
 
