@@ -4326,6 +4326,7 @@ begin
           end;
       end;
     end;
+  CloseFile(F);
 end;
 
 procedure TLoadableComponent.LoadFromFile(const AFileName: string);
