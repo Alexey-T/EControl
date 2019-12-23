@@ -1,42 +1,64 @@
 object Form1: TForm1
   Left = 1532
-  Height = 451
+  Height = 618
   Top = 188
-  Width = 736
+  Width = 674
   BorderStyle = bsDialog
   Caption = 'RegEx speed test'
-  ClientHeight = 451
-  ClientWidth = 736
+  ClientHeight = 618
+  ClientWidth = 674
   OnCreate = FormCreate
   Position = poScreenCenter
   LCLVersion = '2.1.0.0'
   object ListBox1: TListBox
-    Left = 8
-    Height = 402
+    Left = 6
+    Height = 575
     Top = 6
-    Width = 720
+    Width = 662
+    Align = alClient
+    BorderSpacing.Around = 6
     ItemHeight = 0
-    ScrollWidth = 718
+    ScrollWidth = 660
     TabOrder = 0
     TopIndex = -1
   end
-  object ButtonRun: TButton
-    Left = 296
-    Height = 25
-    Top = 416
-    Width = 123
-    Caption = 'Run test'
-    OnClick = ButtonRunClick
-    TabOrder = 2
-  end
-  object ButtonFile: TButton
-    Left = 112
-    Height = 25
-    Top = 416
-    Width = 179
-    Caption = 'Choose test file...'
-    OnClick = ButtonFileClick
+  object Panel1: TPanel
+    Left = 0
+    Height = 31
+    Top = 587
+    Width = 674
+    Align = alBottom
+    BevelOuter = bvNone
+    ClientHeight = 31
+    ClientWidth = 674
     TabOrder = 1
+    object ButtonFile: TButton
+      Left = 8
+      Height = 25
+      Top = 0
+      Width = 160
+      Caption = 'Choose test file...'
+      OnClick = ButtonFileClick
+      TabOrder = 0
+    end
+    object ButtonSpeed: TButton
+      Left = 176
+      Height = 25
+      Top = 0
+      Width = 160
+      Caption = 'Speed test'
+      OnClick = ButtonSpeedClick
+      TabOrder = 1
+    end
+    object ButtonFindAll: TButton
+      Left = 344
+      Height = 25
+      Top = 0
+      Width = 160
+      Caption = 'Find all tokens'
+      OnClick = ButtonFindAllClick
+      TabOrder = 2
+    end
   end
   object OpenDialog1: TOpenDialog
     Filter = '*.pas;*.pp'

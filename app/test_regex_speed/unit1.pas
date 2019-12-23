@@ -5,23 +5,27 @@ unit Unit1;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls;
 
 type
 
   { TForm1 }
 
   TForm1 = class(TForm)
-    ButtonRun: TButton;
     ButtonFile: TButton;
+    ButtonFindAll: TButton;
+    ButtonSpeed: TButton;
     ListBox1: TListBox;
     OpenDialog1: TOpenDialog;
+    Panel1: TPanel;
     procedure ButtonFileClick(Sender: TObject);
-    procedure ButtonRunClick(Sender: TObject);
+    procedure ButtonFindAllClick(Sender: TObject);
+    procedure ButtonSpeedClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
   private
     SText: string;
-    procedure Test_EC(const Subj: Unicodestring);
+    procedure DoMsg(const S: string);
+    procedure Test_EC(const Subj: Unicodestring; AWithLog: boolean);
     procedure UseFile(const fn: string);
   public
 
@@ -48,12 +52,12 @@ const
     '''.*?'''
     );
 
-procedure TForm1.Test_EC(const Subj: Unicodestring);
+procedure TForm1.Test_EC(const Subj: Unicodestring; AWithLog: boolean);
 var
   Obj: array[0..Length(Rules)-1] of TecRegExpr;
   NPos, NLen: integer;
   bRuleFound, bLastFound: boolean;
-  IndexRule, i: integer;
+  IndexRule, TokenNum, i: integer;
   ch: Widechar;
 begin
   for i:= 0 to Length(Rules)-1 do
@@ -69,6 +73,7 @@ begin
   NPos:= 1;
   NLen:= 1;
   bLastFound:= false;
+  TokenNum:= 0;
 
   repeat
     if NPos>Length(Subj) then Break;
@@ -83,7 +88,11 @@ begin
         begin
           bRuleFound:= true;
 
-          //Listbox1.Items.Add('> '+Copy(Subj, NPos, NLen));
+          if AWithLog then
+          begin
+            Inc(TokenNum);
+            DoMsg('['+IntToStr(TokenNum)+'] '+Copy(Subj, NPos, NLen));
+          end;
 
           Break;
         end;
@@ -109,16 +118,20 @@ end;
 
 { TForm1 }
 
-procedure TForm1.ButtonRunClick(Sender: TObject);
+procedure TForm1.DoMsg(const S: string);
+begin
+  Listbox1.Items.Add(S);
+  Listbox1.ItemIndex:= Listbox1.Items.Count-1;
+end;
+
+procedure TForm1.ButtonSpeedClick(Sender: TObject);
 var
-  t: qword;
+  t: QWord;
 begin
   t:= GetTickCount64;
-  Test_EC(SText);
+  Test_EC(SText, false);
   t:= GetTickCount64-t;
-
-  Listbox1.Items.Add(Format('Parsing by ec_RegExpr: %d ms', [t]));
-  Listbox1.ItemIndex:= Listbox1.Items.Count-1;
+  DoMsg(Format('Parsing by ec_RegExpr: %d ms', [t]));
 end;
 
 procedure TForm1.ButtonFileClick(Sender: TObject);
@@ -126,6 +139,11 @@ begin
   with OpenDialog1 do
     if Execute then
       UseFile(FileName);
+end;
+
+procedure TForm1.ButtonFindAllClick(Sender: TObject);
+begin
+  Test_EC(SText, true);
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
