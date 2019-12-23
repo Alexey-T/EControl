@@ -23,7 +23,7 @@ type
     procedure ButtonSpeedClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
   private
-    SText: string;
+    TestStr: UnicodeString;
     procedure DoMsg(const S: string);
     procedure Test_EC(const Subj: Unicodestring; AWithLog: boolean);
     procedure UseFile(const fn: string);
@@ -43,22 +43,35 @@ uses
 {$R *.lfm}
 
 const
-  Rules: array[0..5] of string = (
+  Rules: array[0..9] of string = (
     '//.*',
     '(?s)\{.*?\}',
-    '\d+(\.\d+)?',
+    '(?s)\(\*.*?\*\)',
+    '\d+(\.\d+)?([eE][\-\+]?\d+)?',
     '\w+',
-    '[\-\+/\*\[\]\(\)\.,:=]+',
+    '\#\$[0-9a-fA-F]+',
+    '\$[0-9a-fA-F]+',
+    '\#[0-9]+',
+    '[\-\+/\*\[\]\(\)\.,:;=<>@\^]+',
     '''.*?'''
     );
+
+function _IsSpace(ch: WideChar): boolean; inline;
+begin
+  case ch of
+    ' ', #9, #10, #13:
+      Result:= true
+    else
+      Result:= false;
+  end;
+end;
 
 procedure TForm1.Test_EC(const Subj: Unicodestring; AWithLog: boolean);
 var
   Obj: array[0..Length(Rules)-1] of TecRegExpr;
   NPos, NLen: integer;
-  bRuleFound, bLastFound: boolean;
   IndexRule, TokenNum, i: integer;
-  ch: Widechar;
+  ch: WideChar;
 begin
   for i:= 0 to Length(Rules)-1 do
   begin
@@ -71,45 +84,32 @@ begin
   end;
 
   NPos:= 1;
-  NLen:= 1;
-  bLastFound:= false;
   TokenNum:= 0;
 
   repeat
     if NPos>Length(Subj) then Break;
-    bRuleFound:= false;
+    NLen:= 1;
 
     ch:= Subj[NPos];
-    if ((ch<>' ') and (ch<>#9)) then
+    if not _IsSpace(ch) then
       for IndexRule:= 0 to Length(Rules)-1 do
       begin
         NLen:= Obj[IndexRule].MatchLength(Subj, NPos);
         if NLen>0 then
         begin
-          bRuleFound:= true;
-
           if AWithLog then
           begin
             Inc(TokenNum);
             DoMsg('['+IntToStr(TokenNum)+'] '+Copy(Subj, NPos, NLen));
           end;
-
           Break;
-        end;
+        end
+        else
+          NLen:= 1;
       end;
 
-    if not bRuleFound then
-    begin
-      Inc(NPos);
-    end
-    else
-    begin
-      Inc(NPos, NLen);
-    end;
-
-    bLastFound:= bRuleFound;
+    Inc(NPos, NLen);
   until false;
-
 
   for i:= 0 to Length(Rules)-1 do
     Obj[i].Free;
@@ -129,7 +129,7 @@ var
   t: QWord;
 begin
   t:= GetTickCount64;
-  Test_EC(SText, false);
+  Test_EC(TestStr, false);
   t:= GetTickCount64-t;
   DoMsg(Format('Parsing by ec_RegExpr: %d ms', [t]));
 end;
@@ -143,7 +143,7 @@ end;
 
 procedure TForm1.ButtonFindAllClick(Sender: TObject);
 begin
-  Test_EC(SText, true);
+  Test_EC(TestStr, true);
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
@@ -152,6 +152,7 @@ var
 begin
   fn:= ExtractFileDir(ExtractFileDir(ExtractFileDir(Application.ExeName)))+
     DirectorySeparator+'econtrol'+DirectorySeparator+'ec_syntanal.pas';
+
   if not FileExists(fn) then
   begin
     Listbox1.Items.Add('Cannot find sample file: '+fn);
@@ -166,11 +167,11 @@ var
 begin
   L:= TStringList.Create;
   L.LoadFromFile(fn);
-  SText:= L.Text;
+  TestStr:= UTF8Decode(L.Text);
   L.Free;
 
   ListBox1.Items.Add('Test file: '+fn);
-  ListBox1.Items.Add('Length: '+IntToStr(Length(SText)));
+  ListBox1.Items.Add('Length: '+IntToStr(Length(TestStr)));
 end;
 
 end.
