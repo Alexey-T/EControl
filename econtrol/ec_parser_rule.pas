@@ -5,7 +5,7 @@ unit ec_parser_rule;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils, Contnrs;
 
 type
   TParserRuleItem = class;
@@ -44,7 +44,7 @@ type
 
   TParserRuleBranch = class
   private
-    FItems: TList;
+    FItems: TFPObjectList;
     FRule: TParserRule;
     function GetCount: integer;
     function GetItems(Index: integer): TParserRuleItem;
@@ -54,14 +54,14 @@ type
     function IsValid: Boolean;
 
     property Count: integer read GetCount;
-    property ItemsList: TList read FItems;
+    property ItemsList: TFPObjectList read FItems;
     property Items[Index: integer]: TParserRuleItem read GetItems;
     property Rule: TParserRule read FRule write FRule;
   end;
 
   TParserRule = class
   private
-    FBranches: TList;
+    FBranches: TFPObjectList;
     FName: string;
     FIndex: integer;
     function GetCount: integer;
@@ -72,16 +72,13 @@ type
     function IsValid: Boolean;
 
     property Count: integer read GetCount;
-    property BranchesList: TList read FBranches;
+    property BranchesList: TFPObjectList read FBranches;
     property Branches[Index: integer]: TParserRuleBranch read GetBranches;
     property Name: string read FName write FName;
     property Index: integer read FIndex write FIndex;
   end;
 
 implementation
-
-uses
-  Contnrs;
 
 { TParserRuleItem }
 
@@ -117,7 +114,7 @@ end;
 constructor TParserRuleBranch.Create;
 begin
   inherited Create;
-  FItems := TObjectList.Create;
+  FItems := TFPObjectList.Create;
 end;
 
 destructor TParserRuleBranch.Destroy;
@@ -153,7 +150,7 @@ end;
 constructor TParserRule.Create;
 begin
   inherited Create;
-  FBranches := TObjectList.Create;
+  FBranches := TFPObjectList.Create;
 end;
 
 destructor TParserRule.Destroy;

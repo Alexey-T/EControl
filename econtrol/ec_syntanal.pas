@@ -646,8 +646,8 @@ type
 
   TecSyntAnalyzer = class(TLoadableComponent)
   private
-    FClientList: TList;
-    FMasters: TList;      // Master lexer, i.e. lexers that uses it
+    FClientList: TFPList;
+    FMasters: TFPList;      // Master lexer, i.e. lexers that uses it
     FOnChange: TNotifyEvent;
     FSampleText: TStrings;
     FFormats: TecStylesCollection;
@@ -811,7 +811,7 @@ type
   TecSyntaxManager = class(TLoadableComponent)
   private
     FOnChange: TNotifyEvent;
-    FList: TList;
+    FList: TFPList;
     FCurrentLexer: TecSyntAnalyzer;
     FOnLexerChanged: TNotifyEvent;
     FModified: Boolean;
@@ -3251,8 +3251,8 @@ end;
 constructor TecSyntAnalyzer.Create(AOwner: TComponent);
 begin
   inherited;
-  FClientList := TList.Create;
-  FMasters := TList.Create;
+  FClientList := TFPList.Create;
+  FMasters := TFPList.Create;
   FSampleText := TStringList.Create;
   FTokenTypeNames := TStringList.Create;
   FTokenTypeNames.Text := SecDefaultTokenTypeNames;
@@ -4083,7 +4083,7 @@ end;
 constructor TecSyntaxManager.Create(AOwner: TComponent);
 begin
   inherited;
-  FList := TList.Create;
+  FList := TFPList.Create;
   FModified := False;
 end;
 

@@ -201,7 +201,7 @@ type
   // Base class of containers
   TreListNodeBase = class(TRENodeBase)
   private
-    FList: TList;
+    FList: TFPObjectList;
   public
     constructor Create(AOwner: TreSubExpr); override;
     destructor Destroy; override;
@@ -257,7 +257,7 @@ type
   // Root node
   TreRootNode = class(TreSubExpr)
   private
-    FSubExpr: TList;
+    FSubExpr: TFPList;
     FOwner: TecRegExpr;
   public
     constructor Create(AOwner: TecRegExpr); reintroduce;
@@ -817,7 +817,7 @@ end;
 constructor TreListNodeBase.Create(AOwner: TreSubExpr);
 begin
   inherited;
-  FList := TObjectList.Create;
+  FList := TFPObjectList.Create;
 end;
 
 destructor TreListNodeBase.Destroy;
@@ -1802,7 +1802,7 @@ constructor TreRootNode.Create(AOwner: TecRegExpr);
 begin
   inherited Create(nil);
   FOwner := AOwner;
-  FSubExpr := TList.Create;
+  FSubExpr := TFPList.Create;
   FSubExpr.Add(Self);
 end;
 

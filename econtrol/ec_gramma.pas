@@ -46,7 +46,7 @@ type
 
   TParserBranchNode = class(TParserNode)
   private
-    FNodes: TList;
+    FNodes: TFPObjectList;
     FRule: TParserRuleBranch;
   protected
     function GetCount: integer; override;
@@ -76,7 +76,7 @@ type
 
   TGrammaAnalyzer = class(TPersistent)
   private
-    FGrammaRules: TList;
+    FGrammaRules: TFPObjectList;
     FGrammaDefs: TATStringBuffer;
 
     FRoot: TParserRule;
@@ -123,7 +123,7 @@ uses
 
 procedure TParserBranchNode.Add(Node: TParserNode);
 begin
-  if FNodes = nil then FNodes := TObjectList.Create;
+  if FNodes = nil then FNodes := TFPObjectList.Create;
   FNodes.Add(Node);
 end;
 
@@ -204,7 +204,7 @@ end;
 constructor TGrammaAnalyzer.Create;
 begin
   inherited;
-  FGrammaRules := TObjectList.Create;
+  FGrammaRules := TFPObjectList.Create;
   FGrammaDefs := TATStringBuffer.Create;
 end;
 
@@ -527,7 +527,7 @@ end;
 
 function TGrammaAnalyzer.ParseRule(FromIndex: integer; Rule: TParserRule; Tags: TTokenHolder): TParserNode;
 var CurIdx: integer;
-    CallStack: TList;
+    CallStack: TFPList;
     In_SkipRule: Boolean;
 
   function RuleProcess(Rule: TParserRule): TParserNode; forward;
@@ -629,7 +629,7 @@ var CurIdx: integer;
   end;
 
 begin
-  CallStack := TList.Create;
+  CallStack := TFPList.Create;
   try
     CurIdx := FromIndex;
     Result := RuleProcess(Rule);

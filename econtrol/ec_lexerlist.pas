@@ -24,7 +24,7 @@ type
 
   TecLexerList = class(TComponent)
   private
-    FList: TList;
+    FList: TFPList;
     FModified: boolean;
     function GetLexer(AIndex: integer): TecSyntAnalyzer;
   public
@@ -63,7 +63,7 @@ end;
 constructor TecLexerList.Create(AOwner: TComponent);
 begin
   inherited;
-  FList:= TList.Create;
+  FList:= TFPList.Create;
 end;
 
 destructor TecLexerList.Destroy;
