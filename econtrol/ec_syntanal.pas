@@ -4256,6 +4256,8 @@ begin
 end;
 
 procedure TLoadableComponent.LoadExtraData(const AFileName: string);
+const
+  Utf8Bom = #$EF#$BB#$BF;
 var
   F: TextFile;
   SItem, SKey, SValue: string;
@@ -4274,6 +4276,11 @@ begin
       Readln(F, SItem);
       if SItem='' then Continue;
       if SItem[1]=';' then Continue;
+
+      //FreePascal writes BOM to ini files
+      if Pos(Utf8Bom, SItem)=1 then
+        Delete(SItem, 1, Length(Utf8Bom));
+
       if SItem='[comments]' then
       begin
         Section := secComments;
