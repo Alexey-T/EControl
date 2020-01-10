@@ -4257,7 +4257,7 @@ end;
 
 procedure TLoadableComponent.LoadExtraData(const AFileName: string);
 const
-  Utf8Bom = #$EF#$BB#$BF;
+  //Utf8Bom = #$EF#$BB#$BF;
   sign1 = #$EF;
   sign2 = #$BB;
   sign3 = #$BF;
@@ -4285,7 +4285,7 @@ begin
          (SItem[1]=sign1) and
          (SItem[2]=sign2) and
          (SItem[3]=sign3) then
-        Delete(SItem, 1, Length(Utf8Bom));
+        Delete(SItem, 1, 3);
 
       if SItem='[comments]' then
       begin
