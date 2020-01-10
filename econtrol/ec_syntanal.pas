@@ -4258,6 +4258,9 @@ end;
 procedure TLoadableComponent.LoadExtraData(const AFileName: string);
 const
   Utf8Bom = #$EF#$BB#$BF;
+  sign1 = #$EF;
+  sign2 = #$BB;
+  sign3 = #$BF;
 var
   F: TextFile;
   SItem, SKey, SValue: string;
@@ -4278,7 +4281,10 @@ begin
       if SItem[1]=';' then Continue;
 
       //FreePascal writes BOM to ini files
-      if Pos(Utf8Bom, SItem)=1 then
+      if (Length(SItem)>3) and
+         (SItem[1]=sign1) and
+         (SItem[2]=sign2) and
+         (SItem[3]=sign3) then
         Delete(SItem, 1, Length(Utf8Bom));
 
       if SItem='[comments]' then
