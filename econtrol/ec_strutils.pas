@@ -87,21 +87,21 @@ end;
 function IsWordChar(C: UCChar): Boolean;
 begin
   case C of
-    '0'..'9',
-    'a'..'z',
-    'A'..'Z',
+    '0' .. '9',
+    'a' .. 'z',
+    'A' .. 'Z',
     '_':
       exit(true);
   end;
 
-  if Ord(C)<128 then
+  if Ord(C) < 128 then
     exit(false);
 
-  if Ord(C)>=LOW_SURROGATE_BEGIN then
+  if Ord(C) >= LOW_SURROGATE_BEGIN then
     exit(false);
 
   //ATStringProc.IsWordChar has checks for 5 unicode chars, leave only 2, others detected by UnicodeData
-  if (C=#$00B4) or (C=#$0384) then
+  if (C = #$00B4) or (C = #$0384) then
     exit(true);
 
   Result := GetProps(Ord(C))^.Category <= UGC_OtherNumber;
@@ -111,8 +111,8 @@ end;
 function IsAlphaChar(c: UCChar): Boolean; inline;
 begin
   case C of
-    'a'..'z',
-    'A'..'Z':
+    'a' .. 'z',
+    'A' .. 'Z':
       Result := true
     else
       Result := false;
@@ -121,14 +121,22 @@ end;
 
 function IsIdentChar(C: UCChar): Boolean; inline;
 begin
-  Result := IsIdentLetterChar(C) or IsIdentDigitChar(C);
+  case C of
+    'a' .. 'z',
+    'A' .. 'Z',
+    '0' .. '9',
+    '_':
+      Result := true
+    else
+      Result := false;
+  end;
 end;
 
 function IsIdentLetterChar(C: UCChar): Boolean; inline;
 begin
   case C of
-    'a'..'z',
-    'A'..'Z',
+    'a' .. 'z',
+    'A' .. 'Z',
     '_':
       Result := true
     else
