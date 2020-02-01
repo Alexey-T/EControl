@@ -13,11 +13,13 @@ interface
 
 uses
   Classes, SysUtils,
+  FileUtil,
   ATStringProc,
   ec_SyntAnal;
 
 type
   TecLexerChooseFunc = function(const Filename: string; Lexers: TStringList): integer of object;
+  TecLexerLoadedEvent = procedure(Sender: TObject; ALexer: TecSyntAnalyzer);
 
 type
   { TecLexerList }
@@ -26,6 +28,9 @@ type
   private
     FList: TFPList;
     FModified: boolean;
+    FListFiles: TStringlist;
+    FFolder: string;
+    FOnLexerLoaded: TecLexerLoadedEvent;
     function GetLexer(AIndex: integer): TecSyntAnalyzer;
   public
     constructor Create(AOwner: TComponent); override;
@@ -34,11 +39,13 @@ type
     function LexerCount: integer;
     property Lexers[AIndex: integer]: TecSyntAnalyzer read GetLexer;
     property Modified: boolean read FModified write FModified;
+    procedure InitLibrary(const AFolder: string);
     function AddLexer: TecSyntAnalyzer;
     procedure DeleteLexer(An: TecSyntAnalyzer);
     function FindLexerByFilename(AFilename: string; AChooseFunc: TecLexerChooseFunc): TecSyntAnalyzer;
     function FindLexerByName(const AName: string): TecSyntAnalyzer;
     procedure SetSublexersFromString(An: TecSyntAnalyzer; const ALinks: string; ASep: char);
+    property OnLexerLoaded: TecLexerLoadedEvent read FOnLexerLoaded write FOnLexerLoaded;
   end;
 
 implementation
@@ -64,11 +71,13 @@ constructor TecLexerList.Create(AOwner: TComponent);
 begin
   inherited;
   FList:= TFPList.Create;
+  FListFiles:= TStringList.Create;
 end;
 
 destructor TecLexerList.Destroy;
 begin
   Clear;
+  FreeAndNil(FListFiles);
   FreeAndNil(FList);
   inherited;
 end;
@@ -90,6 +99,39 @@ end;
 function TecLexerList.LexerCount: integer;
 begin
   Result:= FList.Count;
+end;
+
+procedure TecLexerList.InitLibrary(const AFolder: string);
+var
+  LexName: string;
+  an: TecSyntAnalyzer;
+  i, j: integer;
+begin
+  Clear;
+  FFolder:= AFolder;
+  FindAllFiles(FListFiles, FFolder, '*.lcf', false);
+  if FListFiles.Count=0 then exit;
+  FListFiles.Sort;
+
+  for i:= 0 to FListFiles.Count-1 do
+  begin
+    an:= AddLexer;
+    an.LoadFromFile(FListFiles[i]);
+    if Assigned(FOnLexerLoaded) then
+      FOnLexerLoaded(Self, an);
+  end;
+
+  //correct sublexer links
+  for i:= 0 to LexerCount-1 do
+  begin
+    an:= Lexers[i];
+    for j:= 0 to an.SubAnalyzers.Count-1 do
+    begin
+      LexName:= an.SubLexerName(j);
+      if LexName<>'' then
+        an.SubAnalyzers[j].SyntAnalyzer:= FindLexerByName(LexName);
+    end;
+  end;
 end;
 
 function TecLexerList.AddLexer: TecSyntAnalyzer;
