@@ -43,9 +43,9 @@ type
 
 implementation
 
-function SBeginsWith(const S, SubStr: string): boolean;
+function SBeginsWithChar(const S: string; ch: char): boolean; inline;
 begin
-  Result:= (SubStr<>'') and (Copy(S, 1, Length(SubStr))=SubStr);
+  Result:= (S<>'') and (S[1]=ch);
 end;
 
 function SItemListed(const AItem, AList: string): boolean;
@@ -136,14 +136,14 @@ begin
 
   //usual extension
   ext1:= ExtractFileExt(AFileName);
-  if SBeginsWith(ext1, '.') then Delete(ext1, 1, 1);
+  if SBeginsWithChar(ext1, '.') then Delete(ext1, 1, 1);
 
   //double extension
   ext2:= '';
   if ext1<>'' then
   begin
     ext2:= ExtractFileExt(ChangeFileExt(AFileName, ''));
-    if SBeginsWith(ext2, '.') then Delete(ext2, 1, 1);
+    if SBeginsWithChar(ext2, '.') then Delete(ext2, 1, 1);
     if ext2<>'' then
       ext2:= ext2+'.'+ext1;
   end;
