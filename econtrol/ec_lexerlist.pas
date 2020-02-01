@@ -108,7 +108,9 @@ var
   i, j: integer;
 begin
   Clear;
+  FListFiles.Clear;
   FFolder:= AFolder;
+
   FindAllFiles(FListFiles, FFolder, '*.lcf', false);
   if FListFiles.Count=0 then exit;
   FListFiles.Sort;
