@@ -28,7 +28,6 @@ type
   private
     FList: TFPList;
     FModified: boolean;
-    FListFiles: TStringlist;
     FFolder: string;
     FOnLexerLoaded: TecLexerLoadedEvent;
     function GetLexer(AIndex: integer): TecSyntAnalyzer;
@@ -71,13 +70,11 @@ constructor TecLexerList.Create(AOwner: TComponent);
 begin
   inherited;
   FList:= TFPList.Create;
-  FListFiles:= TStringList.Create;
 end;
 
 destructor TecLexerList.Destroy;
 begin
   Clear;
-  FreeAndNil(FListFiles);
   FreeAndNil(FList);
   inherited;
 end;
@@ -104,35 +101,40 @@ end;
 procedure TecLexerList.InitLibrary(const AFolder: string);
 var
   LexName: string;
+  L: TStringlist;
   an: TecSyntAnalyzer;
   i, j: integer;
 begin
   Clear;
-  FListFiles.Clear;
   FFolder:= AFolder;
 
-  FindAllFiles(FListFiles, FFolder, '*.lcf', false);
-  if FListFiles.Count=0 then exit;
-  FListFiles.Sort;
+  L:= TStringList.Create;
+  try
+    FindAllFiles(L, FFolder, '*.lcf', false);
+    if L.Count=0 then exit;
+    L.Sort;
 
-  for i:= 0 to FListFiles.Count-1 do
-  begin
-    an:= AddLexer;
-    an.LoadFromFile(FListFiles[i]);
-    if Assigned(FOnLexerLoaded) then
-      FOnLexerLoaded(Self, an);
-  end;
-
-  //correct sublexer links
-  for i:= 0 to LexerCount-1 do
-  begin
-    an:= Lexers[i];
-    for j:= 0 to an.SubAnalyzers.Count-1 do
+    for i:= 0 to L.Count-1 do
     begin
-      LexName:= an.SubLexerName(j);
-      if LexName<>'' then
-        an.SubAnalyzers[j].SyntAnalyzer:= FindLexerByName(LexName);
+      an:= AddLexer;
+      an.LoadFromFile(L[i]);
+      if Assigned(FOnLexerLoaded) then
+        FOnLexerLoaded(Self, an);
     end;
+
+    //correct sublexer links
+    for i:= 0 to LexerCount-1 do
+    begin
+      an:= Lexers[i];
+      for j:= 0 to an.SubAnalyzers.Count-1 do
+      begin
+        LexName:= an.SubLexerName(j);
+        if LexName<>'' then
+          an.SubAnalyzers[j].SyntAnalyzer:= FindLexerByName(LexName);
+      end;
+    end;
+  finally
+    FreeAndNil(L);
   end;
 end;
 
