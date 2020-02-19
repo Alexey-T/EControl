@@ -2008,24 +2008,36 @@ begin
     FLastTokenizedLine := Token.Range.PointStart.Y;
   end;
 
-  SetLength(TokenFinder, Buffer.Count);
   for i := FLastTokenizedLine + 1 to High(TokenFinder) do
     TokenFinder[i] := -1;
 end;
 
 procedure TecParserResults.UpdateTokenFinder(const Token: TecSyntToken);
 var
-  NLine, i: integer;
+  NNewLen, NPrevLen, NTokenIndex, NLine, NLine2, i: integer;
 begin
-  NLine := Token.Range.PointStart.Y;
-  if NLine > High(TokenFinder) then exit;
-  if NLine > FLastTokenizedLine then
+  NNewLen := FBuffer.Count;
+  NPrevLen := Length(TokenFinder);
+  if NPrevLen <> NNewLen then
   begin
-    for i := FLastTokenizedLine + 1 to NLine-1 do
+    SetLength(TokenFinder, NNewLen);
+    for i := NPrevLen to NNewLen - 1 do
       TokenFinder[i] := -1;
-    TokenFinder[NLine] := FTagList.Count-1;
-    FLastTokenizedLine := NLine;
   end;
+
+  NLine := Token.Range.PointStart.Y;
+  NLine2 := Token.Range.PointEnd.Y;
+  if NLine > High(TokenFinder) then Exit;
+
+  NTokenIndex := FTagList.Count-1;
+  if (TokenFinder[NLine] < 0) or (NTokenIndex < TokenFinder[NLine]) then
+    TokenFinder[NLine] := NTokenIndex;
+
+  //handle multi-line tokens
+  for i := NLine + 1 to NLine2 do
+    TokenFinder[i] := NTokenIndex;
+
+  FLastTokenizedLine := NLine2;
 end;
 
 procedure TecParserResults.ShowTokenFinder;
@@ -2033,9 +2045,9 @@ var
   S: string;
   i: integer;
 begin
-  S:= '';
+  S := '';
   for i := 0 to High(TokenFinder) do
-    S += IntToStr(i)+':'+IntToStr(TokenFinder[i])+' ';
+    S += IntToStr(i) + ':' + IntToStr(TokenFinder[i])+' ';
   Application.MainForm.Caption := S;
 end;
 
@@ -2479,6 +2491,8 @@ procedure TecClientSyntAnalyzer.Finished;
 var i: integer;
   Sub: TecSubLexerRange;
 begin
+  //ShowTokenFinder; //debugging only!
+
   if FFinished then Exit;
   inherited Finished;
 
@@ -2501,8 +2515,6 @@ begin
   CloseAtEnd(0);
 
   FRepeateAnalysis := True;
-
-  //ShowTokenFinder; //debugging
 end;
 
 procedure TecClientSyntAnalyzer.TimerIdleTick(Sender: TObject);
@@ -2522,7 +2534,6 @@ begin
   FTimerIdleIsBusy := True;
   FPos := 0;
   BufLen := FBuffer.TextLength;
-  SetLength(TokenFinder, Buffer.Count);
 
   try
     while True do
