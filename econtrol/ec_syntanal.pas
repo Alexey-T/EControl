@@ -508,7 +508,7 @@ type
     procedure SaveState;
     procedure RestoreState;
     procedure ClearTokenFinder;
-    procedure UpdateTokenFinder(const Token: TecSyntToken);
+    procedure UpdateTokenFinder(const Token: TecSyntToken); inline;
     procedure ShowTokenFinder;
   public
     TokenFinder: array of integer;
@@ -2025,7 +2025,7 @@ begin
 
   NLine := Token.Range.PointStart.Y;
   NLine2 := Token.Range.PointEnd.Y;
-  if NLine > High(TokenFinder) then Exit;
+  if NLine >= NNewLen then Exit;
 
   NTokenIndex := FTagList.Count-1;
   if (TokenFinder[NLine] < 0) or (NTokenIndex < TokenFinder[NLine]) then
