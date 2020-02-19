@@ -488,7 +488,6 @@ type
     FTagList: TecTokenList;
     FCurState: integer;
     FStateChanges: TecStateChanges;
-    FLastTokenizedLine: integer;
 
     function GetLastPos(const Source: ecString): integer;
     function ExtractTag(const Source: ecString; var FPos: integer): Boolean;
@@ -1949,7 +1948,6 @@ begin
   FStateChanges.Clear;
   FCurState := 0;
   SetLength(TokenFinder, 0);
-  FLastTokenizedLine := -1;
 end;
 
 procedure TecParserResults.Finished;
@@ -1996,19 +1994,19 @@ end;
 
 procedure TecParserResults.ClearTokenFinder;
 var
-  Cnt, i: integer;
+  NCnt, NLastLine, i: integer;
   Token: TecSyntToken;
 begin
-  Cnt := FTagList.Count;
-  if Cnt = 0 then
-    FLastTokenizedLine := -1
+  NCnt := FTagList.Count;
+  if NCnt = 0 then
+    NLastLine := -1
   else
   begin
-    Token := FTagList.Items[Cnt-1];
-    FLastTokenizedLine := Token.Range.PointStart.Y;
+    Token := FTagList.Items[NCnt-1];
+    NLastLine := Token.Range.PointStart.Y;
   end;
 
-  for i := FLastTokenizedLine + 1 to High(TokenFinder) do
+  for i := NLastLine + 1 to High(TokenFinder) do
     TokenFinder[i] := -1;
 end;
 
@@ -2036,8 +2034,6 @@ begin
   //handle multi-line tokens
   for i := NLine + 1 to NLine2 do
     TokenFinder[i] := NTokenIndex;
-
-  FLastTokenizedLine := NLine2;
 end;
 
 procedure TecParserResults.ShowTokenFinder;
@@ -2387,7 +2383,6 @@ begin
   FRanges.Clear;
   FOpenedBlocks.Clear;
   SetLength(TokenFinder, 0);
-  FLastTokenizedLine := -1;
 
   DoStopTimer(False);
   FFinished := False;
