@@ -2003,7 +2003,7 @@ begin
   else
   begin
     Token := FTagList.Items[NCnt-1];
-    NLastLine := Token.Range.PointStart.Y;
+    NLastLine := Token.Range.PointEnd.Y;
   end;
 
   for i := NLastLine + 1 to High(TokenFinder) do
