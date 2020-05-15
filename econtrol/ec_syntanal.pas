@@ -507,11 +507,11 @@ type
     procedure ApplyStates(Rule: TRuleCollectionItem);
     procedure SaveState;
     procedure RestoreState;
-    procedure ClearTokenFinder;
-    procedure UpdateTokenFinder(const Token: TecSyntToken); inline;
-    procedure ShowTokenFinder;
+    procedure ClearLineIndexer;
+    procedure UpdateLineIndexer(const Token: TecSyntToken); inline;
+    procedure ShowLineIndexer;
   public
-    TokenFinder: array of integer;
+    LineIndexer: array of integer;
 
     constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer; const AClient: IecSyntClient); virtual;
     destructor Destroy; override;
@@ -1947,7 +1947,7 @@ begin
   FSubLexerBlocks.Clear;
   FStateChanges.Clear;
   FCurState := 0;
-  SetLength(TokenFinder, 0);
+  SetLength(LineIndexer, 0);
 end;
 
 procedure TecParserResults.Finished;
@@ -1992,7 +1992,7 @@ begin
   if FLastAnalPos > Result then Result := FLastAnalPos;
 end;
 
-procedure TecParserResults.ClearTokenFinder;
+procedure TecParserResults.ClearLineIndexer;
 var
   NCnt, NLastLine, i: integer;
   Token: TecSyntToken;
@@ -2006,21 +2006,21 @@ begin
     NLastLine := Token.Range.PointEnd.Y;
   end;
 
-  for i := NLastLine + 1 to High(TokenFinder) do
-    TokenFinder[i] := -1;
+  for i := NLastLine + 1 to High(LineIndexer) do
+    LineIndexer[i] := -1;
 end;
 
-procedure TecParserResults.UpdateTokenFinder(const Token: TecSyntToken);
+procedure TecParserResults.UpdateLineIndexer(const Token: TecSyntToken);
 var
   NNewLen, NPrevLen, NTokenIndex, NLine, NLine2, i: integer;
 begin
   NNewLen := FBuffer.Count;
-  NPrevLen := Length(TokenFinder);
+  NPrevLen := Length(LineIndexer);
   if NPrevLen <> NNewLen then
   begin
-    SetLength(TokenFinder, NNewLen);
+    SetLength(LineIndexer, NNewLen);
     for i := NPrevLen to NNewLen - 1 do
-      TokenFinder[i] := -1;
+      LineIndexer[i] := -1;
   end;
 
   NLine := Token.Range.PointStart.Y;
@@ -2028,22 +2028,22 @@ begin
   if NLine >= NNewLen then Exit;
 
   NTokenIndex := FTagList.Count-1;
-  if (TokenFinder[NLine] < 0) or (NTokenIndex < TokenFinder[NLine]) then
-    TokenFinder[NLine] := NTokenIndex;
+  if (LineIndexer[NLine] < 0) or (NTokenIndex < LineIndexer[NLine]) then
+    LineIndexer[NLine] := NTokenIndex;
 
   //handle multi-line tokens
   for i := NLine + 1 to NLine2 do
-    TokenFinder[i] := NTokenIndex;
+    LineIndexer[i] := NTokenIndex;
 end;
 
-procedure TecParserResults.ShowTokenFinder;
+procedure TecParserResults.ShowLineIndexer;
 var
   S: string;
   i: integer;
 begin
   S := '';
-  for i := 0 to High(TokenFinder) do
-    S += IntToStr(i) + ':' + IntToStr(TokenFinder[i])+' ';
+  for i := 0 to High(LineIndexer) do
+    S += IntToStr(i) + ':' + IntToStr(LineIndexer[i])+' ';
   Application.MainForm.Caption := S;
 end;
 
@@ -2226,7 +2226,7 @@ begin
     end;
 
     FTagList.Add(CurToken);
-    UpdateTokenFinder(CurToken);
+    UpdateLineIndexer(CurToken);
 
     if not FOwner.SeparateBlockAnalysis then
      begin
@@ -2382,7 +2382,7 @@ begin
   FTagList.Clear;
   FRanges.Clear;
   FOpenedBlocks.Clear;
-  SetLength(TokenFinder, 0);
+  SetLength(LineIndexer, 0);
 
   DoStopTimer(False);
   FFinished := False;
@@ -2486,7 +2486,7 @@ procedure TecClientSyntAnalyzer.Finished;
 var i: integer;
   Sub: TecSubLexerRange;
 begin
-  //ShowTokenFinder; //debugging only!
+  //ShowLineIndexer; //debugging only!
 
   if FFinished then Exit;
   inherited Finished;
@@ -2670,7 +2670,7 @@ begin
    end;
    // Remove tokens
    FTagList.ClearFromPos(APos);
-   ClearTokenFinder;
+   ClearLineIndexer;
 
    FLastAnalPos := 0;   // Reset current position
    N := FTagList.Count;
