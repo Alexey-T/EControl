@@ -507,11 +507,12 @@ type
     procedure ApplyStates(Rule: TRuleCollectionItem);
     procedure SaveState;
     procedure RestoreState;
-    procedure ClearLineIndexer;
-    procedure UpdateLineIndexer(const Token: TecSyntToken); inline;
-    procedure ShowLineIndexer;
+    procedure ClearTokenIndexer;
+    procedure UpdateTokenIndexer(const Token: TecSyntToken); inline;
+    procedure ShowTokenIndexer;
   public
-    LineIndexer: array of integer;
+    //for each line index, array holds the index of first token overlapping that line
+    TokenIndexer: array of integer;
 
     constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer; const AClient: IecSyntClient); virtual;
     destructor Destroy; override;
@@ -1947,7 +1948,7 @@ begin
   FSubLexerBlocks.Clear;
   FStateChanges.Clear;
   FCurState := 0;
-  SetLength(LineIndexer, 0);
+  SetLength(TokenIndexer, 0);
 end;
 
 procedure TecParserResults.Finished;
@@ -1992,7 +1993,7 @@ begin
   if FLastAnalPos > Result then Result := FLastAnalPos;
 end;
 
-procedure TecParserResults.ClearLineIndexer;
+procedure TecParserResults.ClearTokenIndexer;
 var
   NCnt, NLastLine, i: integer;
   Token: TecSyntToken;
@@ -2006,21 +2007,21 @@ begin
     NLastLine := Token.Range.PointEnd.Y;
   end;
 
-  for i := NLastLine + 1 to High(LineIndexer) do
-    LineIndexer[i] := -1;
+  for i := NLastLine + 1 to High(TokenIndexer) do
+    TokenIndexer[i] := -1;
 end;
 
-procedure TecParserResults.UpdateLineIndexer(const Token: TecSyntToken);
+procedure TecParserResults.UpdateTokenIndexer(const Token: TecSyntToken);
 var
   NNewLen, NPrevLen, NTokenIndex, NLine, NLine2, i: integer;
 begin
   NNewLen := FBuffer.Count;
-  NPrevLen := Length(LineIndexer);
+  NPrevLen := Length(TokenIndexer);
   if NPrevLen <> NNewLen then
   begin
-    SetLength(LineIndexer, NNewLen);
+    SetLength(TokenIndexer, NNewLen);
     for i := NPrevLen to NNewLen - 1 do
-      LineIndexer[i] := -1;
+      TokenIndexer[i] := -1;
   end;
 
   NLine := Token.Range.PointStart.Y;
@@ -2028,22 +2029,22 @@ begin
   if NLine >= NNewLen then Exit;
 
   NTokenIndex := FTagList.Count-1;
-  if (LineIndexer[NLine] < 0) or (NTokenIndex < LineIndexer[NLine]) then
-    LineIndexer[NLine] := NTokenIndex;
+  if (TokenIndexer[NLine] < 0) or (NTokenIndex < TokenIndexer[NLine]) then
+    TokenIndexer[NLine] := NTokenIndex;
 
   //handle multi-line tokens
   for i := NLine + 1 to NLine2 do
-    LineIndexer[i] := NTokenIndex;
+    TokenIndexer[i] := NTokenIndex;
 end;
 
-procedure TecParserResults.ShowLineIndexer;
+procedure TecParserResults.ShowTokenIndexer;
 var
   S: string;
   i: integer;
 begin
   S := '';
-  for i := 0 to High(LineIndexer) do
-    S += IntToStr(i) + ':' + IntToStr(LineIndexer[i])+' ';
+  for i := 0 to High(TokenIndexer) do
+    S += IntToStr(i) + ':' + IntToStr(TokenIndexer[i])+' ';
   Application.MainForm.Caption := S;
 end;
 
@@ -2226,7 +2227,7 @@ begin
     end;
 
     FTagList.Add(CurToken);
-    UpdateLineIndexer(CurToken);
+    UpdateTokenIndexer(CurToken);
 
     if not FOwner.SeparateBlockAnalysis then
      begin
@@ -2382,7 +2383,7 @@ begin
   FTagList.Clear;
   FRanges.Clear;
   FOpenedBlocks.Clear;
-  SetLength(LineIndexer, 0);
+  SetLength(TokenIndexer, 0);
 
   DoStopTimer(False);
   FFinished := False;
@@ -2486,7 +2487,7 @@ procedure TecClientSyntAnalyzer.Finished;
 var i: integer;
   Sub: TecSubLexerRange;
 begin
-  //ShowLineIndexer; //debugging only!
+  //ShowTokenIndexer; //debugging only!
 
   if FFinished then Exit;
   inherited Finished;
@@ -2670,7 +2671,7 @@ begin
    end;
    // Remove tokens
    FTagList.ClearFromPos(APos);
-   ClearLineIndexer;
+   ClearTokenIndexer;
 
    FLastAnalPos := 0;   // Reset current position
    N := FTagList.Count;
