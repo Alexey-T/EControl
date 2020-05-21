@@ -653,6 +653,7 @@ type
 
   TecSyntAnalyzer = class(TLoadableComponent)
   private
+    FDeleted: Boolean;
     FClientList: TFPList;
     FMasters: TFPList;      // Master lexer, i.e. lexers that uses it
     FOnChange: TNotifyEvent;
@@ -758,6 +759,7 @@ type
     procedure AddMasterLexer(SyntAnal: TecSyntAnalyzer);
     procedure RemoveMasterLexer(SyntAnal: TecSyntAnalyzer);
 
+    property Deleted: Boolean read FDeleted write FDeleted;
     property MarkedBlock: TecSyntaxFormat read FMarkedBlock write SetMarkedBlock;
     property SearchMatch: TecSyntaxFormat read FSearchMatch write SetSearchMatch;
     property CurrentLine: TecSyntaxFormat read FCurrentLine write SetCurrentLine;

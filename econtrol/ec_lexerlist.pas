@@ -86,10 +86,16 @@ end;
 
 procedure TecLexerList.Clear;
 var
+  an: TecSyntAnalyzer;
   i: integer;
 begin
+  //don't free objects, only mark them as deleted
   for i:= FList.Count-1 downto 0 do
-    TObject(FList[i]).Free;
+  begin
+    an:= TecSyntAnalyzer(FList[i]);
+    an.Deleted:= true;
+    an.LexerName:= an.LexerName+'-';
+  end;
   FList.Clear;
 end;
 
@@ -151,8 +157,13 @@ begin
   N:= FList.IndexOf(An);
   if N>=0 then
   begin
+    //don't free the object! only mark it as deleted
+    {
     TObject(FList[N]).Free;
     FList.Delete(N);
+    }
+    An.Deleted:= true;
+    An.LexerName:= An.LexerName+'-'; //allow adding lexer with old name
   end;
 end;
 
@@ -198,6 +209,7 @@ begin
   for i:= 0 to LexerCount-1 do
   begin
     An:= Lexers[i];
+    if An.Deleted then Continue;
     if not An.Internal then
       if SItemListed(fname, An.Extentions) then
         Exit(An);
@@ -208,6 +220,7 @@ begin
     for i:= 0 to LexerCount-1 do
     begin
       An:= Lexers[i];
+      if An.Deleted then Continue;
       if not An.Internal then
         if SItemListed(ext2, An.Extentions) then
           Exit(An);
@@ -219,6 +232,7 @@ begin
     for i:= 0 to LexerCount-1 do
     begin
       An:= Lexers[i];
+      if An.Deleted then Continue;
       if not An.Internal then
         if SItemListed(ext1, An.Extentions) then
           Names.AddObject(An.LexerName, An);
@@ -248,6 +262,7 @@ begin
   for i:= 0 to LexerCount-1 do
   begin
     Lexer:= Lexers[i];
+    if Lexer.Deleted then Continue;
     if SameText(Lexer.LexerName, AName) then
       exit(Lexer);
   end;
