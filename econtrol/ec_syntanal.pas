@@ -3843,6 +3843,7 @@ begin
   FDeleted := True;
   FInternal := True;
   FLexerName := '-'+FLexerName;
+  FExtentions := '';
 end;
 
 procedure TecSyntAnalyzer.TokenRuleChanged(Sender: TCollection;
