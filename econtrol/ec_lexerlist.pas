@@ -131,6 +131,7 @@ begin
     for i:= 0 to LexerCount-1 do
     begin
       an:= Lexers[i];
+      if an.Deleted then Continue;
       for j:= 0 to an.SubAnalyzers.Count-1 do
       begin
         LexName:= an.SubLexerName(j);
