@@ -759,7 +759,9 @@ type
     procedure AddMasterLexer(SyntAnal: TecSyntAnalyzer);
     procedure RemoveMasterLexer(SyntAnal: TecSyntAnalyzer);
 
-    property Deleted: Boolean read FDeleted write FDeleted;
+    property Deleted: Boolean read FDeleted;
+    procedure MarkAsDeleted;
+
     property MarkedBlock: TecSyntaxFormat read FMarkedBlock write SetMarkedBlock;
     property SearchMatch: TecSyntaxFormat read FSearchMatch write SetSearchMatch;
     property CurrentLine: TecSyntaxFormat read FCurrentLine write SetCurrentLine;
@@ -3834,6 +3836,13 @@ end;
 procedure TecSyntAnalyzer.RemoveMasterLexer(SyntAnal: TecSyntAnalyzer);
 begin
   FMasters.Remove(SyntAnal);
+end;
+
+procedure TecSyntAnalyzer.MarkAsDeleted;
+begin
+  FDeleted := True;
+  FInternal := True;
+  FLexerName := '-'+FLexerName;
 end;
 
 procedure TecSyntAnalyzer.TokenRuleChanged(Sender: TCollection;

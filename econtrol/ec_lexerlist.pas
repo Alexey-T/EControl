@@ -93,8 +93,7 @@ begin
   for i:= FList.Count-1 downto 0 do
   begin
     an:= TecSyntAnalyzer(FList[i]);
-    an.Deleted:= true;
-    an.LexerName:= an.LexerName+'-';
+    an.MarkAsDeleted;
   end;
   FList.Clear;
 end;
@@ -162,8 +161,7 @@ begin
     TObject(FList[N]).Free;
     FList.Delete(N);
     }
-    An.Deleted:= true;
-    An.LexerName:= An.LexerName+'-'; //allow adding lexer with old name
+    An.MarkAsDeleted;
   end;
 end;
 
