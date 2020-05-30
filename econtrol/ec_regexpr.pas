@@ -831,26 +831,68 @@ end;
 { TreBranchNode }
 
 function TreBranchNode.GetClassChar(C: UCChar; Modifiers: Word): UCChar;
+// Alexey: rewritten
 begin
   { // Alexey
   if Assigned(GetCustomCharClassProc) and GetCustomCharClassProc(C) then
     Result := C else // User defined character class
   }
-  if (MaskModR and Modifiers) = 0 then
   case C of
-    'w': Result := 'c';
-    'W': Result := 'C';
-    'd': Result := 'k';
-    'D': Result := 'K';
-    'l': Result := 'g';
-    'L': Result := 'G';
-    's', 'S', 'h', 'H', 'c', 'C', 'g', 'G', 'k', 'K': Result := C;
-    else Result := #0;
-  end else
-  case C of
-    'w', 'W', 'd', 'D', 'l', 'L',
-    's', 'S', 'h', 'H', 'c', 'C', 'g', 'G', 'k', 'K': Result := C;
-    else Result := #0;
+    'w':
+      begin
+        if (MaskModR and Modifiers) = 0 then
+          Result := 'c'
+        else
+          Result := 'w';
+      end;
+    'W':
+      begin
+        if (MaskModR and Modifiers) = 0 then
+          Result := 'C'
+        else
+          Result := 'W';
+      end;
+    'd':
+      begin
+        if (MaskModR and Modifiers) = 0 then
+          Result := 'k'
+        else
+          Result := 'd';
+      end;
+    'D':
+      begin
+        if (MaskModR and Modifiers) = 0 then
+          Result := 'K'
+        else
+          Result := 'D';
+      end;
+    'l':
+      begin
+        if (MaskModR and Modifiers) = 0 then
+          Result := 'g'
+        else
+          Result := 'l';
+      end;
+    'L':
+      begin
+        if (MaskModR and Modifiers) = 0 then
+          Result := 'G'
+        else
+          Result := 'L';
+      end;
+    's',
+    'S',
+    'h',
+    'H',
+    'c',
+    'C',
+    'g',
+    'G',
+    'k',
+    'K':
+      Result := C;
+    else
+      Result := #0;
   end;
 end;
 
