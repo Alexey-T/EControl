@@ -15,9 +15,9 @@ unit ec_RegExpr;
 interface
 
 uses
-  Classes, ec_StrUtils,
+  Classes,
   {$IFDEF RE_DEBUG}ComCtrls,{$ENDIF}
-  Dialogs;
+  ec_StrUtils;
 
 const
   MaskModI = 1;  // modifier /i bit in fModifiers
