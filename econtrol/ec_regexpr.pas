@@ -540,9 +540,7 @@ begin
 
   C := InputString[aPos];
   if FIgnoreCase then C := ecUpCase(C);
-  b := HasChar(C);
-  if FInvert then
-    b := not b;
+  b := HasChar(C) xor FInvert;
   if b then Inc(aPos);
   if b then Result := 1 else Result := 0;
 end;
@@ -559,9 +557,7 @@ begin
 
   C := InputString[aPos - 1];
   if FIgnoreCase then C := ecUpCase(C);
-  b := HasChar(C);
-  if FInvert then
-    b := not b;
+  b := HasChar(C) xor FInvert;
   if b then Dec(aPos);
   if b then Result := 1 else Result := 0;
 end;
