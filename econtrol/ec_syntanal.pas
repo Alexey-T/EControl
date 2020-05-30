@@ -553,6 +553,7 @@ type
     FStartSepRangeAnal: integer;
     FDisableIdleAppend: Boolean;
     FRepeateAnalysis: Boolean;
+    FSpecialKinds: array of boolean;
 
     function GetRangeCount: integer;
     function GetRanges(Index: integer): TecTextRange;
@@ -560,6 +561,7 @@ type
     function GetOpenedCount: integer;
     procedure SetDisableIdleAppend(const Value: Boolean);
     function DoStopTimer(AndWait: boolean): boolean;
+    procedure UpdateSpecialKinds;
   protected
     procedure AddRange(Range: TecTextRange);
     function HasOpened(Rule: TRuleCollectionItem; Parent: TecTagBlockCondition; Strict: Boolean): Boolean;
@@ -3314,18 +3316,36 @@ begin
   end;
 end;
 
+procedure TecClientSyntAnalyzer.UpdateSpecialKinds;
+const
+  cSpecTokenStart = '1';
+    //special char - must be first of token's type name (e.g. "1keyword");
+    //Also such tokens must contain spaces+tabs at the beginning (use parser regex like "^[\x20\x09]*\w+")
+var
+  S: string;
+  i: integer;
+begin
+  if Length(FSpecialKinds) = 0 then
+  begin
+    SetLength(FSpecialKinds, Owner.TokenTypeNames.Count);
+    for i := 0 to High(FSpecialKinds) do
+    begin
+      S := Owner.TokenTypeNames[i];
+      FSpecialKinds[i] := (S <> '') and (S[1] = cSpecTokenStart);
+    end;
+  end;
+end;
+
 procedure TecClientSyntAnalyzer.CloseAtEnd(StartTagIdx: integer);
 const
   cSpecIndentID = 20;
     //special number for "Group index" lexer property, which activates indent-based folding for a rule
-  cSpecTokenStart: char = '1';
-    //special char - must be first of token's type name (e.g. "1keyword");
-    //Also such tokens must contain spaces+tabs at the beginning (use parser regex like "^[\x20\x09]*\w+")
 var i, j, IndentSize: integer;
     Range: TecTextRange;
     Token: TecSyntToken;
-    S: string;
 begin
+  UpdateSpecialKinds;
+
   for i := FOpenedBlocks.Count - 1 downto 0 do
    begin
     Range := TecTextRange(FOpenedBlocks[i]);
@@ -3341,13 +3361,14 @@ begin
          for j := Range.StartIdx+1 to TagCount-1 do
          begin
            Token := Tags[j];
-           if Token.Rule.SyntOwner <> Owner then Continue; // Check that token is not from sublexer
-           S := Owner.TokenTypeNames[Token.TokenType];
-           if (S <> '') and (S[1] = cSpecTokenStart) and (TagIndent(j) <= IndentSize) then
-           begin
-             Range.EndIdx := j-1;
-             Break
-           end;
+           if Token.Rule.SyntOwner <> Owner then // Check that token is not from sublexer
+             Continue;
+           if FSpecialKinds[Token.TokenType] then
+             if TagIndent(j) <= IndentSize then
+             begin
+               Range.EndIdx := j-1;
+               Break
+             end;
          end;
        end;
        FOpenedBlocks.Delete(i);
