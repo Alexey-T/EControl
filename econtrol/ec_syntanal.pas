@@ -796,7 +796,7 @@ type
     property RestartFromLineStart: Boolean read FRestartFromLineStart write SetRestartFromLineStart default False;
     property ParseEndOfLine: Boolean read FParseEndOfLine write SetParseEndOfLine default False;
     property LineComment: ecString read FLineComment write SetLineComment;
-    property Charset: TFontCharSet read FCharset write FCharset; //AT
+    property Charset: TFontCharSet read FCharset write FCharset; // Alexey
     property AlwaysSyncBlockAnal: Boolean read FAlwaysSyncBlockAnal write SetAlwaysSyncBlockAnal default False;
     property IdleAppendDelay: Cardinal read FIdleAppendDelay write FIdleAppendDelay default 200;
     property IdleAppendDelayInit: Cardinal read FIdleAppendDelayInit write FIdleAppendDelayInit default 50;
@@ -888,7 +888,7 @@ const
                              'Number'  + #13#10 +
                              'Preprocessor';
 
-function _IndentOfBuffer(S: PWideChar; Len: integer): Integer;
+function _IndentOfBuffer(S: PWideChar; Len: integer): Integer; // Alexey
 var
   i: Integer;
 begin
@@ -1052,7 +1052,7 @@ begin
   if FTagList.Count > 0 then
    begin
     s := Token.GetStr(Source);
-    s := Trim(s); //AT
+    s := Trim(s); // Alexey
     if FCondType in [tcMask, tcStrictMask] then
      begin
        try
@@ -1981,7 +1981,7 @@ begin
   FFinished := True;
   // Performs Gramma parsing
   //AnalyzeGramma;
-  //FTagList.UpdateIndexer; //AT
+  //FTagList.UpdateIndexer; // Alexey
 end;
 
 function TecParserResults.IsEnabled(Rule: TRuleCollectionItem;
@@ -2017,7 +2017,7 @@ begin
     Result := _IndentOfBuffer(@FBuffer.FText[Range.StartPos + 1], Range.EndPos - Range.StartPos);
 end;
 
-function TecParserResults.TagsSame(Index1, Index2: integer): boolean;
+function TecParserResults.TagsSame(Index1, Index2: integer): boolean; // Alexey
 var
   T1, T2: TecSyntToken;
   Len1, Len2: integer;
@@ -3184,7 +3184,8 @@ begin
            begin
               to_idx := FBuffer.OffsetToOffsetOfLineEnd(Tags[idx].Range.EndPos);
               N := Tags[idx].Range.StartPos;
-              Insert(FBuffer.SubString(N+1, to_idx - N + 1), Result, i); //AT: fixed substring offset/len (2 patches)
+              Insert(FBuffer.SubString(N+1, to_idx - N + 1), Result, i);
+              // Alexey: fixed substring offset/len (2 patches)
             end;
          // HAW: new mode = 3 --- explicit range  idx...to_idx
          plmExplicitRange:
@@ -3586,7 +3587,7 @@ begin
                    Continue;
                btLineBreak:
                  begin
-                   //AT: deleted support for line separators
+                   // Alexey: deleted support for line separators
                  end;
             end;
            if CancelNextRules then Break;
