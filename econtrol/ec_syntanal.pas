@@ -490,7 +490,7 @@ type
     FStateChanges: TecStateChanges;
 
     function GetLastPos: integer;
-    function ExtractTag(const Source: ecString; var FPos: integer): Boolean;
+    function ExtractTag(var FPos: integer): Boolean;
     function GetTags(Index: integer): TecSyntToken;
     function GetSubLexerRangeCount: integer;
     function GetSubLexerRange(Index: integer): TecSubLexerRange;
@@ -2123,9 +2123,9 @@ begin
 end;
 
 // True if end of the text
-function TecParserResults.ExtractTag(const Source: ecString; var FPos: integer
-  ): Boolean;
+function TecParserResults.ExtractTag(var FPos: integer): Boolean;
 var
+  Source: ecString;
   CurToken: TecSyntToken;
   own: TecSyntAnalyzer;
 
@@ -2242,6 +2242,7 @@ var
 var
   N, NNextPos: integer;
 begin
+  Source := FBuffer.FText;
   GetOwner;
   TryOpenSubLexer;
   if own.SkipSpaces then
@@ -2593,7 +2594,7 @@ begin
           OnLexerParseProgress(Owner, Progress);
       end;
 
-      if ExtractTag(FBuffer.FText, FPos{, True}) then
+      if ExtractTag(FPos{, True}) then
       begin
         if FOwner.SeparateBlockAnalysis then
           for i := FStartSepRangeAnal + 1 to TagCount do
@@ -2645,7 +2646,7 @@ begin
   FPos := GetLastPos;
   while FPos - 1 <= APos + 1 do
    begin
-     if ExtractTag(FBuffer.FText, FPos{, False}) then
+     if ExtractTag(FPos{, False}) then
       begin
        if not FOwner.SeparateBlockAnalysis then
          Finished else
