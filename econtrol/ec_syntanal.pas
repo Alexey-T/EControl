@@ -489,7 +489,7 @@ type
     FCurState: integer;
     FStateChanges: TecStateChanges;
 
-    function GetLastPos(const Source: ecString): integer;
+    function GetLastPos: integer;
     function ExtractTag(const Source: ecString; var FPos: integer): Boolean;
     function GetTags(Index: integer): TecSyntToken;
     function GetSubLexerRangeCount: integer;
@@ -2039,7 +2039,7 @@ begin
     Len1) = 0;
 end;
 
-function TecParserResults.GetLastPos(const Source: ecString): integer;
+function TecParserResults.GetLastPos: integer;
 begin
   if FTagList.Count = 0 then Result := 1 else
     Result := FTagList.Last.Range.EndPos + 1;
@@ -2579,7 +2579,7 @@ begin
       if Application.Terminated then exit;
 
       if FBuffer=nil then exit;
-      tmp := GetLastPos(FBuffer.FText);
+      tmp := GetLastPos;
       if tmp > FPos then FPos := tmp;
 
       if FPos < ProgressMinPos then
@@ -2642,7 +2642,7 @@ var FPos: integer;
 begin
   if FBuffer.TextLength = 0 then Exit;
   if FFinished then Exit;
-  FPos := GetLastPos(FBuffer.FText);
+  FPos := GetLastPos;
   while FPos - 1 <= APos + 1 do
    begin
      if ExtractTag(FBuffer.FText, FPos{, False}) then
