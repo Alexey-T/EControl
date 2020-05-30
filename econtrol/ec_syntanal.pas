@@ -3299,6 +3299,7 @@ begin
      begin
        Range.EndIdx := TagCount - 1;
        if Range.Rule.SyntOwner = Owner then
+       // Alexey: check for indentation-based ranges
        if Range.Rule.GroupIndex = cSpecIndentID then
        begin
          IndentSize := IndentOf(TagStr[Range.StartIdx]);
