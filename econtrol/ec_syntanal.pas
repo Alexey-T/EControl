@@ -918,17 +918,9 @@ begin
   RE.ModifierR := False;
 end;
 
-function IsPosSorted(const A, B: TPoint; AllowEq: boolean): boolean; inline;
+function IsCharSurrogateHigh(ch: WideChar): boolean; inline; // Alexey
 begin
-  if A.Y<>B.Y then
-    Result:= A.Y<B.Y
-  else
-    Result:= (A.X<B.X) or (AllowEq and (A.X=B.X));
-end;
-
-function IsCharSurrogateHigh(ch: WideChar): boolean; inline;
-begin
-  Result := (ch>=#$D800) and (ch<=#$DBFF);
+  Result := (Ord(ch) >= $D800) and (Ord(ch) <= $DBFF);
 end;
 
 { TecSubLexerRange }
@@ -2262,7 +2254,7 @@ begin
   if CurToken.Range.StartPos < 0 then  // no token
    begin
      NNextPos := FPos;
-     SkipSpaces(Source, NNextPos); // needed for huge space-only lines, where Inc(FPos) is very slow
+     SkipSpaces(Source, NNextPos); // Alexey: needed for huge space-only lines, where Inc(FPos) is very slow
      if NNextPos > FPos then
        FPos := NNextPos
      else
@@ -2272,7 +2264,7 @@ begin
     CheckIntersect;
     SaveState;
 
-    // special case: Pascal lexer finds surrogate pairs and makes too short tokens (1 wordchar) from them
+    // Alexey: Pascal lexer finds surrogate pairs and makes too short tokens (1 wordchar) from them
     if (CurToken.Range.EndPos-CurToken.Range.StartPos = 1) and IsCharSurrogateHigh(Source[FPos]) then
     begin
       CurToken.Range.EndPos += 1;
