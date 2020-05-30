@@ -18,7 +18,6 @@ interface
 
 uses
   Classes, Graphics, Controls, ExtCtrls,
-  Contnrs,
   ec_RegExpr,
   ec_StrUtils,
   ec_Lists,
@@ -399,10 +398,10 @@ type
     FFromTextBegin: Boolean;
     FToTextEnd: Boolean;
     FIncludeBounds: Boolean;
-    function GetEndExpression: string;
-    function GetStartExpression: string;
-    procedure SetEndExpression(const Value: string);
-    procedure SetStartExpression(const Value: string);
+    function GetEndExpression: ecString;
+    function GetStartExpression: ecString;
+    procedure SetEndExpression(const Value: ecString);
+    procedure SetStartExpression(const Value: ecString);
     procedure SetSyntAnalyzer(const Value: TecSyntAnalyzer);
     procedure SetFromTextBegin(const Value: Boolean);
     procedure SetToTextEnd(const Value: Boolean);
@@ -416,8 +415,8 @@ type
     function MatchStart(const Source: ecString; Pos: integer): integer;
     function MatchEnd(const Source: ecString; Pos: integer): integer;
   published
-    property StartExpression: string read GetStartExpression write SetStartExpression;
-    property EndExpression: string read GetEndExpression write SetEndExpression;
+    property StartExpression: ecString read GetStartExpression write SetStartExpression;
+    property EndExpression: ecString read GetEndExpression write SetEndExpression;
     property SyntAnalyzer: TecSyntAnalyzer read FSyntAnalyzer write SetSyntAnalyzer;
     property FromTextBegin: Boolean read FFromTextBegin write SetFromTextBegin default False;
     property ToTextEnd: Boolean read FToTextEnd write SetToTextEnd default False;
@@ -4655,7 +4654,7 @@ begin
     end;
 end;
 
-function TecSubAnalyzerRule.GetEndExpression: string;
+function TecSubAnalyzerRule.GetEndExpression: ecString;
 begin
   Result := FEndRegExpr.Expression;
 end;
@@ -4665,7 +4664,7 @@ begin
   Result := 'Sub lexer rule';
 end;
 
-function TecSubAnalyzerRule.GetStartExpression: string;
+function TecSubAnalyzerRule.GetStartExpression: ecString;
 begin
   Result := FStartRegExpr.Expression;
 end;
@@ -4688,13 +4687,13 @@ begin
  end;
 end;
 
-procedure TecSubAnalyzerRule.SetEndExpression(const Value: string);
+procedure TecSubAnalyzerRule.SetEndExpression(const Value: ecString);
 begin
   FEndRegExpr.Expression := Value;
   Changed(False);
 end;
 
-procedure TecSubAnalyzerRule.SetStartExpression(const Value: string);
+procedure TecSubAnalyzerRule.SetStartExpression(const Value: ecString);
 begin
   FStartRegExpr.Expression := Value;
   Changed(False);
