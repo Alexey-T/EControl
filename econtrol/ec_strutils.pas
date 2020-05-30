@@ -55,9 +55,7 @@ function IsSpaceChar(c: UCChar): Boolean; inline;
 begin
   case c of
     #9,
-    ' ',
-    #10,
-    #13:
+    ' ':
       Result := True;
     else
       Result := False;
