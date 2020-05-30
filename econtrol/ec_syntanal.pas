@@ -926,6 +926,11 @@ begin
     Result:= (A.X<B.X) or (AllowEq and (A.X=B.X));
 end;
 
+function IsCharSurrogateHigh(ch: WideChar): boolean; inline;
+begin
+  Result := (ch>=#$D800) and (ch<=#$DBFF);
+end;
+
 { TecSubLexerRange }
 
 class operator TecSubLexerRange.=(const a, b: TecSubLexerRange): boolean;
@@ -2114,11 +2119,6 @@ begin
    Item.State := FCurState;
    FStateChanges.Add(Item);
  end;
-end;
-
-function IsCharSurrogateHigh(ch: WideChar): boolean; inline;
-begin
-  Result := (ch>=#$D800) and (ch<=#$DBFF);
 end;
 
 // True if end of the text
