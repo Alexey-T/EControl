@@ -53,7 +53,15 @@ uses
 //==============================================================================
 function IsSpaceChar(c: UCChar): Boolean; inline;
 begin
-  Result := (c=' ') or (c=#9);
+  case c of
+    #9,
+    ' ',
+    #10,
+    #13:
+      Result := True;
+    else
+      Result := False;
+  end;
 end;
 
 function IsLineBreakChar(c: UCChar): Boolean;
