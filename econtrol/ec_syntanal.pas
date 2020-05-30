@@ -528,6 +528,7 @@ type
     property Tags[Index: integer]: TecSyntToken read GetTags write SetTags; default;
     property TagStr[Index: integer]: ecString read GetTokenStr;
     function TagIndent(Index: integer): integer; inline;
+    function TagsSame(Index1, Index2: integer): boolean;
     property SubLexerRangeCount: integer read GetSubLexerRangeCount;
     property SubLexerRanges[Index: integer]: TecSubLexerRange read GetSubLexerRange;
     property ParserState: integer read FCurState write FCurState;
@@ -2016,6 +2017,26 @@ begin
     Result := _IndentOfBuffer(@FBuffer.FText[Range.StartPos + 1], Range.EndPos - Range.StartPos);
 end;
 
+function TecParserResults.TagsSame(Index1, Index2: integer): boolean;
+var
+  T1, T2: TecSyntToken;
+  Len1, Len2: integer;
+  St1, St2: integer;
+begin
+  T1 := Tags[Index1];
+  T2 := Tags[Index2];
+  St1 := T1.Range.StartPos;
+  St2 := T2.Range.StartPos;
+  Len1 := T1.Range.EndPos - St1;
+  Len2 := T2.Range.EndPos - St2;
+  if Len1 <> Len2 then
+    Exit(false);
+  Result := strlicomp(
+    @FBuffer.FText[St1+1],
+    @FBuffer.FText[St2+1],
+    Len1) = 0;
+end;
+
 function TecParserResults.GetLastPos(const Source: ecString): integer;
 begin
   if FTagList.Count = 0 then Result := 1 else
@@ -2450,7 +2471,7 @@ begin
            b := (Rule.FBlockEndCond = Cond) or (Rule = Cond.FBlockEndCond);
          if b then
            begin
-             if Cond.SameIdent and not SameText(TagStr[RefTag - Cond.IdentIndex] , TagStr[IdentIdx]) then Continue;
+             if Cond.SameIdent and not TagsSame(RefTag - Cond.IdentIndex, IdentIdx) then Continue;
              EndIdx := RefTag - Cond.BlockOffset;
              if (Rule = Cond) and (EndIdx > 0) then Dec(EndIdx); // for self closing
              FEndCondIndex := RefTag;
