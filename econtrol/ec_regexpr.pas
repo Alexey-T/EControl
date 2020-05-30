@@ -325,12 +325,16 @@ begin
     'S': Result := not IsSpaceChar(C);
     'h': Result := IsHexDigitChar(C);
     'H': Result := not IsHexDigitChar(C);
+    { // Alexey
     'l': Result := IsAlphaChar(C);
     'L': Result := not IsAlphaChar(C);
+    }
     'c': Result := IsIdentChar(C);
     'C': Result := not IsIdentChar(C);
+    { // Alexey
     'g': Result := IsIdentLetterChar(C);
     'G': Result := not IsIdentLetterChar(C);
+    }
     'k': Result := IsIdentDigitChar(C);
     'K': Result := not IsIdentDigitChar(C);
   end;
@@ -866,6 +870,7 @@ begin
         else
           Result := 'D';
       end;
+    { // Alexey
     'l':
       begin
         if (MaskModR and Modifiers) = 0 then
@@ -880,14 +885,17 @@ begin
         else
           Result := 'L';
       end;
+    }
     's',
     'S',
     'h',
     'H',
     'c',
     'C',
+    { // Alexey
     'g',
     'G',
+    }
     'k',
     'K':
       Result := C;
