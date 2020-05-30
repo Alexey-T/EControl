@@ -29,6 +29,7 @@ function IsHexDigitChar(C: UCChar): Boolean;
 function IsLineBreakChar(c: UCChar): Boolean;
 function IsWordChar(c: UCChar): Boolean;
 function IsSpaceChar(c: UCChar): Boolean; inline;
+function IsSpaceOrEolChar(c: UCChar): Boolean; inline;
 function IsAlphaChar(c: UCChar): Boolean; inline;
 
 function IsIdentChar(C: UCChar): Boolean; inline;
@@ -56,6 +57,19 @@ begin
   case c of
     #9,
     ' ':
+      Result := True;
+    else
+      Result := False;
+  end;
+end;
+
+function IsSpaceOrEolChar(c: UCChar): Boolean; inline;
+begin
+  case c of
+    #9,
+    ' ',
+    #10,
+    #13:
       Result := True;
     else
       Result := False;

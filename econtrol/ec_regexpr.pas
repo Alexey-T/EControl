@@ -92,8 +92,8 @@ type
 
 var
   DefaultModifiers: integer = MaskModI or MaskModR or MaskModG or MaskModM or MaskModX;
-  GetCustomCharClassProc: TGetCustomCharClass = nil;
-  CheckCustomCharClassProc: TCheckCustomCharClass = nil;
+  //GetCustomCharClassProc: TGetCustomCharClass = nil;
+  //CheckCustomCharClassProc: TCheckCustomCharClass = nil;
 
 const
   // Error messages
@@ -311,9 +311,11 @@ end;
 function IsInRange(RngType: UCChar; C: UCChar): Boolean; overload;
 begin
   Result := False;
+  { // Alexey
   if not Assigned(CheckCustomCharClassProc) or
      not CheckCustomCharClassProc(RngType, Ord(C), Result)
   then
+  }
   case RngType of
     'w': Result := IsWordChar(C);
     'W': Result := not IsWordChar(C);
@@ -830,8 +832,10 @@ end;
 
 function TreBranchNode.GetClassChar(C: UCChar; Modifiers: Word): UCChar;
 begin
+  { // Alexey
   if Assigned(GetCustomCharClassProc) and GetCustomCharClassProc(C) then
     Result := C else // User defined character class
+  }
   if (MaskModR and Modifiers) = 0 then
   case C of
     'w': Result := 'c';
