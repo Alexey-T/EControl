@@ -2273,7 +2273,7 @@ begin
     SaveState;
 
     // special case: Pascal lexer finds surrogate pairs and makes too short tokens (1 wordchar) from them
-    if (CurToken.Range.Size=1) and IsCharSurrogateHigh(Source[FPos]) then
+    if (CurToken.Range.EndPos-CurToken.Range.StartPos = 1) and IsCharSurrogateHigh(Source[FPos]) then
     begin
       CurToken.Range.EndPos += 1;
       CurToken.Range.PointEnd.X += 1;

@@ -47,14 +47,10 @@ type
   { TRange }
 
   TRange = packed record
-  private
-    function GetLength: integer;
-  public                                              
     StartPos, EndPos: integer;
     PointStart, PointEnd: TPoint;
     constructor Create(AStartPos, AEndPos: integer);
     constructor Create(AStartPos, AEndPos: integer; const APointStart, APointEnd: TPoint);
-    property Size: integer read GetLength;
     class operator=(const a, b: TRange): boolean;
   end;
 
@@ -124,11 +120,6 @@ begin
   PointStart.Y := -1;
   PointEnd.X := -1;
   PointEnd.Y := -1;
-end;
-
-function TRange.GetLength: integer;
-begin
-  Result := EndPos-StartPos;
 end;
 
 class operator TRange.=(const a,b: TRange):boolean;
