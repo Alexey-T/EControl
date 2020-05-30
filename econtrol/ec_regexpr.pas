@@ -317,26 +317,30 @@ begin
   then
   }
   case RngType of
-    'w': Result := IsWordChar(C);
-    'W': Result := not IsWordChar(C);
-    'd': Result := IsDigitChar(C);
-    'D': Result := not IsDigitChar(C);
-    's': Result := IsSpaceChar(C);
-    'S': Result := not IsSpaceChar(C);
-    'h': Result := IsHexDigitChar(C);
-    'H': Result := not IsHexDigitChar(C);
-    { // Alexey
-    'l': Result := IsAlphaChar(C);
-    'L': Result := not IsAlphaChar(C);
-    }
+    // \c is \w without (?r)
     'c': Result := IsIdentChar(C);
     'C': Result := not IsIdentChar(C);
-    { // Alexey
+    // \k is \d without (?r)
+    'k': Result := IsIdentDigitChar(C);
+    'K': Result := not IsIdentDigitChar(C);
+    // \w with (?r)
+    'w': Result := IsWordChar(C);
+    'W': Result := not IsWordChar(C);
+    // \d with (?r)
+    'd': Result := IsDigitChar(C);
+    'D': Result := not IsDigitChar(C);
+    // space
+    's': Result := IsSpaceChar(C);
+    'S': Result := not IsSpaceChar(C);
+    // hex, rarely used
+    'h': Result := IsHexDigitChar(C);
+    'H': Result := not IsHexDigitChar(C);
+    { // Alexey removed
+    'l': Result := IsAlphaChar(C);
+    'L': Result := not IsAlphaChar(C);
     'g': Result := IsIdentLetterChar(C);
     'G': Result := not IsIdentLetterChar(C);
     }
-    'k': Result := IsIdentDigitChar(C);
-    'K': Result := not IsIdentDigitChar(C);
   end;
 end;
 
