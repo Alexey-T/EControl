@@ -567,7 +567,7 @@ type
     function IsEnabled(Rule: TRuleCollectionItem; OnlyGlobal: Boolean): Boolean; override;
     procedure Finished; override;
     procedure TimerIdleTick(Sender: TObject);
-    procedure CloseAtEnd(StartTagIdx: integer); override;
+    procedure CloseAtEnd(AStartTagIdx: integer); override;
 
   public
     constructor Create(AOwner: TecSyntAnalyzer; SrcProc: TATStringBuffer; const AClient: IecSyntClient); override;
@@ -3328,7 +3328,7 @@ begin
   end;
 end;
 
-procedure TecClientSyntAnalyzer.CloseAtEnd(StartTagIdx: integer);
+procedure TecClientSyntAnalyzer.CloseAtEnd(AStartTagIdx: integer);
 const
   cSpecIndentID = 20;
     //special number for "Group index" lexer property, which activates indent-based folding for a rule
@@ -3339,10 +3339,10 @@ begin
   UpdateSpecialKinds;
 
   for i := FOpenedBlocks.Count - 1 downto 0 do
-   begin
+  begin
     Range := TecTextRange(FOpenedBlocks[i]);
     if Range.Rule.EndOfTextClose and
-       ((StartTagIdx = 0) or (Range.StartIdx >= StartTagIdx)) then
+       ((AStartTagIdx = 0) or (Range.StartIdx >= AStartTagIdx)) then
      begin
        Range.EndIdx := TagCount - 1;
        if Range.Rule.SyntOwner = Owner then
@@ -3365,7 +3365,7 @@ begin
        end;
        FOpenedBlocks.Delete(i);
      end;
-   end;
+  end;
 end;
 
 { TecSyntAnalyzer }
