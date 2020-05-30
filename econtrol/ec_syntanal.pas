@@ -524,9 +524,10 @@ type
     property Owner: TecSyntAnalyzer read FOwner;
     property Buffer: TATStringBuffer read FBuffer;
     property IsFinished: Boolean read FFinished;
-    property TagStr[Index: integer]: ecString read GetTokenStr;
     property TagCount: integer read GetTokenCount;
     property Tags[Index: integer]: TecSyntToken read GetTags write SetTags; default;
+    property TagStr[Index: integer]: ecString read GetTokenStr;
+    function TagIndent(Index: integer): integer; inline;
     property SubLexerRangeCount: integer read GetSubLexerRangeCount;
     property SubLexerRanges[Index: integer]: TecSubLexerRange read GetSubLexerRange;
     property ParserState: integer read FCurState write FCurState;
@@ -885,6 +886,25 @@ const
                              'String'  + #13#10 +
                              'Number'  + #13#10 +
                              'Preprocessor';
+
+function _IndentOfBuffer(S: PWideChar; Len: integer): Integer;
+var
+  i: Integer;
+begin
+  Result:= 0;
+  for i:= 0 to Len-1 do
+  begin
+    case S^ of
+      ' ':
+        Inc(Result);
+      #9:
+        Inc(Result, 4);
+      else
+        Break;
+    end;
+    Inc(S);
+  end;
+end;
 
 procedure SetDefaultModifiers(RE: TecRegExpr);
 begin
@@ -1990,6 +2010,12 @@ begin
     Result := '';
 end;
 
+function TecParserResults.TagIndent(Index: integer): integer;
+begin
+  with Tags[Index] do
+    Result := _IndentOfBuffer(@FBuffer.FText[Range.StartPos + 1], Range.EndPos - Range.StartPos);
+end;
+
 function TecParserResults.GetLastPos(const Source: ecString): integer;
 begin
   if FTagList.Count = 0 then Result := 1 else
@@ -2405,19 +2431,6 @@ begin
     Range.Parent := TecTextRange(FOpenedBlocks[FOpenedBlocks.Count - 1]);
   if Range.EndIdx = -1 then
     FOpenedBlocks.Add(Range);
-end;
-
-function IndentOf(const S: ecString): Integer;
-var
-  i: Integer;
-begin
-  Result:= 0;
-  for i:= 1 to Length(S) do
-    case S[i] of
-      ' ': Inc(Result);
-      #9: Inc(Result, 4);
-      else Break;
-   end;
 end;
 
 function TecClientSyntAnalyzer.CloseRange(Cond: TecTagBlockCondition; RefTag: integer): Boolean;
@@ -3302,13 +3315,13 @@ begin
        // Alexey: check for indentation-based ranges
        if Range.Rule.GroupIndex = cSpecIndentID then
        begin
-         IndentSize := IndentOf(TagStr[Range.StartIdx]);
+         IndentSize := TagIndent(Range.StartIdx);
          for j := Range.StartIdx+1 to TagCount-1 do
          begin
            Token := Tags[j];
            if Token.Rule.SyntOwner <> Owner then Continue; // Check that token is not from sublexer
            S := Owner.TokenTypeNames[Token.TokenType];
-           if (S <> '') and (S[1] = cSpecTokenStart) and (IndentOf(TagStr[j]) <= IndentSize) then
+           if (S <> '') and (S[1] = cSpecTokenStart) and (TagIndent(j) <= IndentSize) then
            begin
              Range.EndIdx := j-1;
              Break
