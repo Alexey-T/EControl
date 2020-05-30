@@ -176,11 +176,11 @@ begin
 end;
 
 function ecUpCase(C: UCChar): UCChar; inline;
+// ignore Unicode here, do simple ASCII upcase
 begin
-  if Ord(C) < 128 then
-    Result := UpCase(char(C))
-  else
-    Result := UpCase(C);
+  Result := C;
+  if (Ord(C) >= Ord('a')) and (Ord(C) <= Ord('z')) then
+    Dec(Result, 32);
 end;
 
 function SkipSpacesNoLineBreak(const Source: ecString; var APos: integer): integer;
