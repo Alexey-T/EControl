@@ -528,6 +528,7 @@ type
     property TagStr[Index: integer]: ecString read GetTokenStr;
     function TagIndent(Index: integer): integer; inline;
     function TagsSame(Index1, Index2: integer): boolean;
+    function TagSameAs(Index: integer; const Str: ecString): boolean;
     property SubLexerRangeCount: integer read GetSubLexerRangeCount;
     property SubLexerRanges[Index: integer]: TecSubLexerRange read GetSubLexerRange;
     property ParserState: integer read FCurState write FCurState;
@@ -2035,6 +2036,23 @@ begin
     Len1) = 0;
 end;
 
+function TecParserResults.TagSameAs(Index: integer; const Str: ecString): boolean;
+var
+  T: TecSyntToken;
+  Len: integer;
+  St: integer;
+begin
+  T := Tags[Index];
+  St := T.Range.StartPos;
+  Len := T.Range.EndPos - St;
+  if Len <> Length(Str) then
+    Exit(false);
+  Result := strlcomp(
+    @FBuffer.FText[St+1],
+    PWideChar(Str),
+    Len) = 0;
+end;
+
 function TecParserResults.GetLastPos: integer;
 begin
   if FTagList.Count = 0 then Result := 1 else
@@ -3058,13 +3076,13 @@ begin
          inc( j );
          if  rngdir > 0 then  begin  // upwards search
            while  idx <= (rng.EndIdx + rng.Rule.BlockEndCond.BlockOffset) do  begin
-             if  rngtoken = TagStr[idx]  then  break;
+             if TagSameAs(idx, rngtoken) then  break;
              inc( idx );
            end;
          end  else
          if  rngdir < 0 then         // downwards search
            while  idx >= (rng.StartIdx + rng.Rule.BlockOffset) do  begin
-             if  rngtoken = TagStr[idx]  then  break;
+             if TagSameAs(idx, rngtoken) then  break;
              dec( idx );
            end;
          rngdir := 0;    // allow for missing <offset>
@@ -3132,13 +3150,13 @@ begin
            inc( j );
            if  rngdir > 0 then  begin  // upwards search
              while  to_idx <= (rng.EndIdx + rng.Rule.BlockEndCond.BlockOffset) do  begin
-               if  rngtoken = TagStr[to_idx]  then  break;
+               if TagSameAs(to_idx, rngtoken) then  break;
                inc( to_idx );
              end;
            end  else
            if  rngdir < 0 then         // downwards search
              while  to_idx >= (rng.StartIdx + rng.Rule.BlockOffset) do  begin
-               if  rngtoken = TagStr[to_idx]  then  break;
+               if TagSameAs(to_idx, rngtoken) then  break;
                dec( to_idx );
              end;
            rngdir := 0;  // allow for missing <offset>
