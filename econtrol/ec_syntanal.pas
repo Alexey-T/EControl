@@ -527,8 +527,8 @@ type
     property Tags[Index: integer]: TecSyntToken read GetTags write SetTags; default;
     property TagStr[Index: integer]: ecString read GetTokenStr;
     function TagIndent(Index: integer): integer; inline;
-    function TagsSame(Index1, Index2: integer): boolean;
-    function TagSameAs(Index: integer; const Str: ecString): boolean;
+    function TagsSame(Index1, Index2: integer): boolean; // Alexey
+    function TagSameAs(Index: integer; const Str: ecString): boolean; // Alexey
     property SubLexerRangeCount: integer read GetSubLexerRangeCount;
     property SubLexerRanges[Index: integer]: TecSubLexerRange read GetSubLexerRange;
     property ParserState: integer read FCurState write FCurState;
@@ -2036,7 +2036,7 @@ begin
     Len1) = 0;
 end;
 
-function TecParserResults.TagSameAs(Index: integer; const Str: ecString): boolean;
+function TecParserResults.TagSameAs(Index: integer; const Str: ecString): boolean; // Alexey
 var
   T: TecSyntToken;
   Len: integer;
