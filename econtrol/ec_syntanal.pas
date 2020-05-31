@@ -890,6 +890,34 @@ const
                              'Number'  + #13#10 +
                              'Preprocessor';
 
+// Alexey: this is to replace TStringList.IndexOf and don't allocate str var
+function _ListHasBuffer(List: TStrings; Buffer: PWideChar; BufLen: integer): boolean;
+var
+  iItem, iChar: integer;
+  SItem: string;
+  Ptr: PWideChar;
+  ok: boolean;
+begin
+  Result:= false;
+  for iItem:= 0 to List.Count-1 do
+  begin
+    SItem:= List[iItem];
+    if Length(SItem)<>BufLen then Continue;
+    ok:= true;
+    Ptr:= Buffer;
+    for iChar:= 1 to Length(SItem) do
+    begin
+      if Ord(SItem[iChar])<>Ord(Ptr^) then
+      begin
+        ok:= false;
+        Break;
+      end;
+      Inc(Ptr);
+    end;
+    if ok then exit(true);
+  end;
+end;
+
 function _IndentOfBuffer(S: PWideChar; Len: integer): Integer; // Alexey
 var
   i: Integer;
@@ -1030,8 +1058,10 @@ begin
 end;
 
 function TecSingleTagCondition.CheckToken(const Source: ecString; const Token: TecSyntToken): Boolean;
-var s: ecString;
+var SToken: ecString;
     i, N: integer;
+    BufPtr: PWideChar;
+    BufLen: integer;
 begin
   Result := False;
   if FTokenTypes <> 0 then
@@ -1050,22 +1080,21 @@ begin
    end;
   if FTagList.Count > 0 then
    begin
-    s := Token.GetStr(Source);
-    s := Trim(s); // Alexey
     if FCondType in [tcMask, tcStrictMask] then
      begin
+       SToken := Trim(Token.GetStr(Source)); // Alexey
        try
          for i := 0 to FTagList.Count - 1 do
           begin
             FRegex.Expression := FTagList[i];
             if FCondType = tcMask then
-              Result := FRegex.MatchLength(s, 1) > 0
+              Result := FRegex.MatchLength(SToken, 1) > 0
             else
               begin
                 N := 1;
-                Result := FRegex.Match(s, N);
+                Result := FRegex.Match(SToken, N);
                 if Result then
-                  Result := N > Length(S);
+                  Result := N > Length(SToken);
               end;
 
             if Result then break;
@@ -1075,8 +1104,18 @@ begin
        FRegex.Compile(''); //clear
      end else
      begin
-       Result := FTagList.IndexOf(s) <> -1;
-       if FCondType = tcNotEqual then Result := not Result;
+       // Alexey: avoided FTagList.IndexOf
+       BufPtr := @Source[Token.Range.StartPos+1];
+       BufLen := Token.Range.EndPos - Token.Range.StartPos;
+       // left trim for Python lexer
+       while IsSpaceChar(BufPtr^) do
+       begin
+         Inc(BufPtr);
+         Dec(BufLen);
+       end;
+       Result := _ListHasBuffer(FTagList, BufPtr, BufLen);
+       if FCondType = tcNotEqual then
+         Result := not Result;
      end;
    end else Result := FCondType <> tcNotEqual;
 end;
