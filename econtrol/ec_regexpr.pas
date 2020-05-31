@@ -52,7 +52,7 @@ type
     procedure SetExpression(const Value: ecString);
     procedure ClearRoot;
     function IsEmpty: Boolean;
-    procedure ParseModifiers(const S: ecString; var Modifiers: Word);
+    procedure ParseModifiers(const S: PWideChar; Len: integer; var Modifiers: Word); // Alexey
   public
     constructor Create;
     destructor Destroy; override;
@@ -1467,7 +1467,7 @@ begin
                         Inc(aPos);
                       until (aPos > Len) or (Expression[aPos] = ')');
                       if Expression[tp] <> '#' then
-                        Root.Owner.ParseModifiers(Copy(Expression, tp, aPos - tp), Modifiers)
+                        Root.Owner.ParseModifiers(@Expression[tp], aPos - tp, Modifiers)
                     end;
                 end;
               end else
@@ -2137,7 +2137,7 @@ end;
 procedure TecRegExpr.SetModifierStr(const Value: ecString);
 begin
   if (Length(Value) >= 3) and (Value[1] = '(') and (Value[2] = '?') then
-    ParseModifiers(Copy(Value, 3, Length(Value) - 3), FModifiers);
+    ParseModifiers(@Value[3], Length(Value) - 3, FModifiers);
 end;
 
 function TecRegExpr.GetMatchLen(Idx: integer): integer;
@@ -2240,7 +2240,7 @@ begin
     end;
 end;
 
-procedure TecRegExpr.ParseModifiers(const S: ecString; var Modifiers: Word);
+procedure TecRegExpr.ParseModifiers(const S: PWideChar; Len: integer; var Modifiers: Word); // Alexey
 var IsOn : boolean;
     i: integer;
   procedure SetModif(m: integer); inline;
@@ -2251,7 +2251,7 @@ var IsOn : boolean;
   end;
 begin
   IsOn := true;
-  for i := 1 to Length(S) do
+  for i := 0 to Len-1 do
     case S[i] of
       '-': IsOn := false;
       'i','I': SetModif(MaskModI);
