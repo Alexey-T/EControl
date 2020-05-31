@@ -2116,7 +2116,7 @@ end;
 
 procedure TecRegExpr.SetExpression(const Value: ecString);
 begin
-  FExpression:= _MultilineToString(Value); //AT fix
+  FExpression:= _MultilineToString(Value); // Alexey: fix to handle #-comments in regex
   ClearRoot;
 end;
 
