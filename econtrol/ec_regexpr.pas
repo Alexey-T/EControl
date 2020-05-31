@@ -196,7 +196,7 @@ type
     FIgnoreCase: Boolean;
     //function GetExprStr(const InputString: AnsiString): AnsiString; overload;
     function GetExprStr(const InputString: UCString): UCString; overload;
-    procedure GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer);
+    procedure GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer); // Alexey
   public
     function Match(const InputString: UCString; var aPos: integer): integer; override;
     function BackMatch(const InputString: UCString; var aPos: integer): integer; override;
@@ -731,7 +731,7 @@ begin
       end;
 end;
 
-procedure TRefNode.GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer);
+procedure TRefNode.GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer); // Alexey
 var se: TreSubExpr;
 begin
   Ptr := nil;
@@ -746,20 +746,21 @@ begin
       end;
 end;
 
-function TRefNode.BackMatch(const InputString: UCString;
-  var aPos: integer): integer;
-var S, S1: UCString;
-    L: integer;
-    b: Boolean;
+function TRefNode.BackMatch(const InputString: UCString; var aPos: integer): integer; // Alexey
+var
+  P1, P2: PWideChar;
+  L: integer;
+  b: Boolean;
 begin
   Result := 0;
-  S := GetExprStr(InputString);
-  L := Length(S);
-  if (L > 0) and (L < aPos) then
+  GetExprPtr(InputString, P1, L);
+  if (P1 <> nil) and (L < aPos) then
     begin
-      S1 := Copy(InputString, aPos - L, L);
-      if FIgnoreCase then b := SameText(S, S1)
-        else b := S = S1;
+      P2 := @InputString[aPos - L];
+      if FIgnoreCase then
+        b := strlicomp(P1, P2, L) = 0
+      else
+        b := strlcomp(P1, P2, L) = 0;
       if b then
         begin
           Dec(aPos, L);
@@ -768,20 +769,21 @@ begin
     end;
 end;
 
-function TRefNode.Match(const InputString: UCString;
-  var aPos: integer): integer;
-var S, S1: UCString;
-    l: integer;
-    b: Boolean;
+function TRefNode.Match(const InputString: UCString; var aPos: integer): integer; // Alexey
+var
+  P1, P2: PWideChar;
+  L: integer;
+  b: Boolean;
 begin
   Result := 0;
-  S := GetExprStr(InputString);
-  L := Length(S);
-  if (L > 0) and (L <= Length(InputString) - aPos + 1) then
+  GetExprPtr(InputString, P1, L);
+  if (P1 <> nil) and (L <= Length(InputString) - aPos + 1) then
     begin
-      S1 := Copy(InputString, aPos, l);
-      if FIgnoreCase then b := SameText(S, S1)
-       else b := S = S1;
+      P2 := @InputString[aPos];
+      if FIgnoreCase then
+        b := strlicomp(P1, P2, L) = 0
+      else
+        b := strlcomp(P1, P2, L) = 0;
       if b then
         begin
           Inc(aPos, L);
