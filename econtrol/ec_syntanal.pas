@@ -18,6 +18,7 @@ interface
 
 uses
   Classes, Graphics, Controls, ExtCtrls,
+  Contnrs,
   ec_RegExpr,
   ec_StrUtils,
   ec_Lists,
@@ -162,18 +163,21 @@ type
 
   TecTagConditionType = (tcEqual, tcNotEqual, tcMask, tcSkip, tcStrictMask);
 
+  { TecSingleTagCondition }
+
   TecSingleTagCondition = class(TCollectionItem)
   private
     FTagList: TStrings;
     FCondType: TecTagConditionType;
     FTokenTypes: DWORD;
-    FRegex: TecRegExpr;
+    FRegexes: TFPObjectList;
     procedure SetTagList(const Value: TStrings);
     procedure SetIgnoreCase(const Value: Boolean);
     procedure SetTokenTypes(const Value: DWORD);
     procedure SetCondType(const Value: TecTagConditionType);
     procedure TagListChanged(Sender: TObject);
     function GetIgnoreCase: Boolean;
+    procedure UpdateRegexes;
   protected
     procedure AssignTo(Dest: TPersistent); override;
   public
@@ -1062,6 +1066,7 @@ var SToken: ecString;
     i, N: integer;
     BufPtr: PWideChar;
     BufLen: integer;
+    ReObj: TecRegExpr;
 begin
   Result := False;
   if FTokenTypes <> 0 then
@@ -1082,17 +1087,19 @@ begin
    begin
     if FCondType in [tcMask, tcStrictMask] then
      begin
+       UpdateRegexes;
        SToken := Trim(Token.GetStr(Source)); // Alexey
+
        try
          for i := 0 to FTagList.Count - 1 do
           begin
-            FRegex.Expression := FTagList[i];
+            ReObj := TecRegExpr(FRegexes[i]);
             if FCondType = tcMask then
-              Result := FRegex.MatchLength(SToken, 1) > 0
+              Result := ReObj.MatchLength(SToken, 1) > 0
             else
               begin
                 N := 1;
-                Result := FRegex.Match(SToken, N);
+                Result := ReObj.Match(SToken, N);
                 if Result then
                   Result := N > Length(SToken);
               end;
@@ -1101,7 +1108,6 @@ begin
           end;
        except
        end;
-       FRegex.Compile(''); //clear
      end else
      begin
        // Alexey: avoided FTagList.IndexOf
@@ -1131,13 +1137,12 @@ begin
   TStringList(FTagList).CaseSensitive := True;
   TStringList(FTagList).OnChange := TagListChanged;
   TStringList(FTagList).QuoteChar := ' ';
-  FRegex := TecRegExpr.Create;
-  SetDefaultModifiers(FRegex);
 end;
 
 destructor TecSingleTagCondition.Destroy;
 begin
-  FreeAndNil(FRegex);
+  if Assigned(FRegexes) then
+    FreeAndNil(FRegexes);
   FreeAndNil(FTagList);
   inherited;
 end;
@@ -1150,6 +1155,26 @@ end;
 function TecSingleTagCondition.GetIgnoreCase: Boolean;
 begin
   Result := not TStringList(FTagList).CaseSensitive;
+end;
+
+procedure TecSingleTagCondition.UpdateRegexes;
+var
+  ReObj: TecRegExpr;
+  i: integer;
+begin
+  if FRegexes = nil then
+    FRegexes := TFPObjectList.Create(True);
+  if FRegexes.Count < FTagList.Count then
+  begin
+    FRegexes.Clear;
+    for i:= 0 to FTagList.Count - 1 do
+    begin
+      ReObj := TecRegExpr.Create;
+      ReObj.Expression := FTagList[i];
+      SetDefaultModifiers(ReObj);
+      FRegexes.Add(ReObj);
+    end;
+  end;
 end;
 
 procedure TecSingleTagCondition.SetTagList(const Value: TStrings);
