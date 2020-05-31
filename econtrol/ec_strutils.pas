@@ -52,7 +52,8 @@ uses
 //==============================================================================
 //  Routines
 //==============================================================================
-function IsSpaceChar(c: UCChar): Boolean; inline;
+function IsSpaceChar(c: UCChar): Boolean; inline; // Alexey
+// change since original EControl: it don't catch line-breaks
 begin
   case c of
     #9,
@@ -63,7 +64,8 @@ begin
   end;
 end;
 
-function IsSpaceOrEolChar(c: UCChar): Boolean; inline;
+function IsSpaceOrEolChar(c: UCChar): Boolean; inline; // Alexey
+// it catches line-breaks
 begin
   case c of
     #9,
@@ -188,7 +190,7 @@ var N: integer;
 begin
   Result := 0;
   N := Length(Source);
-  while (APos <= N) and IsSpaceChar(Source[APos]) and not IsLineBreakChar(Source[APos]) do
+  while (APos <= N) and IsSpaceChar(Source[APos]) {and not IsLineBreakChar(Source[APos])} do // Alexey
     inc(APos);
   if APos > N then Result := -1;
 end;
@@ -198,7 +200,7 @@ var N: integer;
 begin
   Result := 0;
   N := Length(Source);
-  while (APos <= N) and IsSpaceChar(Source[APos]) do
+  while (APos <= N) and IsSpaceOrEolChar(Source[APos]) do // Alexey
    begin
     if Source[APos] = #10 then inc(Result);
     inc(APos);

@@ -2254,7 +2254,7 @@ begin
   if CurToken.Range.StartPos < 0 then  // no token
    begin
      NNextPos := FPos;
-     SkipSpaces(Source, NNextPos); // Alexey: needed for huge space-only lines, where Inc(FPos) is very slow
+     SkipSpacesNoLineBreak(Source, NNextPos); // Alexey: needed for huge space-only lines, where Inc(FPos) is very slow
      if NNextPos > FPos then
        FPos := NNextPos
      else
