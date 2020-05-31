@@ -35,7 +35,6 @@ type
     FProgRoot: TObject;
     FModifiers: Word;
     FMatchOK: Boolean;
-    FCodePage: Cardinal;
     FExpression: ecString;
     FUnicodeCompiled: Boolean;
     FModifiersStatic: Word;
@@ -48,7 +47,6 @@ type
     function GetMatchLen(Idx: integer): integer;
     function GetMatchPos(Idx: integer): integer;
     function GetSubExprMatchCount: integer;
-    procedure SetCodePage(const Value: Cardinal);
     procedure SetExpression(const Value: ecString);
     procedure ClearRoot;
     function IsEmpty: Boolean;
@@ -1742,15 +1740,6 @@ procedure TecRegExpr.Assign(Source: TecRegExpr);
 begin
   Self.Expression := Source.Expression;
   Self.ModifierMask := Source.ModifierMask;
-end;
-
-procedure TecRegExpr.SetCodePage(const Value: Cardinal);
-begin
-  if FCodePage <> Value then
-    begin
-      FCodePage := Value;
-      ClearRoot;
-    end;
 end;
 
 procedure TecRegExpr.ParseModifiers(const S: PWideChar; Len: integer; var Modifiers: Word); // Alexey
