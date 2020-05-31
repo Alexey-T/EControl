@@ -187,12 +187,16 @@ type
   end;
 
   // Reference to sub expression
+
+  { TRefNode }
+
   TRefNode = class(TRENodeBase)
   private
     FRef: integer;
     FIgnoreCase: Boolean;
     //function GetExprStr(const InputString: AnsiString): AnsiString; overload;
     function GetExprStr(const InputString: UCString): UCString; overload;
+    procedure GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer);
   public
     function Match(const InputString: UCString; var aPos: integer): integer; override;
     function BackMatch(const InputString: UCString; var aPos: integer): integer; override;
@@ -724,6 +728,21 @@ begin
         l := abs(se.FEnd - se.FStart);
         if (se.FStart > 0) and (se.FEnd > 0) then
           Result := Copy(InputString, Min(se.FStart, se.FEnd), l);
+      end;
+end;
+
+procedure TRefNode.GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer);
+var se: TreSubExpr;
+begin
+  Ptr := nil;
+  Len := 0;
+  with Root do
+    if FSubExpr.Count > FRef then
+      begin
+        se := TreSubExpr(FSubExpr[FRef]);
+        Len := abs(se.FEnd - se.FStart);
+        if (se.FStart > 0) and (se.FEnd > 0) then
+          Ptr := @InputString[Min(se.FStart, se.FEnd)];
       end;
 end;
 
