@@ -918,9 +918,9 @@ begin
   end;
 end;
 
-function _IndentOfBuffer(S: PWideChar; Len: integer): Integer; // Alexey
+function _IndentOfBuffer(S: PWideChar; Len: integer): Integer; inline; // Alexey
 var
-  i: Integer;
+  i: integer;
 begin
   Result:= 0;
   for i:= 0 to Len-1 do
@@ -2050,9 +2050,14 @@ begin
 end;
 
 function TecParserResults.TagIndent(Index: integer): integer;
+var
+  Token: TecSyntToken;
 begin
-  with Tags[Index] do
-    Result := _IndentOfBuffer(@FBuffer.FText[Range.StartPos + 1], Range.EndPos - Range.StartPos);
+  Token := Tags[Index];
+  Result := _IndentOfBuffer(
+    @FBuffer.FText[Token.Range.StartPos + 1],
+    Token.Range.EndPos - Token.Range.StartPos
+    );
 end;
 
 function TecParserResults.TagsSame(Index1, Index2: integer): boolean; // Alexey
