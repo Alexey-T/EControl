@@ -29,9 +29,8 @@ function IsHexDigitChar(C: UCChar): Boolean;
 function IsLineBreakChar(c: UCChar): Boolean;
 function IsWordChar(c: UCChar): Boolean;
 function IsSpaceChar(c: UCChar): Boolean; inline;
-function IsSpaceOrEolChar(c: UCChar): Boolean; inline;
+function IsSpaceOrBreakChar(c: UCChar): Boolean; inline;
 function IsAlphaChar(c: UCChar): Boolean; inline;
-
 function IsIdentChar(C: UCChar): Boolean; inline;
 function IsIdentDigitChar(C: UCChar): Boolean; inline;
 function IsIdentLetterChar(C: UCChar): Boolean; inline;
@@ -64,7 +63,7 @@ begin
   end;
 end;
 
-function IsSpaceOrEolChar(c: UCChar): Boolean; inline; // Alexey
+function IsSpaceOrBreakChar(c: UCChar): Boolean; inline; // Alexey
 // it catches line-breaks
 begin
   case c of
@@ -200,7 +199,7 @@ var N: integer;
 begin
   Result := 0;
   N := Length(Source);
-  while (APos <= N) and IsSpaceOrEolChar(Source[APos]) do // Alexey
+  while (APos <= N) and IsSpaceOrBreakChar(Source[APos]) do // Alexey
    begin
     if Source[APos] = #10 then inc(Result);
     inc(APos);

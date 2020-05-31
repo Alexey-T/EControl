@@ -334,8 +334,8 @@ begin
     'd': Result := IsDigitChar(C);
     'D': Result := not IsDigitChar(C);
     // space
-    's': Result := IsSpaceOrEolChar(C);
-    'S': Result := not IsSpaceOrEolChar(C);
+    's': Result := IsSpaceOrBreakChar(C);
+    'S': Result := not IsSpaceOrBreakChar(C);
     // hex, rarely used
     'h': Result := IsHexDigitChar(C);
     'H': Result := not IsHexDigitChar(C);
