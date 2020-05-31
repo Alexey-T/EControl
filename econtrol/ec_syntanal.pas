@@ -2239,7 +2239,7 @@ begin
   if own.SkipSpaces then
     begin
      if own.ParseEndOfLine then N := SkipSpacesNoLineBreak(Source, FPos)
-      else N := SkipSpaces(Source, FPos);
+      else N := SkipSpacesAndBreaks(Source, FPos);
     end
    else if FPos > Length(Source) then N := -1 else N := 0;
   TryOpenSubLexer;

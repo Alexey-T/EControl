@@ -38,7 +38,7 @@ function IsIdentLetterChar(C: UCChar): Boolean; inline;
 function IsWordBreak(aPos: integer; const Text: UCString): Boolean; overload;
 
 function ecUpCase(C: UCChar): UCChar; inline;
-function SkipSpaces(const Source: ecString; var APos: integer): integer;
+function SkipSpacesAndBreaks(const Source: ecString; var APos: integer): integer;
 function SkipSpacesNoLineBreak(const Source: ecString; var APos: integer): integer;
 function ecEncodeString(const S: string): string;
 function ecDecodeString(const S: string): string;
@@ -195,7 +195,7 @@ begin
   if APos > N then Result := -1;
 end;
 
-function SkipSpaces(const Source: ecString; var APos: integer): integer;
+function SkipSpacesAndBreaks(const Source: ecString; var APos: integer): integer;
 var N: integer;
 begin
   Result := 0;
