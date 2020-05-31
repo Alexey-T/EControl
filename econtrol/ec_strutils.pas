@@ -6,7 +6,8 @@
 {     www.econtrol.ru                                                         }
 {     support@econtrol.ru                                                     }
 {                                                                             }
-{ Much code stripped from Lazarus port, by Alexey Torgashin                   }
+{ Changes in Lazarus port: by Alexey Torgashin (CudaText)                     }
+{                                                                             }
 { *************************************************************************** }
 
 {$mode delphi}

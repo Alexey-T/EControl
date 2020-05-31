@@ -6,6 +6,8 @@
 {     www.econtrol.ru                                                         }
 {     support@econtrol.ru                                                     }
 {                                                                             }
+{ Changes in Lazarus port: by Alexey Torgashin (CudaText)                     }
+{                                                                             }
 { *************************************************************************** }
 
 {$mode delphi}
