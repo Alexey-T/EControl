@@ -286,34 +286,6 @@ begin
     Result := GetAbsoluteNext(Node.Owner);
 end;
 
-(*
-function IsInRange(RngType: UCChar; C: AnsiChar): Boolean; overload;
-begin
-  Result := False;
-  if not Assigned(CheckCustomCharClassProc) or
-     not CheckCustomCharClassProc(RngType, Ord(C), Result)
-  then
-  case RngType of
-    'w': Result := IsWordChar(C);
-    'W': Result := not IsWordChar(C);
-    'd': Result := IsDigitChar(C);
-    'D': Result := not IsDigitChar(C);
-    's': Result := IsSpaceChar(C);
-    'S': Result := not IsSpaceChar(C);
-    'h': Result := IsHexDigitChar(C);
-    'H': Result := not IsHexDigitChar(C);
-    'l': Result := IsAlphaChar(C);
-    'L': Result := not IsAlphaChar(C);
-    'c': Result := IsIdentChar(C);
-    'C': Result := not IsIdentChar(C);
-    'g': Result := IsIdentLetterChar(C);
-    'G': Result := not IsIdentLetterChar(C);
-    'k': Result := IsIdentDigitChar(C);
-    'K': Result := not IsIdentDigitChar(C);
-  end;
-end;
-*)
-
 function IsInRange(RngType: UCChar; C: UCChar): Boolean; overload;
 begin
   Result := False;
@@ -349,41 +321,6 @@ begin
     }
   end;
 end;
-
-(*
-function GetEscape(const Expression: AnsiString; var aPos: integer): UCChar; overload;
-var strt: integer;
-begin
-  Result := #0;
-  case Expression[aPos] of
-    't': Result := #$9;
-    'n': Result := #$A;
-    'r': Result := #$D;
-    'f': Result := #$C;
-    'a': Result := #$7;
-    'e': Result := #$1B;
-    'x': begin
-          inc(aPos);
-          if aPos > Length(Expression) then
-             raise Exception.Create('Invalid escape char');
-          if Expression[aPos] = '{' then
-           begin
-             inc(aPos);
-             strt := aPos;
-             while (aPos < Length(Expression)) and (Expression[aPos] <> '}') do
-               inc(aPos);
-             Result := UCChar(StrToInt('$' + Trim(string(Copy(Expression, strt, aPos - strt)))))
-           end else
-            begin
-             Result := UCChar(StrToInt('$' + string(Copy(Expression, aPos, 2))));
-             Inc(aPos);
-            end;
-          if Result = '' then
-            raise Exception.Create('Invalid HEX char');
-         end;
-  end;
-end;
-*)
 
 function GetEscape(const Expression: UCString; var aPos: integer): UCChar; overload;
 var strt: integer;
@@ -442,50 +379,6 @@ begin
 end;
 
 { TCharSetNode }
-
-(*
-function TCharSetNode.HasChar(C: AnsiChar): Boolean;
-var i, N, k: integer;
-begin
-  N := Length(FCharRanges);
-  if N > 0 then
-   for i := 1 to N shr 1 do
-    begin
-     k := i shl 1;
-     if (Ord(FCharRanges[k]) >= Ord(C)) and
-        (Ord(FCharRanges[k - 1]) <= Ord(C)) then
-      begin
-        Result := True;
-        Exit;
-      end;
-    end;
-  for i := 1 to Length(FCharSets) do
-   if IsInRange(FCharSets[i], C) then
-    begin
-     Result := True;
-     Exit;
-    end;
-  Result := Pos(UCChar(C), FCharArray) <> 0;
-end;
-
-procedure TCharSetNode.AddChar(C: AnsiChar);
-begin
-  if FIgnoreCase then
-    C := ecUpCase(C);
-  if not HasChar(C) then
-    FCharArray := FCharArray + C;
-end;
-
-procedure TCharSetNode.AddRange(st, en: AnsiChar);
-begin
-  if FIgnoreCase then
-    begin
-      st := ecUpCase(st);
-      en := ecUpCase(en);
-    end;
-  FCharRanges := FCharRanges + UCChar(st) + UCChar(en);
-end;
-*)
 
 function TCharSetNode.HasChar(C: UCChar): Boolean;
 var i, N, k: integer;
@@ -700,42 +593,6 @@ begin
 end;
 
 { TRefNode }
-
-(*
-// Alexey: removed
-function TRefNode.GetExprStr(const InputString: AnsiString): AnsiString;
-var se: TreSubExpr;
-    l: integer;
-begin
-  Result := '';
-  with Root do
-    if FSubExpr.Count > FRef then
-      begin
-        se := TreSubExpr(FSubExpr[FRef]);
-        l := abs(se.FEnd - se.FStart);
-        if (se.FStart > 0) and (se.FEnd > 0) then
-          Result := Copy(InputString, Min(se.FStart, se.FEnd), l);
-      end;
-end;
-*)
-
-(*
-// Alexey: removed
-function TRefNode.GetExprStr(const InputString: UCString): UCString;
-var se: TreSubExpr;
-    l: integer;
-begin
-  Result := '';
-  with Root do
-    if FSubExpr.Count > FRef then
-      begin
-        se := TreSubExpr(FSubExpr[FRef]);
-        l := abs(se.FEnd - se.FStart);
-        if (se.FStart > 0) and (se.FEnd > 0) then
-          Result := Copy(InputString, Min(se.FStart, se.FEnd), l);
-      end;
-end;
-*)
 
 procedure TRefNode.GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer); // Alexey
 var se: TreSubExpr;
@@ -955,280 +812,6 @@ end;
 // All characters are ANSI characters.
 // UCChar is used only for holding char codes less 255
 // This is made to have unified storage of regular expr. nodes
-(*
-procedure TreBranchNode.Compile(const Expression: AnsiString; var aPos: integer;
-  Modifiers: Word);
-var Len: integer;
-    sub: TreSubExpr;
-    C: UCChar;
-
-    function SafeInc(RaiseEx: Boolean = False): AnsiChar; // Increment position to the next significant char
-    begin
-      inc(aPos);
-      // Skip spaces and comments
-      if (Modifiers and MaskModX) <> 0 then
-        while (aPos <= Len) and (IsSpaceChar(Expression[aPos]) or (Expression[aPos] = '#')) do
-         begin
-          if Expression[aPos] = '#' then
-           begin
-            Inc(aPos);
-            while (aPos <= Len) and not IsLineBreakChar(Expression[aPos]) do
-              Inc(aPos);
-           end;
-          Inc(aPos);
-         end;
-
-      if aPos <= Len then Result := Expression[aPos] else
-       begin
-         Result := #0;
-         if RaiseEx then
-           raise Exception.Create(zreUnexpectedEnd);
-       end;
-    end;
-
-    function ReadNumber: integer;
-    var strt: integer;
-    begin
-      strt := aPos;
-      while (aPos <= Len) and IsDigitChar(Expression[aPos]) do
-       Inc(aPos);
-      if strt = aPos then
-       raise Exception.Create('Number is expected');
-      Result := StrToInt(Copy(Expression, strt, aPos - strt));
-      Dec(aPos);
-    end;
-
-    // Read repeaters for node
-    procedure ReadRepeaters(Node: TRENodeBase);
-    begin
-      if aPos > Len then Exit;// repeaters are optional
-      case SafeInc of
-        '+': Node.FLoopMax := -1;
-        '?': Node.FLoopMin := 0;
-        '*': begin
-               Node.FLoopMax := -1;
-               Node.FLoopMin := 0;
-             end;
-        '{': begin
-              SafeInc;
-              Node.FLoopMin := ReadNumber;
-              case SafeInc of
-                ',': if SafeInc <> '}' then
-                       begin
-                        Node.FLoopMax := ReadNumber;
-                        if SafeInc <> '}' then
-                          raise Exception.Create('There is no closing "}"');
-                       end
-                     else
-                       Node.FLoopMax := -1;
-                '}': Node.FLoopMax := Node.FLoopMin;
-                else raise Exception.Create('Invalid loop specifier');
-              end;
-              if (Node.FLoopMax >= 0) and (Node.FLoopMax < Node.FLoopMin) then
-                raise Exception.Create('Loop minimum must be less then loop maximum');
-             end;
-        else begin
-              Dec(aPos);
-              Exit;
-             end
-      end;
-      if SafeInc = '?' then Node.FNonGreedy := True else
-       begin
-        Node.FNonGreedy := (Modifiers and MaskModG) = 0;
-        Dec(aPos);
-       end;
-    end;
-
-    procedure AddCharSeq(const C: UCChar);
-    var csNode: TCharSeqNode;
-    begin
-      csNode := TCharSeqNode.Create(Owner);
-      csNode.FIgnoreCase := (Modifiers and MaskModI) <> 0;
-      if csNode.FIgnoreCase then csNode.FChar := UCChar(ecUpCase(AnsiChar(C)))
-                            else csNode.FChar := C;
-      Add(csNode);
-      ReadRepeaters(csNode);
-    end;
-
-    procedure AddSpecNode(const C: UCChar; WithRepeat: Boolean = True);
-    var sn: TSpecCheckNode;
-    begin
-      sn := TSpecCheckNode.Create(Owner);
-      sn.FCheckType := C;
-      Add(sn);
-      if WithRepeat then ReadRepeaters(sn);
-    end;
-
-    function PickSetChar(cs: TCharSetNode): UCChar;
-    begin
-      Result := UCChar(Expression[aPos]);
-      if Result = '\' then
-       begin
-         Inc(aPos);
-         if aPos > Length(Expression) then
-          Exit;
-         Result := GetEscape(Expression, aPos);
-         if Result = #0 then
-          begin
-            Result := GetClassChar(UCChar(Expression[aPos]), Modifiers);
-            if Result = #0 then Result := UCChar(Expression[aPos])
-              else
-                begin
-                  cs.AddSet(Result);
-                  Result := #0;
-                end;
-          end;
-       end;
-    end;
-
-    procedure ReadCharSet;
-    var cs: TCharSetNode;
-        Cstrt, Cend: UCChar;
-    begin
-      cs := TCharSetNode.Create(Owner);
-      cs.FIgnoreCase := (Modifiers and MaskModI) <> 0;
-      Add(cs);
-      Cstrt := #0;
-      if SafeInc(True) = '^' then cs.FInvert := True
-        else Cstrt := PickSetChar(cs);
-      while SafeInc(True) <> ']' do
-       begin
-         if (Expression[aPos] = '-') and (Cstrt <> #0) then // Add Range
-          if SafeInc = ']' then
-           begin
-            cs.AddChar(Cstrt);
-            Cstrt := '-';
-            Break;
-           end else
-           begin
-            Cend := PickSetChar(cs);
-            if Cend = #0 then
-             begin
-              cs.AddChar(Cstrt);
-              Cstrt := '-';
-             end else
-             if Ord(Cend) < Ord(Cstrt) then
-              raise Exception.Create('Invalid set range') else
-              begin
-               // Extended russian support
-               cs.AddRange(Cstrt, Cend);
-               Cstrt := #0;
-               if SafeInc(True) = ']' then Break;
-              end;
-           end;
-         if Cstrt <> #0 then cs.AddChar(Cstrt);
-         Cstrt := PickSetChar(cs);
-       end;
-      if Cstrt <> #0 then cs.AddChar(Cstrt);
-      ReadRepeaters(cs);
-    end;
-
-    procedure AddRefNode(RefIdx: integer);
-    var rn: TRefNode;
-    begin
-      if TreRootNode(Root).FSubExpr.Count <= RefIdx then
-        raise Exception.Create('Invalid reference');
-      rn := TRefNode.Create(Owner);
-      rn.FRef := RefIdx;
-      rn.FIgnoreCase := (Modifiers and MaskModI) <> 0;
-      Add(rn);
-      ReadRepeaters(rn);
-    end;
-
-    procedure AddZeroWidth(IsBack: Boolean);
-    var Negative: Boolean;
-        Branch: TreBranchNode;
-        Node: TZeroWidth;
-    begin
-      case Expression[aPos] of
-        '!': Negative := True;
-        '=': Negative := False;
-        else
-          raise Exception.Create(zreInvalidZeroWidth);
-      end;
-      SafeInc(True);
-      Branch := TreBranchNode.Create(nil);
-      try
-        Branch.Compile(Expression, aPos, Modifiers);
-        Node := TZeroWidth.Create(Owner);
-        Node.FIsBack := IsBack;
-        Node.FNegative := Negative;
-        Node.FBranch := Branch;
-        Add(Node);
-        if IsBack then
-          Branch.Invert;
-      except
-        Branch.Free;
-      end;
-    end;
-
-var tp: integer;
-begin
-  Clear;
-  Len := Length(Expression);
-  Dec(aPos);
-  while aPos <= Len do
-   begin
-     case SafeInc of
-       ')', '|', #0: Exit; // end of branch
-       '(': begin
-             if SafeInc = '?' then
-              begin // Change modifiers
-                case SafeInc(True) of
-                  '<': begin
-                         SafeInc(True);
-                         AddZeroWidth(True);
-                       end;
-                  '=', '!': AddZeroWidth(False);
-                  else
-                    begin
-                      tp := aPos;
-                      repeat // skip comment
-                        Inc(aPos);
-                      until (aPos > Len) or (Expression[aPos] = ')');
-                      if Expression[tp] <> '#' then
-                        Root.Owner.ParseModifiers(Copy(Expression, tp, aPos - tp), Modifiers)
-                    end;
-                end;
-              end else
-              begin // sub expression
-                sub := TreSubExpr.Create(Owner);
-                Add(sub);
-                sub.Compile(Expression, aPos, Modifiers);
-                if (aPos > Len) or (Expression[aPos] <> ')') then
-                 raise Exception.Create('Do not closed sub expression');
-                ReadRepeaters(sub);
-              end;
-            end;
-       '[': begin    // char set node
-              ReadCharSet;
-            end;
-       '^': if (Modifiers and MaskModM) = 0 then AddSpecNode('A', False)  // begin of text
-                                            else AddSpecNode('^', False); // begin of line
-       '$': if (Modifiers and MaskModM) = 0 then AddSpecNode('Z', False)  // end of text
-                                            else AddSpecNode('$', False); // end of line
-       '.': if (Modifiers and MaskModS) <> 0  then AddSpecNode('.')  // all
-                                             else AddSpecNode(':'); // all without line separators
-       '\': begin
-              Inc(aPos);
-              if aPos > Len then C := '\'
-               else C := GetEscape(Expression, aPos);
-              if C <> #0 then AddCharSeq(C) else
-               begin
-                 C := GetClassChar(UCChar(Expression[aPos]), Modifiers);
-                 if C <> #0 then AddSpecNode(C) else
-                 case Expression[aPos] of
-                   'A', 'Z', 'b', 'B', 'z': AddSpecNode(UCChar(Expression[aPos]));
-                   '1'..'9': AddRefNode(Ord(Expression[aPos])-Ord('0'));
-                   else      AddCharSeq(UCChar(Expression[aPos]));
-                 end;
-               end;
-            end;
-       else AddCharSeq(UCChar(Expression[aPos])); // Simple char
-     end;
-   end;
-end;
-*)
 
 procedure TreBranchNode.Compile(const Expression: UCString; var aPos: integer;
   Modifiers: Word);
@@ -1759,22 +1342,6 @@ end;
 
 { TreSubExpr }
 
-(*
-procedure TreSubExpr.Compile(const Expression: AnsiString; var aPos: integer;
-  Modifiers: Word);
-var Br: TreBranchNode;
-begin
-  Dec(aPos);
-  repeat
-    Inc(aPos);
-    Br := TreBranchNode.Create(Self);
-    FList.Add(Br);
-    Br.Compile(Expression, aPos, Modifiers);
-    if Br.FList.Count = 0 then FList.Remove(Br);
-  until (aPos > Length(Expression)) or (Expression[aPos] = ')');
-end;
-*)
-
 procedure TreSubExpr.Compile(const Expression: UCString; var aPos: integer;
   Modifiers: Word);
 var Br: TreBranchNode;
@@ -1943,29 +1510,6 @@ begin
   Result := not Assigned(FProgRoot) or (TreRootNode(FProgRoot).FList.Count = 0);
 end;
 
-(*
-procedure TecRegExpr.Compile(const AExpression: AnsiString);
-var Pos: integer;
-begin
-  {$IFDEF RE_DEBUG} LastNodeID := 0; {$ENDIF}
-  FMatchOK := False;
-  if not Assigned(FProgRoot) then
-    FProgRoot := TreRootNode.Create(Self)
-  else
-    TreRootNode(FProgRoot).Clear;
-
-  FUnicodeCompiled := False;
-  Pos := 1;
-  try
-    if AExpression <> '' then
-      TreRootNode(FProgRoot).Compile(AExpression, Pos, FModifiers)
-  except
-    ClearRoot;
-    raise;
-  end;
-end;
-*)
-
 procedure TecRegExpr.Compile(const AExpression: UCString);
 var Pos: integer;
 begin
@@ -2041,23 +1585,6 @@ begin
       FMatchOK := Result;
     end;
 end;
-
-(*
-function TecRegExpr.MatchLength(const InputString: AnsiString;
-  aPos: integer; Back: Boolean): integer;
-begin
-  Result := aPos;
-  if Match(InputString, aPos, Back) then
-    begin
-     if Back then
-       Result := Result - aPos
-     else
-       Result := aPos - Result;
-    end
-  else
-    Result := 0;
-end;
-*)
 
 function TecRegExpr.MatchLength(const InputString: UCString;
   aPos: integer; Back: Boolean): integer;
@@ -2172,20 +1699,6 @@ begin
           if (FStart <> -1) and (FEnd <> -1) then
             Inc(Result);
 end;
-
-(*
-function TecRegExpr.GetMatch(const InputString: AnsiString;
-  SubIdx: integer): AnsiString;
-begin
-  Result := '';
-  if FMatchOK then
-    with TreRootNode(FProgRoot) do
-      if (SubIdx < FSubExpr.Count) then
-        with TreSubExpr(FSubExpr[SubIdx]) do
-          if (FStart <> -1) and (FEnd <> -1) then
-            Result := Copy(InputString, FStart, FEnd - FStart);
-end;
-*)
 
 function TecRegExpr.GetMatch(const InputString: UCString;
   SubIdx: integer): UCString;
