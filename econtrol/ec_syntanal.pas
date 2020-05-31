@@ -1172,6 +1172,7 @@ begin
       ReObj := TecRegExpr.Create;
       ReObj.Expression := FTagList[i];
       SetDefaultModifiers(ReObj);
+      ReObj.Compile;
       FRegexes.Add(ReObj);
     end;
   end;
