@@ -178,10 +178,10 @@ begin
 end;
 
 function ecUpCase(C: UCChar): UCChar; inline;
-// ignore Unicode here, do simple ASCII upcase
+// Alexey: to be fast, ignored Unicode here
 begin
   Result := C;
-  if (Ord(C) >= Ord('a')) and (Ord(C) <= Ord('z')) then
+  if (C >= 'a') and (C <= 'z') then
     Dec(Result, 32);
 end;
 
