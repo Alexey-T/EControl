@@ -963,7 +963,7 @@ var Len: integer;
     var strt: integer;
     begin
       strt := aPos;
-      while (aPos <= Len) and (Expression[aPos] >= '0') and (Expression[aPos] <= '9') do
+      while (aPos <= Len) and IsDigitChar(Expression[aPos]) do
        Inc(aPos);
       if strt = aPos then
        raise Exception.Create('Number is expected');
@@ -1210,13 +1210,19 @@ var Len: integer;
     C: UCChar;
 
     function SafeInc(RaiseEx: Boolean = False): UCChar; // Increment position to the next significant char
+    var
+      C: WideChar;
+      bComment: boolean;
     begin
       inc(aPos);
       // Skip spaces and comments
       if (Modifiers and MaskModX) <> 0 then
-        while (aPos <= Len) and (IsSpaceChar(Expression[aPos]) or (Expression[aPos] = '#')) do
+        while (aPos <= Len) do
          begin
-          if Expression[aPos] = '#' then
+           C := Expression[aPos];
+           bComment:= C = '#';
+           if not (IsSpaceChar(C) or bComment) then Break;
+           if bComment then
            begin
             Inc(aPos);
             while (aPos <= Len) and not IsLineBreakChar(Expression[aPos]) do
@@ -1237,7 +1243,7 @@ var Len: integer;
     var strt: integer;
     begin
       strt := aPos;
-      while (aPos <= Len) and (Expression[aPos] >= '0') and (Expression[aPos] <= '9') do
+      while (aPos <= Len) and IsDigitChar(Expression[aPos]) do
        Inc(aPos);
       if strt = aPos then
        raise Exception.Create('Number is expected');
