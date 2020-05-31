@@ -2030,6 +2030,8 @@ begin
   Len2 := T2.Range.EndPos - St2;
   if Len1 <> Len2 then
     Exit(false);
+  // case-insensitive, like in original EControl compare
+  // (used for HTML/XML lexer mostly)
   Result := strlicomp(
     @FBuffer.FText[St1+1],
     @FBuffer.FText[St2+1],
@@ -2047,6 +2049,7 @@ begin
   Len := T.Range.EndPos - St;
   if Len <> Length(Str) then
     Exit(false);
+  // case-sensitive
   Result := strlcomp(
     @FBuffer.FText[St+1],
     PWideChar(Str),
