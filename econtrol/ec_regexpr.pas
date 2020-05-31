@@ -36,7 +36,6 @@ type
     FModifiers: Word;
     FMatchOK: Boolean;
     FExpression: ecString;
-    FUnicodeCompiled: Boolean;
     FModifiersStatic: Word;
     procedure SetModifiers(const Value: Word);
     function GetModifier(const Index: Integer): boolean;
@@ -57,8 +56,6 @@ type
     procedure Assign(Source: TecRegExpr);
 
     function Compile: Boolean; overload;
-    function Compile(AsUnicode: Boolean): Boolean; overload;
-    //procedure Compile(const AExpression: AnsiString); overload;
     procedure Compile(const AExpression: UCString); overload;
     function Match(const InputString: UCString; var aPos: integer; Back: Boolean = False): Boolean; overload;
     //function MatchLength(const InputString: AnsiString; aPos: integer; Back: Boolean = False): integer; overload;
@@ -1526,18 +1523,13 @@ begin
     ClearRoot;
     raise;
   end;
-  FUnicodeCompiled := True;
+  //FUnicodeCompiled := True;
 end;
 
 function TecRegExpr.Compile: Boolean;
 begin
-  Result := Compile(True);
-end;
-
-function TecRegExpr.Compile(AsUnicode: Boolean): Boolean;
-begin
   try
-    if IsEmpty or (AsUnicode xor FUnicodeCompiled) then
+    if IsEmpty then
       Compile(FExpression);
   except
   end;
@@ -1546,7 +1538,7 @@ end;
 
 function TecRegExpr.GetIsInvalid: Boolean;
 begin
-  Result := not Compile(False);
+  Result := not Compile;
 end;
 
 function TecRegExpr.GetModifier(const Index: Integer): boolean;
@@ -1574,7 +1566,7 @@ end;
 
 function TecRegExpr.Match(const InputString: UCString; var aPos: integer; Back: Boolean): Boolean;
 begin
-  Result := Compile(True); // ensure compiling and validity
+  Result := Compile; // ensure compiling and validity
   if Result then
     begin
       if aPos < 1 then
