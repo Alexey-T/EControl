@@ -197,7 +197,7 @@ type
     FRef: integer;
     FIgnoreCase: Boolean;
     //function GetExprStr(const InputString: AnsiString): AnsiString; overload;
-    function GetExprStr(const InputString: UCString): UCString; overload;
+    //function GetExprStr(const InputString: UCString): UCString; overload;
     procedure GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer); // Alexey
   public
     function Match(const InputString: UCString; var aPos: integer): integer; override;
@@ -702,6 +702,7 @@ end;
 { TRefNode }
 
 (*
+// Alexey: removed
 function TRefNode.GetExprStr(const InputString: AnsiString): AnsiString;
 var se: TreSubExpr;
     l: integer;
@@ -718,6 +719,8 @@ begin
 end;
 *)
 
+(*
+// Alexey: removed
 function TRefNode.GetExprStr(const InputString: UCString): UCString;
 var se: TreSubExpr;
     l: integer;
@@ -732,6 +735,7 @@ begin
           Result := Copy(InputString, Min(se.FStart, se.FEnd), l);
       end;
 end;
+*)
 
 procedure TRefNode.GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer); // Alexey
 var se: TreSubExpr;
