@@ -190,7 +190,7 @@ var N: integer;
 begin
   Result := 0;
   N := Length(Source);
-  while (APos <= N) and IsSpaceChar(Source[APos]) {and not IsLineBreakChar(Source[APos])} do // Alexey
+  while (APos <= N) and IsSpaceChar(Source[APos]) do // Alexey
     inc(APos);
   if APos > N then Result := -1;
 end;
