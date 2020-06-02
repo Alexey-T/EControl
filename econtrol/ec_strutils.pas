@@ -46,12 +46,6 @@ function ecPosEx(const SubStr, S: ecString; Offset: Cardinal = 1): Integer;
 
 implementation
 
-uses
-  Controls, Forms;
-
-//==============================================================================
-//  Routines
-//==============================================================================
 function IsSpaceChar(c: UCChar): Boolean; inline; // Alexey
 // change since original EControl: it don't catch line-breaks
 begin
