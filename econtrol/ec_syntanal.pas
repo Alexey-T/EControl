@@ -117,7 +117,7 @@ type
     constructor Create(ARule: TRuleCollectionItem;
       AStartPos, AEndPos: integer;
       const APointStart, APointEnd: TPoint);
-    function GetStr(const Source: ecString): ecString;
+    function GetStr(const Source: ecString; ATrimLeft: boolean=False): ecString; // Alexey
     property Style: TecSyntaxFormat read GetStyle;
     class operator =(const A,B: TecSyntToken): boolean;
   end;
@@ -894,34 +894,6 @@ const
                              'Number'  + #13#10 +
                              'Preprocessor';
 
-// Alexey: this is to replace TStringList.IndexOf and don't allocate str var
-function _ListHasBuffer(List: TStrings; Buffer: PWideChar; BufLen: integer): boolean;
-var
-  iItem, iChar: integer;
-  SItem: string;
-  Ptr: PWideChar;
-  ok: boolean;
-begin
-  Result:= false;
-  for iItem:= 0 to List.Count-1 do
-  begin
-    SItem:= List[iItem];
-    if Length(SItem)<>BufLen then Continue;
-    ok:= true;
-    Ptr:= Buffer;
-    for iChar:= 1 to Length(SItem) do
-    begin
-      if Ord(SItem[iChar])<>Ord(Ptr^) then
-      begin
-        ok:= false;
-        Break;
-      end;
-      Inc(Ptr);
-    end;
-    if ok then exit(true);
-  end;
-end;
-
 function _IndentOfBuffer(S: PWideChar; Len: integer): Integer; inline; // Alexey
 var
   i: integer;
@@ -980,10 +952,20 @@ begin
     TokenType := 0;
 end;
 
-function TecSyntToken.GetStr(const Source: ecString): ecString;
+function TecSyntToken.GetStr(const Source: ecString; ATrimLeft: boolean=False): ecString;
+// Alexey: added ATrimLeft
+var
+  St, Len: integer;
 begin
-  with Range do
-    Result := Copy(Source, StartPos + 1, EndPos - StartPos);
+  St := Range.StartPos+1;
+  Len := Range.EndPos - Range.StartPos;
+  if ATrimLeft then
+    while (Len>0) and IsSpaceChar(Source[St]) do
+    begin
+      Inc(St);
+      Dec(Len);
+    end;
+  Result := Copy(Source, St, Len);
 end;
 
 class operator TecSyntToken.=(const A, B: TecSyntToken): boolean;
@@ -1064,8 +1046,6 @@ end;
 function TecSingleTagCondition.CheckToken(const Source: ecString; const Token: TecSyntToken): Boolean;
 var SToken: ecString;
     i, N: integer;
-    BufPtr: PWideChar;
-    BufLen: integer;
     ReObj: TecRegExpr;
 begin
   Result := False;
@@ -1088,7 +1068,7 @@ begin
     if FCondType in [tcMask, tcStrictMask] then
      begin
        UpdateRegexes;
-       SToken := Trim(Token.GetStr(Source)); // Alexey
+       SToken := Token.GetStr(Source, True); // Alexey
 
        try
          for i := 0 to FTagList.Count - 1 do
@@ -1110,16 +1090,8 @@ begin
        end;
      end else
      begin
-       // Alexey: avoided FTagList.IndexOf
-       BufPtr := @Source[Token.Range.StartPos+1];
-       BufLen := Token.Range.EndPos - Token.Range.StartPos;
-       // left trim for Python lexer
-       while IsSpaceChar(BufPtr^) do
-       begin
-         Inc(BufPtr);
-         Dec(BufLen);
-       end;
-       Result := _ListHasBuffer(FTagList, BufPtr, BufLen);
+       SToken := Token.GetStr(Source, True);
+       Result := (FTagList as TStringList).Find(SToken, N);
        if FCondType = tcNotEqual then
          Result := not Result;
      end;
