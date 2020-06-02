@@ -1,3 +1,15 @@
+{ *************************************************************************** }
+{                                                                             }
+{ EControl Syntax Editor SDK                                                  }
+{                                                                             }
+{ Copyright (c) 2004 - 2015 EControl Ltd., Zaharov Michael                    }
+{     www.econtrol.ru                                                         }
+{     support@econtrol.ru                                                     }
+{                                                                             }
+{ Changes in Lazarus port: by Alexey Torgashin (CudaText)                     }
+{                                                                             }
+{ *************************************************************************** }
+
 unit ec_parser_rule;
 
 {$mode Delphi}{$H+}
