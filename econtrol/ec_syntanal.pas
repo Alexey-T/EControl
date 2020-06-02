@@ -26,7 +26,7 @@ uses
   ec_syntax_item,
   ec_syntax_collection,
   ec_syntax_format,
-  ec_parser_rule,
+  ec_syntax_rule,
   ATStringProc_TextBuffer,
   ec_proc_StreamComponent;
 

@@ -20,7 +20,7 @@ uses
   Dialogs,
   Contnrs,
   ec_StrUtils,
-  ec_parser_rule,
+  ec_syntax_rule,
   ATStringProc_TextBuffer;
 
 type

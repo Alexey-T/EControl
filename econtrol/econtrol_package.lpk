@@ -29,8 +29,8 @@
         <UnitName Value="ec_Lists"/>
       </Item3>
       <Item4>
-        <Filename Value="ec_parser_rule.pas"/>
-        <UnitName Value="ec_parser_rule"/>
+        <Filename Value="ec_syntax_rule.pas"/>
+        <UnitName Value="ec_syntax_rule"/>
       </Item4>
       <Item5>
         <Filename Value="ec_proc_lexer.pas"/>
