@@ -1163,10 +1163,8 @@ var
   i: integer;
 begin
   if FRegexes = nil then
-    FRegexes := TFPObjectList.Create(True);
-  if FRegexes.Count < FTagList.Count then
   begin
-    FRegexes.Clear;
+    FRegexes := TFPObjectList.Create(True);
     for i:= 0 to FTagList.Count - 1 do
     begin
       ReObj := TecRegExpr.Create;
