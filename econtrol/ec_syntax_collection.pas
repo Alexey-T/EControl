@@ -1,3 +1,15 @@
+{ *************************************************************************** }
+{                                                                             }
+{ EControl Common Library                                                     }
+{                                                                             }
+{ Copyright (c) 2004 - 2015 EControl Ltd., Zaharov Michael                    }
+{     www.econtrol.ru                                                         }
+{     support@econtrol.ru                                                     }
+{                                                                             }
+{ Changes in Lazarus port: by Alexey Torgashin (CudaText)                     }
+{                                                                             }
+{ *************************************************************************** }
+
 unit ec_syntax_collection;
 
 {$mode Delphi}{$H+}
