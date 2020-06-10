@@ -43,6 +43,7 @@ type
     procedure DeleteLexer(An: TecSyntAnalyzer);
     function FindLexerByFilename(AFilename: string; AChooseFunc: TecLexerChooseFunc): TecSyntAnalyzer;
     function FindLexerByName(const AName: string): TecSyntAnalyzer;
+    function FindLexerByFencedName(const AName: string): TecSyntAnalyzer;
     procedure SetSublexersFromString(An: TecSyntAnalyzer; const ALinks: string; ASep: char);
     property OnLexerLoaded: TecLexerLoadedEvent read FOnLexerLoaded write FOnLexerLoaded;
   end;
@@ -265,6 +266,30 @@ begin
     if SameText(Lexer.LexerName, AName) then
       exit(Lexer);
   end;
+end;
+
+function TecLexerList.FindLexerByFencedName(const AName: string): TecSyntAnalyzer;
+//find lexer by name from Markdown fenced block:
+// ```php
+// ```
+var
+  S: string;
+begin
+  case AName of
+    'cpp':
+      S:= 'C++';
+    'csharp':
+      S:= 'C#';
+    'bash':
+      S:= 'Bash script';
+    'batch':
+      S:= 'Batch files';
+    'ini':
+      S:= 'Ini files';
+    else
+      S:= AName;
+  end;
+  Result:= FindLexerByName(S); //it ignores case
 end;
 
 
