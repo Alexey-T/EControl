@@ -17,7 +17,8 @@ unit ec_StrUtils;
 interface
 
 uses
-  SysUtils, UnicodeData;
+  SysUtils,
+  ATSynEdit_UnicodeData;
 
 type
   ecString = UnicodeString;
@@ -28,7 +29,7 @@ type
 function IsDigitChar(C: UCChar): Boolean; inline;
 function IsHexDigitChar(C: UCChar): Boolean;
 function IsLineBreakChar(c: UCChar): Boolean;
-function IsWordChar(c: UCChar): Boolean;
+function IsWordChar(c: UCChar): Boolean; inline;
 function IsSpaceChar(c: UCChar): Boolean; inline;
 function IsSpaceOrBreakChar(c: UCChar): Boolean; inline;
 function IsAlphaChar(c: UCChar): Boolean; inline;
@@ -100,27 +101,9 @@ begin
   end;
 end;
 
-function IsWordChar(C: UCChar): Boolean;
+function IsWordChar(C: UCChar): Boolean; inline;
 begin
-  case C of
-    '0' .. '9',
-    'a' .. 'z',
-    'A' .. 'Z',
-    '_':
-      exit(true);
-  end;
-
-  if Ord(C) < 128 then
-    exit(false);
-
-  if Ord(C) >= LOW_SURROGATE_BEGIN then
-    exit(false);
-
-  //ATStringProc.IsWordChar has checks for 5 unicode chars, leave only 2, others detected by UnicodeData
-  if (C = #$00B4) or (C = #$0384) then
-    exit(true);
-
-  Result := GetProps(Ord(C))^.Category <= UGC_OtherNumber;
+  Result := WordDetectArray[Ord(C)];
 end;
 
 
