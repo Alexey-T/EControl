@@ -530,7 +530,7 @@ type
     property TagCount: integer read GetTokenCount;
     property Tags[Index: integer]: TecSyntToken read GetTags write SetTags; default;
     property TagStr[Index: integer]: ecString read GetTokenStr;
-    function TagIndent(Index: integer): integer; inline;
+    function TokenIndent(Token: TecSyntToken): integer; // Alexey
     function TagsSame(Index1, Index2: integer): boolean; // Alexey
     function TagSameAs(Index: integer; const Str: ecString): boolean; // Alexey
     property SubLexerRangeCount: integer read GetSubLexerRangeCount;
@@ -2045,15 +2045,29 @@ begin
     Result := '';
 end;
 
-function TecParserResults.TagIndent(Index: integer): integer;
+function TecParserResults.TokenIndent(Token: TecSyntToken): integer; //Alexey
 var
-  Token: TecSyntToken;
+  N: integer;
+  ch: WideChar;
 begin
-  Token := Tags[Index];
-  Result := _IndentOfBuffer(
-    @FBuffer.FText[Token.Range.StartPos + 1],
-    Token.Range.EndPos - Token.Range.StartPos
-    );
+  Result := 0;
+  N := Token.Range.StartPos+1;
+  while N>1 do
+  begin
+    Dec(N);
+    ch:= FBuffer.FText[N];
+    case ch of
+      ' ':
+        Inc(Result);
+      #9:
+        Inc(Result, 4);
+      #10,
+      #13:
+        Break;
+      else
+        Exit(0);
+    end;
+  end;
 end;
 
 function TecParserResults.TagsSame(Index1, Index2: integer): boolean; // Alexey
@@ -3371,7 +3385,7 @@ end;
 
 procedure TecClientSyntAnalyzer.UpdateSpecialKinds;
 const
-  cSpecTokenStart = '1';
+  cSpecTokenStart = '^';
     //special char - must be first of token's type name (e.g. "1keyword");
     //Also such tokens must contain spaces+tabs at the beginning (use parser regex like "^[\x20\x09]*\w+")
 var
@@ -3390,12 +3404,11 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.CloseAtEnd(AStartTagIdx: integer);
-const
-  cSpecIndentID = 20;
-    //special number for "Group index" lexer property, which activates indent-based folding for a rule
-var i, j, IndentSize: integer;
-    Range: TecTextRange;
-    Token: TecSyntToken;
+var
+  NIndentSize, NLine, NTokenIndex: integer;
+  Range: TecTextRange;
+  Token1, Token2: TecSyntToken;
+  i, iLine: integer;
 begin
   UpdateSpecialKinds;
 
@@ -3407,21 +3420,34 @@ begin
      begin
        Range.EndIdx := TagCount - 1;
        if Range.Rule.SyntOwner = Owner then
-       // Alexey: check for indentation-based ranges
-       if Range.Rule.GroupIndex = cSpecIndentID then
        begin
-         IndentSize := TagIndent(Range.StartIdx);
-         for j := Range.StartIdx+1 to TagCount-1 do
+         // Alexey: check for indentation-based ranges
+         NTokenIndex := Range.StartIdx;
+         Token1 := Tags[NTokenIndex];
+         if FSpecialKinds[Token1.TokenType] then
          begin
-           Token := Tags[j];
-           if Token.Rule.SyntOwner <> Owner then // Check that token is not from sublexer
-             Continue;
-           if FSpecialKinds[Token.TokenType] then
-             if TagIndent(j) <= IndentSize then
+           NLine := Token1.Range.PointStart.Y;
+           // check that Token1 is first in its line, using TokenIndexer
+           if (NLine <= High(TokenIndexer)) and (TokenIndexer[NLine] = NTokenIndex) then
+           begin
+             NIndentSize := TokenIndent(Token1);
+             for iLine := NLine+1 to FBuffer.Count-1 do
              begin
-               Range.EndIdx := j-1;
-               Break
+               NTokenIndex := TokenIndexer[iLine];
+               if (NTokenIndex >= 0) then
+               begin
+                 Token2 := Tags[NTokenIndex];
+                 if Token2.Rule.SyntOwner <> Owner then // Check that Token2 is not from sublexer
+                   Continue;
+                 if FSpecialKinds[Token2.TokenType] then
+                   if TokenIndent(Token2) <= NIndentSize then
+                   begin
+                     Range.EndIdx := NTokenIndex-1;
+                     Break
+                   end;
+               end;
              end;
+           end;
          end;
        end;
        FOpenedBlocks.Delete(i);
