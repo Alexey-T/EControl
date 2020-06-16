@@ -2727,7 +2727,12 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.ChangedAtPos(APos: integer);
-var i, N: integer;
+const
+  cDeltaRanges = 700; // Alexey
+  // lexer will recalculate (find end of range) all ranges which start from changed-pos
+  // minus cDeltaRanges (in tokens!)
+var
+  i, N: integer;
   Sub: TecSubLexerRange;
 
  procedure CleanRangeList(List: TSortedList; IsClosed: Boolean);
@@ -2789,7 +2794,7 @@ begin
    for i := FRanges.Count - 1 downto 0 do
     with TecTextRange(FRanges[i]) do
      if (FCondIndex >= N) or (StartIdx >= N) then FRanges.Delete(i)  else
-      if (FEndCondIndex >= N) or (EndIdx >= N) then
+      if (FEndCondIndex >= N) or (EndIdx >= N - cDeltaRanges) then // Alexey: delta
        begin
          EndIdx := -1;
          FEndCondIndex := -1;
