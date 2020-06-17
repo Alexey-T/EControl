@@ -3421,12 +3421,14 @@ end;
 
 procedure TecClientSyntAnalyzer.CloseAtEnd(AStartTagIdx: integer);
 var
+  NTagCount: integer;
   NIndentSize, NLine, NTokenIndex: integer;
   Range: TecTextRange;
   Token1, Token2: TecSyntToken;
   i, iLine: integer;
 begin
   UpdateSpecialKinds;
+  NTagCount := TagCount;
 
   for i := FOpenedBlocks.Count - 1 downto 0 do
   begin
@@ -3434,11 +3436,12 @@ begin
     if Range.Rule.EndOfTextClose and
        ((AStartTagIdx = 0) or (Range.StartIdx >= AStartTagIdx)) then
      begin
-       Range.EndIdx := TagCount - 1;
+       Range.EndIdx := NTagCount - 1;
        if Range.Rule.SyntOwner = Owner then
        begin
          // Alexey: check for indentation-based ranges
          NTokenIndex := Range.StartIdx;
+         if NTokenIndex >= NTagCount then Continue;
          Token1 := Tags[NTokenIndex];
          if FSpecialKinds[Token1.TokenType] then
          begin
@@ -3450,7 +3453,7 @@ begin
              for iLine := NLine+1 to FBuffer.Count-1 do
              begin
                NTokenIndex := TokenIndexer[iLine];
-               if (NTokenIndex >= 0) then
+               if (NTokenIndex >= 0) and (NTokenIndex < NTagCount) then
                begin
                  Token2 := Tags[NTokenIndex];
                  if Token2.Rule.SyntOwner <> Owner then // Check that Token2 is not from sublexer
