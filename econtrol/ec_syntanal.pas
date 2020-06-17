@@ -2728,8 +2728,8 @@ end;
 
 procedure TecClientSyntAnalyzer.ChangedAtPos(APos: integer);
 const
-  cDeltaRanges = 10; // Alexey
-  // lexer will recalculate (mark as opened) all ranges, which have ending at changed-pos
+  cDeltaRanges = 4; // Alexey
+  // lexer will update ranges, which have ending at changed-pos
   // minus cDeltaRanges (in tokens)
 var
   i, N: integer;
