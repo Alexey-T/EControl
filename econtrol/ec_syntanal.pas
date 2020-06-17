@@ -3437,9 +3437,10 @@ begin
        ((AStartTagIdx = 0) or (Range.StartIdx >= AStartTagIdx)) then
      begin
        Range.EndIdx := NTagCount - 1;
+       if Range.Rule.GroupIndex = 20 then
        if Range.Rule.SyntOwner = Owner then
        begin
-         // Alexey: check for indentation-based ranges
+         // Alexey: indentation-based ranges
          NTokenIndex := Range.StartIdx;
          if NTokenIndex >= NTagCount then Continue;
          Token1 := Tags[NTokenIndex];
