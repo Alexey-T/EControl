@@ -23,6 +23,8 @@ uses
 type
   TSyntItemChanged = procedure(Sender: TCollection; Item: TSyntCollectionItem) of object;
 
+  { TSyntCollection }
+
   TSyntCollection = class(TCollection)
   private
     FSyntOwner: TPersistent;
@@ -36,6 +38,7 @@ type
     function ItemByName(const AName: string): TSyntCollectionItem;
     function ValidItem(Item: TSyntCollectionItem): Boolean;
     function GetUniqueName(const Base: string): string;
+    function IndexOf(const AItem: TCollectionItem): integer;
     procedure Loaded;
 
     property SyntOwner: TPersistent read FSyntOwner write FSyntOwner;
@@ -74,6 +77,16 @@ begin
     Inc(n);
     Result := Base + IntToStr(n);
    end;
+end;
+
+function TSyntCollection.IndexOf(const AItem: TCollectionItem): integer;
+var
+  i: integer;
+begin
+  for i := 0 to Count-1 do
+    if inherited Items[i] = AItem then
+      Exit(i);
+  Result := -1;
 end;
 
 function TSyntCollection.ItemByName(const AName: string): TSyntCollectionItem;
