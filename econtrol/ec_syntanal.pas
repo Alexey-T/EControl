@@ -3458,10 +3458,12 @@ begin
                  if FSpecialKinds[Token2.TokenType] then
                    if TokenIndent(Token2) <= NIndentSize then
                    begin
-                     Range.EndIdx := NTokenIndex-1;
+                     // close range at prev token
+                     Dec(NTokenIndex);
                      // make it nice for Python lexer: skip ending "comment" tokens
-                     while (Range.EndIdx>0) and FCommentKinds[Tags[Range.EndIdx].TokenType] do
-                       Dec(Range.EndIdx);
+                     while (NTokenIndex>0) and FCommentKinds[Tags[NTokenIndex].TokenType] do
+                       Dec(NTokenIndex);
+                     Range.EndIdx := NTokenIndex;
                      Break
                    end;
                end;
