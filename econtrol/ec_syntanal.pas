@@ -487,6 +487,7 @@ type
     FClient: IecSyntClient;
     FOwner: TecSyntAnalyzer;
     FFinished: Boolean;
+    FPrevChangePos: integer;
     FSubLexerBlocks: TecSubLexerRanges;
     FTagList: TecTokenList;
     FCurState: integer;
@@ -1991,6 +1992,7 @@ begin
   FOwner.FClientList.Add(Self);
   FCurState := 0;
   FStateChanges := TecStateChanges.Create;
+  FPrevChangePos := -1;
 end;
 
 destructor TecParserResults.Destroy;
@@ -2009,11 +2011,13 @@ begin
   FStateChanges.Clear;
   FCurState := 0;
   SetLength(TokenIndexer, 0);
+  FPrevChangePos := -1;
 end;
 
 procedure TecParserResults.Finished;
 begin
   FFinished := True;
+  FPrevChangePos := -1;
   // Performs Gramma parsing
   //AnalyzeGramma;
   //FTagList.UpdateIndexer; // Alexey
@@ -2470,6 +2474,7 @@ begin
   inherited Create( AOwner, SrcProc, AClient);
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
+
   FPrevProgress := -1;
 
   FTimerIdle := TTimer.Create(nil);
@@ -2495,6 +2500,7 @@ function TecClientSyntAnalyzer.Stop: boolean;
 begin
   FFinished := True;
   Result := DoStopTimer(True);
+  FPrevChangePos := -1;
 end;
 
 procedure TecClientSyntAnalyzer.Clear;
@@ -2748,6 +2754,14 @@ var
 
 begin
   FFinished := False;
+
+  if FPrevChangePos<0 then
+    FPrevChangePos:= APos
+  else
+  begin
+    FPrevChangePos := Min(FPrevChangePos, APos);
+    APos:= FPrevChangePos;
+  end;
 
   if FBuffer.TextLength <= Owner.FullRefreshSize then
   begin
