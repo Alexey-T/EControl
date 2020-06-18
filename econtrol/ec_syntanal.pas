@@ -588,7 +588,7 @@ type
     function GetCollapsedText(Range: TecTextRange): ecString;
     function Stop: boolean;
 
-    procedure TextChanged(APos: integer);
+    procedure TextChangedOnLine(ALine: integer);
     procedure AppendToPos(APos: integer; AUseTimer: boolean= true); // Requires analyzed to APos
     procedure Analyze(ResetContent: Boolean = True); // Requires analyzed all text
     procedure IdleAppend;                 // Start idle analysis
@@ -2747,23 +2747,31 @@ var
  end;
 
 begin
-{ if FBuffer.TextLength <= Owner.FullRefreshSize then
+  {
+  if FBuffer.TextLength <= Owner.FullRefreshSize then
   begin
    Clear;
    Exit;
-  end;}
+  end;
+  }
 
    FFinished := False;
+   {
+   //Alexey: what for?
    Dec(APos);
    if APos<0 then
      APos := 0;
+     }
    DoStopTimer(False);
 
    if FBuffer.TextLength <= Owner.FullRefreshSize then
-     APos := 0
+     APos := 0;
+   {
+   //Alexey: we always get position at line start
    else
    if Owner.RestartFromLineStart then
      APos := Min(APos, FBuffer.OffsetToOffsetOfLineStart(APos + 1));
+     }
 
    // Check sub lexer ranges
    for i := FSubLexerBlocks.Count - 1 downto 0 do
@@ -3318,12 +3326,12 @@ begin
       (HasOpened(Rule, Rule.Block, Rule.StrictParent) xor Rule.NotParent);
 end;
 
-procedure TecClientSyntAnalyzer.TextChanged(APos: integer);
+procedure TecClientSyntAnalyzer.TextChangedOnLine(ALine: integer);
 begin
-  if APos = -1 then
+  if ALine = -1 then
     Clear
   else
-    ChangedAtPos(APos);
+    ChangedAtPos(FBuffer.CaretToStr(Point(0, ALine)));
 end;
 
 function TecClientSyntAnalyzer.GetOpened(Index: integer): TecTextRange;
