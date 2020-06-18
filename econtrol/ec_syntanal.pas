@@ -2747,31 +2747,15 @@ var
  end;
 
 begin
-  {
+  FFinished := False;
+
   if FBuffer.TextLength <= Owner.FullRefreshSize then
   begin
-   Clear;
-   Exit;
+    Clear;
+    Exit;
   end;
-  }
 
-   FFinished := False;
-   {
-   //Alexey: what for?
-   Dec(APos);
-   if APos<0 then
-     APos := 0;
-     }
-   DoStopTimer(False);
-
-   if FBuffer.TextLength <= Owner.FullRefreshSize then
-     APos := 0;
-   {
-   //Alexey: we always get position at line start
-   else
-   if Owner.RestartFromLineStart then
-     APos := Min(APos, FBuffer.OffsetToOffsetOfLineStart(APos + 1));
-     }
+  DoStopTimer(False);
 
    // Check sub lexer ranges
    for i := FSubLexerBlocks.Count - 1 downto 0 do
