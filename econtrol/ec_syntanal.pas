@@ -2114,9 +2114,12 @@ end;
 
 function TecParserResults.GetLastPos: integer;
 begin
-  if FTagList.Count = 0 then Result := 1 else
+  if FTagList.Count = 0 then
+    Result := 1
+  else
     Result := FTagList.Last.Range.EndPos + 1;
-  if FLastAnalPos > Result then Result := FLastAnalPos;
+  if FLastAnalPos > Result then
+    Result := FLastAnalPos;
 end;
 
 procedure TecParserResults.ClearTokenIndexer;
