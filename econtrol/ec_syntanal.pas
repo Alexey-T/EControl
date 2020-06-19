@@ -2687,17 +2687,17 @@ begin
               if own <> FOwner then
                 own.SelectTokenFormat(Self, FBuffer.FText, False, i);
 
-              //progress for 2nd half of parsing, range 50..100
-              Progress := 50 + i * 50 div NTagCount;
-              if Progress <> ProgressPrev then
-              begin
-                ProgressPrev := Progress;
-                if Assigned(OnLexerParseProgress) then
-                  OnLexerParseProgress(Owner, Progress);
-              end;
-
               if i mod ProcessMsgStep2 = 0 then
               begin
+                //progress for 2nd half of parsing, range 50..100
+                Progress := 50 + i * 50 div NTagCount;
+                if Progress <> ProgressPrev then
+                begin
+                  ProgressPrev := Progress;
+                  if Assigned(OnLexerParseProgress) then
+                    OnLexerParseProgress(Owner, Progress);
+                end;
+
                 Application.ProcessMessages;
                 if Application.Terminated then Exit;
                 if FTimerIdleMustStop then Exit;
