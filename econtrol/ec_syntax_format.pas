@@ -34,12 +34,8 @@ type
 
   TecChangeCase = (ccNone, ccUpper, ccLower, ccToggle, ccTitle);
 
-  //Alexey: type must be equal to ATSynEdit_Finder.TATFinderTokenKind to make casts
-  TecTokenKind = (
-    etkOther,
-    etkComment,
-    etkString
-    );
+  //Alexey: type must be equal to ATSynEdit.TATTokenKind to make casts
+  TecTokenKind = (etkOther, etkComment, etkString);
 
 // *******************************************************************
 //  Format for syntax output
