@@ -886,9 +886,6 @@ uses
   SysUtils, Forms, Dialogs,
   Math;
 
-var
-  _TimeDetectKinds: qword = 0;
-
 const
   SecDefaultTokenTypeNames = 'Unknown' + #13#10 +
                              'Comment' + #13#10 +
@@ -4598,7 +4595,6 @@ var
   Fmts: TecStylesCollection;
   Fmt: TecSyntaxFormat;
   i: integer;
-  //t: qword;
 begin
   FFileName := AFileName;
   Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
@@ -4617,7 +4613,6 @@ begin
   end;
 
   //Alexey
-  //t := GetTickCount64;
   if Self is TecSyntAnalyzer then
   begin
     Fmts := TecSyntAnalyzer(Self).Formats;
@@ -4631,8 +4626,6 @@ begin
         Fmt.TokenKind := etkString;
     end;
   end;
-  //t := GetTickCount64-t;
-  //Inc(_TimeDetectKinds, t*100);
 end;
 
 procedure TLoadableComponent.LoadFromResourceID(Instance: Cardinal;
