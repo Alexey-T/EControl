@@ -34,6 +34,13 @@ type
 
   TecChangeCase = (ccNone, ccUpper, ccLower, ccToggle, ccTitle);
 
+  //Alexey: type must be equal to ATSynEdit_Finder.TATFinderTokenKind to make casts
+  TecTokenKind = (
+    etkOther,
+    etkComment,
+    etkString
+    );
+
 // *******************************************************************
 //  Format for syntax output
 // *******************************************************************
@@ -55,6 +62,7 @@ type
     FReadOnly: Boolean;
     FChangeCase: TecChangeCase;
     FFormatFlags: TecFormatFlags;
+    FTokenKind: TecTokenKind;
     procedure SetFont(Value: TFont);
     function GetBorderColor(Index: Integer): TColor;
     function GetBorderType(Index: Integer): TecBorderLineType;
@@ -81,6 +89,8 @@ type
     property BorderTypes[Index: integer]: TecBorderLineType read GetBorderType write SetBorderType;
     property BorderColors[Index: integer]: TColor read GetBorderColor write SetBorderColor;
     property IsBlock: Boolean read FIsBlock write FIsBlock;
+    property TokenKind: TecTokenKind read FTokenKind write FTokenKind;
+
   published
     property Font: TFont read FFont write SetFont;
     property BgColor: TColor read FBgColor write FBgColor default clNone;
@@ -134,6 +144,7 @@ begin
    end;
   FFormatFlags := [ffBold, ffItalic, ffUnderline, ffStrikeOut, ffReadOnly,
                    ffHidden, ffFontName, ffFontSize, ffFontCharset, ffVertAlign];
+  FTokenKind := etkOther;
   inherited;
   //FFont.OnChange := FontChanged;
 end;

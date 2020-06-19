@@ -880,12 +880,14 @@ type
 var
   OnLexerParseProgress: TecParseProgressEvent;
 
-
 implementation
 
 uses
   SysUtils, Forms, Dialogs,
   Math;
+
+var
+  _TimeDetectKinds: qword = 0;
 
 const
   SecDefaultTokenTypeNames = 'Unknown' + #13#10 +
@@ -4593,6 +4595,10 @@ end;
 procedure TLoadableComponent.LoadFromFile(const AFileName: string);
 var
   Stream: TFileStream;
+  Fmts: TecStylesCollection;
+  Fmt: TecSyntaxFormat;
+  i: integer;
+  //t: qword;
 begin
   FFileName := AFileName;
   Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
@@ -4609,6 +4615,24 @@ begin
   finally
     FreeAndNil(Stream);
   end;
+
+  //Alexey
+  //t := GetTickCount64;
+  if Self is TecSyntAnalyzer then
+  begin
+    Fmts := TecSyntAnalyzer(Self).Formats;
+    for i := 0 to Fmts.Count-1 do
+    begin
+      Fmt := Fmts[i];
+      if Pos(','+Fmt.DisplayName+',', ','+StylesOfComments+',')>0 then
+        Fmt.TokenKind := etkComment
+      else
+      if Pos(','+Fmt.DisplayName+',', ','+StylesOfStrings+',')>0 then
+        Fmt.TokenKind := etkString;
+    end;
+  end;
+  //t := GetTickCount64-t;
+  //Inc(_TimeDetectKinds, t*100);
 end;
 
 procedure TLoadableComponent.LoadFromResourceID(Instance: Cardinal;
