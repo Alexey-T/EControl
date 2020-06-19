@@ -554,7 +554,6 @@ type
     FTimerIdleIsBusy: Boolean;
     FTimerIdle: TTimer;
 
-    FPrevProgress: integer;
     FStartSepRangeAnal: integer;
     FDisableIdleAppend: Boolean;
     FRepeateAnalysis: Boolean;
@@ -2473,8 +2472,6 @@ begin
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
 
-  FPrevProgress := -1;
-
   FTimerIdle := TTimer.Create(nil);
   FTimerIdle.OnTimer := TimerIdleTick;
   FTimerIdle.Enabled := False;
@@ -2628,8 +2625,8 @@ end;
 procedure TecClientSyntAnalyzer.TimerIdleTick(Sender: TObject);
 var FPos, tmp, i: integer;
     own: TecSyntAnalyzer;
-    Progress: integer;
     BufLen: integer;
+    Progress, ProgressPrev: integer;
     NMaxPercents, NTagCount: integer;
     bSeparateBlocks: boolean;
 const
@@ -2649,6 +2646,7 @@ begin
     NMaxPercents := 50
   else
     NMaxPercents := 100;
+  ProgressPrev := 0;
 
   try
     while True do
@@ -2667,9 +2665,9 @@ begin
         Progress := 0
       else
         Progress := FPos * NMaxPercents div BufLen div ProgressStep * ProgressStep;
-      if Progress <> FPrevProgress then
+      if Progress <> ProgressPrev then
       begin
-        FPrevProgress := Progress;
+        ProgressPrev := Progress;
         if Assigned(OnLexerParseProgress) then
           OnLexerParseProgress(Owner, Progress);
       end;
@@ -2679,7 +2677,7 @@ begin
         //all tokens found, now find blocks (if bSeparateBlocks)
         if bSeparateBlocks then
         begin
-          FPrevProgress := 50;
+          ProgressPrev := 50;
           NTagCount := TagCount;
 
           for i := FStartSepRangeAnal + 1 to NTagCount do
@@ -2691,9 +2689,9 @@ begin
 
               //progress for 2nd half of parsing, range 50..100
               Progress := 50 + i * 50 div NTagCount;
-              if Progress <> FPrevProgress then
+              if Progress <> ProgressPrev then
               begin
-                FPrevProgress := Progress;
+                ProgressPrev := Progress;
                 if Assigned(OnLexerParseProgress) then
                   OnLexerParseProgress(Owner, Progress);
               end;
