@@ -559,7 +559,6 @@ type
     FDisableIdleAppend: Boolean;
     FRepeateAnalysis: Boolean;
     FSpecialKinds: array of boolean;
-    FCommentKinds: array of boolean;
 
     function GetRangeCount: integer;
     function GetRanges(Index: integer): TecTextRange;
@@ -3412,16 +3411,6 @@ begin
       FSpecialKinds[i] := (S <> '') and (S[1] = cSpecTokenStart);
     end;
   end;
-
-  if Length(FCommentKinds) = 0 then
-  begin
-    SetLength(FCommentKinds, Owner.TokenTypeNames.Count);
-    for i := 0 to High(FCommentKinds) do
-    begin
-      S := Owner.TokenTypeNames[i];
-      FCommentKinds[i] := Pos('comment', LowerCase(S))>0;
-    end;
-  end;
 end;
 
 procedure TecClientSyntAnalyzer.CloseAtEnd(AStartTagIdx: integer);
@@ -3470,7 +3459,7 @@ begin
                      // close range at prev token
                      Dec(NTokenIndex);
                      // make it nice for Python lexer: skip ending "comment" tokens
-                     while (NTokenIndex>0) and FCommentKinds[Tags[NTokenIndex].TokenType] do
+                     while (NTokenIndex>0) and (Tags[NTokenIndex].Style.TokenKind=etkComment) do
                        Dec(NTokenIndex);
                      Range.EndIdx := NTokenIndex;
                      Break
