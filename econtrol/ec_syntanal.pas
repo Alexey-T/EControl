@@ -2656,12 +2656,13 @@ begin
       if FTimerIdleMustStop then exit;
       if FFinished then exit;
       if Application.Terminated then exit;
-
       if FBuffer=nil then exit;
-      tmp := GetLastPos;
-      if tmp > FPos then FPos := tmp;
 
-      if ExtractTag(FPos{, True}) then
+      tmp := GetLastPos;
+      if tmp > FPos then
+        FPos := tmp;
+
+      if ExtractTag(FPos) then
       begin
         //all tokens found, now find blocks (if bSeparateBlocks)
         if bSeparateBlocks then
