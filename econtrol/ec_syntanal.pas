@@ -2068,7 +2068,7 @@ begin
       #13:
         Break;
       else
-        Exit(0);
+        Exit(80); //if token begins not after spaces, return some big value
     end;
   end;
 end;
