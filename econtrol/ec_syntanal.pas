@@ -2630,6 +2630,8 @@ var FPos, tmp, i: integer;
     own: TecSyntAnalyzer;
     Progress: integer;
     BufLen: integer;
+    NMaxPercents, NTagCount: integer;
+    bSeparateBlocks: boolean;
 const
   ProgressStep = 4;
   ProgressMinPos = 2000;
@@ -2642,6 +2644,11 @@ begin
   FTimerIdleIsBusy := True;
   FPos := 0;
   BufLen := FBuffer.TextLength;
+  bSeparateBlocks := FOwner.SeparateBlockAnalysis;
+  if bSeparateBlocks then
+    NMaxPercents := 50
+  else
+    NMaxPercents := 100;
 
   try
     while True do
@@ -2654,10 +2661,12 @@ begin
       tmp := GetLastPos;
       if tmp > FPos then FPos := tmp;
 
+      //if bSeparateBlocks, it's progress for 1st half of parsing, 0..50
+      //otherwise, it's progress for entire parsing, 0..100
       if FPos < ProgressMinPos then
         Progress := 0
       else
-        Progress := FPos * 100 div BufLen div ProgressStep * ProgressStep;
+        Progress := FPos * NMaxPercents div BufLen div ProgressStep * ProgressStep;
       if Progress <> FPrevProgress then
       begin
         FPrevProgress := Progress;
@@ -2667,13 +2676,27 @@ begin
 
       if ExtractTag(FPos{, True}) then
       begin
-        if FOwner.SeparateBlockAnalysis then
-          for i := FStartSepRangeAnal + 1 to TagCount do
+        //all tokens found, now find blocks (if bSeparateBlocks)
+        if bSeparateBlocks then
+        begin
+          FPrevProgress := 50;
+          NTagCount := TagCount;
+
+          for i := FStartSepRangeAnal + 1 to NTagCount do
             begin
               own := Tags[i - 1].Rule.SyntOwner;
               FOwner.SelectTokenFormat(Self, FBuffer.FText, own <> FOwner, i);
               if own <> FOwner then
                 own.SelectTokenFormat(Self, FBuffer.FText, False, i);
+
+              //progress for 2nd half of parsing, range 50..100
+              Progress := 50 + i * 50 div NTagCount;
+              if Progress <> FPrevProgress then
+              begin
+                FPrevProgress := Progress;
+                if Assigned(OnLexerParseProgress) then
+                  OnLexerParseProgress(Owner, Progress);
+              end;
 
               if i mod ProcessMsgStep2 = 0 then
               begin
@@ -2682,6 +2705,7 @@ begin
                 if FTimerIdleMustStop then Exit;
               end;
             end;
+        end;
         Finished;
       end
       else
