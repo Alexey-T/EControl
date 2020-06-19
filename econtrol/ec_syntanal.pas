@@ -2630,7 +2630,6 @@ var FPos, tmp, i: integer;
     NMaxPercents, NTagCount: integer;
     bSeparateBlocks: boolean;
 const
-  ProgressStep = 4;
   ProgressMinPos = 2000;
   ProcessMsgStep1 = 1000; //stage1: finding tokens
   ProcessMsgStep2 = 1000; //stage2: finding ranges
@@ -2658,19 +2657,6 @@ begin
       if FBuffer=nil then exit;
       tmp := GetLastPos;
       if tmp > FPos then FPos := tmp;
-
-      //if bSeparateBlocks, it's progress for 1st half of parsing, 0..50
-      //otherwise, it's progress for entire parsing, 0..100
-      if FPos < ProgressMinPos then
-        Progress := 0
-      else
-        Progress := FPos * NMaxPercents div BufLen div ProgressStep * ProgressStep;
-      if Progress <> ProgressPrev then
-      begin
-        ProgressPrev := Progress;
-        if Assigned(OnLexerParseProgress) then
-          OnLexerParseProgress(Owner, Progress);
-      end;
 
       if ExtractTag(FPos{, True}) then
       begin
@@ -2709,7 +2695,22 @@ begin
       else
       begin
         if TagCount mod ProcessMsgStep1 = 0 then
+        begin
+          //if bSeparateBlocks, it's progress for 1st half of parsing, 0..50
+          //otherwise, it's progress for entire parsing, 0..100
+          if FPos < ProgressMinPos then
+            Progress := 0
+          else
+            Progress := FPos * NMaxPercents div BufLen;
+          if Progress <> ProgressPrev then
+          begin
+            ProgressPrev := Progress;
+            if Assigned(OnLexerParseProgress) then
+              OnLexerParseProgress(Owner, Progress);
+          end;
+
           Application.ProcessMessages;
+        end;
       end;
     end;
   finally
