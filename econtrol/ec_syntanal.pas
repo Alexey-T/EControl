@@ -4601,16 +4601,17 @@ begin
   try
     LoadFromStream(Stream);
     LoadExtraData(ChangeFileExt(AFileName, '.cuda-lexmap'));
-    {
-    ShowMessage(ExtractFileName(AFileName)+#10+
-      CommentRangeBegin+' '+CommentRangeEnd+#10+
-      StylesOfComments+#10+
-      StylesOfStrings
-      );
-      }
   finally
     FreeAndNil(Stream);
   end;
+
+  {
+  ShowMessage(ExtractFileName(AFileName)+#10+
+    CommentRangeBegin+' '+CommentRangeEnd+#10+
+    StylesOfComments+#10+
+    StylesOfStrings
+    );
+  }
 
   //Alexey
   if Self is TecSyntAnalyzer then
