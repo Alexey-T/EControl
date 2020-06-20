@@ -101,15 +101,11 @@ type
     property StatesAbsent: integer read FStatesAbsent write SetStatesAbsent default 0;
   end;
 
-// *******************************************************************
-// description classes of text contents
-// *******************************************************************
-
   { TecSyntToken }
 
+  PecSyntToken = ^TecSyntToken;
   TecSyntToken = record
   private
-    function GetStyle: TecSyntaxFormat;
   public
     Range: TRange;
     TokenType: integer;
@@ -118,8 +114,8 @@ type
       AStartPos, AEndPos: integer;
       const APointStart, APointEnd: TPoint);
     function GetStr(const Source: ecString; ATrimLeft: boolean=False): ecString; // Alexey
-    property Style: TecSyntaxFormat read GetStyle;
-    class operator =(const A,B: TecSyntToken): boolean;
+    function Style: TecSyntaxFormat;
+    class operator =(const A, B: TecSyntToken): boolean;
   end;
 
   { TecTextRange }
@@ -969,10 +965,10 @@ end;
 
 class operator TecSyntToken.=(const A, B: TecSyntToken): boolean;
 begin
-  Result:= false;
+  Result := false;
 end;
 
-function TecSyntToken.GetStyle: TecSyntaxFormat;
+function TecSyntToken.Style: TecSyntaxFormat;
 begin
   if Rule = nil then
     Result := nil
