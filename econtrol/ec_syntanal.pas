@@ -2011,6 +2011,7 @@ procedure TecParserResults.Finished;
 begin
   FFinished := True;
   FPrevChangePos := -1;
+
   // Performs Gramma parsing
   //AnalyzeGramma;
   //FTagList.UpdateIndexer; // Alexey
@@ -2617,6 +2618,8 @@ begin
   // Close blocks at the end of text
   CloseAtEnd(0);
 
+  FOpenedBlocks.Clear; //Alexey
+
   FRepeateAnalysis := True;
 end;
 
@@ -2772,6 +2775,8 @@ var
       List.Delete(i);
  end;
 
+var
+  NDel: integer;
 begin
   FFinished := False;
 
@@ -2815,9 +2820,18 @@ begin
    FLastAnalPos := 0;   // Reset current position
    N := FTagList.Count;
    FStartSepRangeAnal := N;
+
    // Remove text ranges from service containers
    CleanRangeList(FOpenedBlocks, False);
+
    // Remove text ranges from main storage
+   NDel := 0;
+
+   if FOpenedBlocks.Count>50 then
+     FOpenedBlocks.Clear;
+     //Alexey: prevent almost hang when user fastly pastes blocks in big file,
+     //which gives e.g. 400..800..3000 opened blocks
+
    for i := FRanges.Count - 1 downto 0 do
     with TecTextRange(FRanges[i]) do
      if (FCondIndex >= N) or (StartIdx >= N) then FRanges.Delete(i)  else
@@ -2826,10 +2840,13 @@ begin
          EndIdx := -1;
          FEndCondIndex := -1;
          FOpenedBlocks.Add(FRanges[i]);
+         Inc(NDel);
        end;
 
    // Restore parser state
    RestoreState;
+
+ //Application.MainForm.Caption:= 'new opened '+IntToStr(NDel)+' opened '+Inttostr(FOpenedBlocks.Count);
 
  IdleAppend;
 end;
