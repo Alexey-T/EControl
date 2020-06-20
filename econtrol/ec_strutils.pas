@@ -41,8 +41,11 @@ function IsWordBreak(aPos: integer; const Text: UCString): Boolean;
 function ecUpCase(C: UCChar): UCChar; inline;
 function SkipSpacesAndBreaks(const Source: ecString; var APos: integer): integer;
 function SkipSpacesNoLineBreak(const Source: ecString; var APos: integer): integer;
+
+{
 function ecEncodeString(const S: string): string;
 function ecDecodeString(const S: string): string;
+}
 
 implementation
 
