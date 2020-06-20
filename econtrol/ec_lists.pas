@@ -59,12 +59,8 @@ type
   // Array of sorted ranges
   GRangeList<GRange> = class (TFPGList<GRange>)
   private
-    FUnionSiblings: Boolean;
     type PGRange = ^GRange;
   protected
-    // Union ranges with the [Index] and [Index + 1]
-    // returns new range index (or union result)
-    function IsGreater(I1, I2: integer): Boolean;
     function CompProc(const AValue: TRange; AKey: integer): integer;
   public
     constructor Create(UnionSiblings: Boolean = True);
@@ -136,7 +132,7 @@ end;
 constructor GRangeList<GRange>.Create(UnionSiblings: Boolean);
 begin
   inherited Create;
-  FUnionSiblings := UnionSiblings;
+  //FUnionSiblings := UnionSiblings;
   //FSorted := false;
   Capacity := 512; // Usually editor has many tokens
 end;
@@ -146,17 +142,11 @@ begin
   inherited;
 end;
 
-function GRangeList<GRange>.IsGreater(I1, I2: integer): Boolean;
-begin
-  if FUnionSiblings then
-    Result := I1 >= I2
-  else
-    Result := I1 > I2;
-end;
-
 function GRangeList<GRange>.Add(const Range: GRange): integer;
+{
 var
   _Range: TRange absolute Range;
+  }
 begin
   Result := Count;
   inherited Add(Range);
