@@ -179,7 +179,7 @@ type
   public
     constructor Create(Collection: TCollection); override;
     destructor Destroy; override;
-    function CheckToken(const Source: ecString; const Token: TecSyntToken): Boolean;
+    function CheckToken(const Source: ecString; const Token: PecSyntToken): Boolean;
   published
     property TagList: TStrings read FTagList write SetTagList;
     property CondType: TecTagConditionType read FCondType write SetCondType default tcEqual;
@@ -491,10 +491,9 @@ type
 
     function GetLastPos: integer;
     function ExtractTag(var FPos: integer): Boolean;
-    function GetTags(Index: integer): TecSyntToken;
+    function GetTags(Index: integer): PecSyntToken;
     function GetSubLexerRangeCount: integer;
     function GetSubLexerRange(Index: integer): TecSubLexerRange;
-    procedure SetTags(Index: integer; const AValue: TecSyntToken);
   protected
     function GetTokenCount: integer; override;
     function GetTokenStr(Index: integer): ecString; override;
@@ -525,9 +524,9 @@ type
     property Buffer: TATStringBuffer read FBuffer;
     property IsFinished: Boolean read FFinished;
     property TagCount: integer read GetTokenCount;
-    property Tags[Index: integer]: TecSyntToken read GetTags write SetTags; default;
+    property Tags[Index: integer]: PecSyntToken read GetTags; default;
     property TagStr[Index: integer]: ecString read GetTokenStr;
-    function TokenIndent(Token: TecSyntToken): integer; // Alexey
+    function TokenIndent(Token: PecSyntToken): integer; // Alexey
     function TagsSame(Index1, Index2: integer): boolean; // Alexey
     function TagSameAs(Index: integer; const Str: ecString): boolean; // Alexey
     property SubLexerRangeCount: integer read GetSubLexerRangeCount;
@@ -1038,7 +1037,7 @@ begin
    end;
 end;
 
-function TecSingleTagCondition.CheckToken(const Source: ecString; const Token: TecSyntToken): Boolean;
+function TecSingleTagCondition.CheckToken(const Source: ecString; const Token: PecSyntToken): Boolean;
 var SToken: ecString;
     i, N: integer;
     ReObj: TecRegExpr;
@@ -2029,21 +2028,25 @@ begin
   Result := FTagList.Count;
 end;
 
-function TecParserResults.GetTags(Index: integer): TecSyntToken;
+function TecParserResults.GetTags(Index: integer): PecSyntToken;
 begin
-  Result := FTagList[Index];
+  Result := FTagList.InternalGet(Index);
 end;
 
 function TecParserResults.GetTokenStr(Index: integer): ecString;
+var
+  Ptr: PecSyntToken;
 begin
   if Index >= 0 then
-    with Tags[Index] do
-      Result := FBuffer.SubString(Range.StartPos + 1, Range.EndPos - Range.StartPos)
+  begin
+    Ptr := Tags[Index];
+    Result := FBuffer.SubString(Ptr.Range.StartPos + 1, Ptr.Range.EndPos - Ptr.Range.StartPos)
+  end
   else
     Result := '';
 end;
 
-function TecParserResults.TokenIndent(Token: TecSyntToken): integer; //Alexey
+function TecParserResults.TokenIndent(Token: PecSyntToken): integer; //Alexey
 var
   N: integer;
   ch: WideChar;
@@ -2070,7 +2073,7 @@ end;
 
 function TecParserResults.TagsSame(Index1, Index2: integer): boolean; // Alexey
 var
-  T1, T2: TecSyntToken;
+  T1, T2: PecSyntToken;
   Len1, Len2: integer;
   St1, St2: integer;
 begin
@@ -2092,7 +2095,7 @@ end;
 
 function TecParserResults.TagSameAs(Index: integer; const Str: ecString): boolean; // Alexey
 var
-  T: TecSyntToken;
+  T: PecSyntToken;
   Len: integer;
   St: integer;
 begin
@@ -2121,14 +2124,14 @@ end;
 procedure TecParserResults.ClearTokenIndexer;
 var
   NCnt, NLastLine, i: integer;
-  Token: TecSyntToken;
+  Token: PecSyntToken;
 begin
   NCnt := FTagList.Count;
   if NCnt = 0 then
     NLastLine := -1
   else
   begin
-    Token := FTagList.Items[NCnt-1];
+    Token := FTagList.InternalGet(NCnt-1);
     NLastLine := Token.Range.PointEnd.Y;
   end;
 
@@ -2397,11 +2400,6 @@ end;
 function TecParserResults.GetSubLexerRange(Index: integer): TecSubLexerRange;
 begin
   Result := FSubLexerBlocks[Index];
-end;
-
-procedure TecParserResults.SetTags(Index: integer; const AValue: TecSyntToken);
-begin
-  FTagList[Index] := AValue
 end;
 
 function TecParserResults.GetTokenType(Index: integer): integer;
@@ -3391,13 +3389,13 @@ end;
 function TecClientSyntAnalyzer.DetectTag(Rule: TecTagBlockCondition;
   RefTag: integer): Boolean;
 var
-  Tag: TecSyntToken;
+  Tag: PecSyntToken;
 begin
   Tag := Tags[RefTag];
   Tag.Rule := Rule;
   if Rule.TokenType >= 0 then
     Tag.TokenType := Rule.TokenType;
-  Tags[RefTag] := Tag;
+  //Tags[RefTag] := Tag; //Alexey: no need with pointer
   Result := True;
 end;
 
@@ -3441,7 +3439,7 @@ var
   NTagCount: integer;
   NIndentSize, NLine, NTokenIndex: integer;
   Range: TecTextRange;
-  Token1, Token2: TecSyntToken;
+  Token1, Token2: PecSyntToken;
   i, iLine: integer;
 begin
   UpdateSpecialKinds;
@@ -3620,7 +3618,7 @@ procedure TecSyntAnalyzer.HighlightKeywords(Client: TecParserResults;
   const Source: ecString; OnlyGlobal: Boolean);
 var i, N, ki, RefIdx: integer;
     Accept: Boolean;
-    Tag: TecSyntToken;
+    Tag: PecSyntToken;
     Rule: TecTagBlockCondition;
 begin
   N := Client.TagCount;
@@ -3645,7 +3643,7 @@ begin
            Tag.Rule := Rule;
            if TokenType >= 0 then
               Tag.TokenType := TokenType;
-           TecClientSyntAnalyzer(Client).Tags[ki] := Tag;
+           //TecClientSyntAnalyzer(Client).Tags[ki] := Tag; //Alexey: no need with pointer
 
            if CancelNextRules then Exit;   // 2.27
          end;
