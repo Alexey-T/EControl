@@ -3060,7 +3060,8 @@ var i, j, idx, N, to_idx: integer;
 
     Hans L. Werschner, Oct '07
 }
-var rngstyle: ecString;                    // HAW: add style identifier to range expression
+var
+    //rngstyle: ecString;                    // HAW: add style identifier to range expression
     rngtoken, rngResult: ecString;         //      a few more vars
     swp_idx, rngdir, rngoffset, rngmax: integer;
     to_rng: TecTextRange;
@@ -3100,12 +3101,14 @@ begin
     begin
      j := i + 1;
 
-     rngstyle := '';                  // HAW: keep style name
+     //rngstyle := '';                  // HAW: keep style name
      if  Result[j] = ':' then  begin  // HAW: begin of embedded style name
        inc( j );
        while  (j <= length( Result ))  and  (Result[j] <> ':') do begin
+         { //Alexey: was not used
          if  Result[j] > ' '  then
            rngstyle := rngstyle+Result[j];
+           }
          inc( j );
        end;
        if  (j > length( Result ))  or  (Result[j] <> ':')  then
