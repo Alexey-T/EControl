@@ -2203,12 +2203,12 @@ var
    // Select current lexer
    procedure GetOwner;
    var i, N: integer;
-       Sub: TecSubLexerRange;
+       Sub: ^TecSubLexerRange;
    begin
     own := FOwner;
     for i := FSubLexerBlocks.Count - 1 downto 0 do
      begin
-       Sub:= FSubLexerBlocks[i];
+       Sub:= FSubLexerBlocks.InternalGet(i);
        if FPos > Sub.Range.StartPos then
         if Sub.Range.EndPos = -1 then
           begin
@@ -2231,7 +2231,7 @@ var
                  end;
                // Close ranges which belongs to this sub-lexer range
                CloseAtEnd(FTagList.PriorAt(Sub.Range.StartPos));
-               FSubLexerBlocks[i] := Sub; // Write back to list
+               //FSubLexerBlocks[i] := Sub; // Write back to list //Alexey: not needed with pointer
              end else
              begin
                own := Sub.Rule.SyntAnalyzer;
@@ -2248,11 +2248,11 @@ var
 
    procedure CheckIntersect;
    var i: integer;
-       Sub: TecSubLexerRange;
+       Sub: ^TecSubLexerRange;
    begin
     for i := FSubLexerBlocks.Count - 1 downto 0 do
     begin
-      Sub := FSubLexerBlocks[i];
+      Sub := FSubLexerBlocks.InternalGet(i);
       if (CurToken.Range.EndPos > Sub.Range.StartPos) and (CurToken.Range.StartPos < Sub.Range.StartPos) then
        begin
         CurToken.Range.EndPos := Sub.Range.StartPos;

@@ -60,6 +60,7 @@ type
   GRangeList<GRange> = class (TFPGList<GRange>)
   private
     FUnionSiblings: Boolean;
+    type PGRange = ^GRange;
   protected
     // Union ranges with the [Index] and [Index + 1]
     // returns new range index (or union result)
@@ -71,6 +72,7 @@ type
     //property Sorted: boolean read FSorted write FSorted;
     function Add(const Range: GRange): integer; virtual;
     function ClearFromPos(APos: integer): integer;
+    function InternalGet(AIndex: integer): PGRange;
     // At position or next
     function NextAt(APos: integer): integer;
     // At position or prior
@@ -255,6 +257,11 @@ begin
       Result := NStart;
     DeleteRange(idx, Count-1);
   end;
+end;
+
+function GRangeList<GRange>.InternalGet(AIndex: integer): PGRange;
+begin
+  Result := inherited;
 end;
 
 { TSortedList }
