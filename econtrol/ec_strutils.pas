@@ -36,14 +36,13 @@ function IsAlphaChar(c: UCChar): Boolean; inline;
 function IsIdentChar(C: UCChar): Boolean; inline;
 function IsIdentDigitChar(C: UCChar): Boolean; inline;
 function IsIdentLetterChar(C: UCChar): Boolean; inline;
-function IsWordBreak(aPos: integer; const Text: UCString): Boolean; overload;
+function IsWordBreak(aPos: integer; const Text: UCString): Boolean;
 
 function ecUpCase(C: UCChar): UCChar; inline;
 function SkipSpacesAndBreaks(const Source: ecString; var APos: integer): integer;
 function SkipSpacesNoLineBreak(const Source: ecString; var APos: integer): integer;
 function ecEncodeString(const S: string): string;
 function ecDecodeString(const S: string): string;
-function ecPosEx(const SubStr, S: ecString; Offset: Cardinal = 1): Integer;
 
 implementation
 
@@ -235,35 +234,5 @@ begin
 //   else raise Exception.Create('Invalid property data');
 end;
 
-function ecPosEx(const SubStr, S: ecString; Offset: Cardinal = 1): Integer;
-var
-  I,X: Integer;
-  Len, LenSubStr: Integer;
-begin
-  if Offset = 1 then
-    Result := Pos(SubStr, S)
-  else
-  begin
-    I := Offset;
-    LenSubStr := Length(SubStr);
-    Len := Length(S) - LenSubStr + 1;
-    while I <= Len do
-    begin
-      if S[I] = SubStr[1] then
-      begin
-        X := 1;
-        while (X < LenSubStr) and (S[I + X] = SubStr[X + 1]) do
-          Inc(X);
-        if (X = LenSubStr) then
-        begin
-          Result := I;
-          exit;
-        end;
-      end;
-      Inc(I);
-    end;
-    Result := 0;
-  end;
-end;
 
 end.
