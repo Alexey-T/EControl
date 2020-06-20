@@ -532,7 +532,6 @@ type
     property SubLexerRangeCount: integer read GetSubLexerRangeCount;
     property SubLexerRanges[Index: integer]: TecSubLexerRange read GetSubLexerRange;
     property ParserState: integer read FCurState write FCurState;
-    //property TagIndexes[Index: integer]: TRangeListIndex read GetTagIndexes;
 
     procedure CopyTags(L: TecTokenList);
     procedure CopyRangesSublexer(L: TecSubLexerRanges);

@@ -94,7 +94,6 @@ type
 implementation
 
 uses
-  //Math, Dialogs,
   SysUtils, Contnrs;
 
 { TecStateChange }
