@@ -663,6 +663,7 @@ type
     FFormats: TecStylesCollection;
     FTokenRules: TecTokenRuleCollection;
     FBlockRules: TecBlockRuleCollection;
+    FBlockRules_Detecters: array of TecTagBlockCondition; //Alexey
     FCodeTemplates: TecCodeTemplates;
     FExtentions: string;
     FLexerName: string;
@@ -3619,18 +3620,16 @@ end;
 
 procedure TecSyntAnalyzer.HighlightKeywords(Client: TecParserResults;
   const Source: ecString; OnlyGlobal: Boolean);
-var i, N, ki, RefIdx: integer;
+var iRule, N, ki, RefIdx: integer;
     Accept: Boolean;
     Tag: PecSyntToken;
     Rule: TecTagBlockCondition;
 begin
   N := Client.TagCount;
-  for i := 0 to FBlockRules.Count - 1 do
+  for iRule := 0 to High(FBlockRules_Detecters) do
   begin
-    Rule := FBlockRules[i];
+    Rule := FBlockRules_Detecters[iRule];
     with Rule do
-    if Enabled and (BlockType = btTagDetect) and
-       (Block = nil) and (FGrammaRule = nil) then
       begin
        if OnlyGlobal and not AlwaysEnabled then Continue;
        RefIdx := 0;
@@ -3910,7 +3909,9 @@ begin
 end;
 
 procedure TecSyntAnalyzer.Loaded;
-var i: integer;
+var
+  Rule: TecTagBlockCondition;
+  i: integer;
 begin
   inherited;
   MarkedBlockStyle := FMarkedBlockName;
@@ -3927,6 +3928,20 @@ begin
   DetectBlockSeparate;
   for i := 0 to FMasters.Count - 1 do
     TecSyntAnalyzer(FMasters[i]).DetectBlockSeparate;
+
+  //Alexey
+  SetLength(FBlockRules_Detecters, 0);
+  for i := 0 to FBlockRules.Count - 1 do
+  begin
+    Rule := FBlockRules[i];
+    with Rule do
+      if Enabled and (BlockType = btTagDetect) and
+         (Block = nil) and (FGrammaRule = nil) then
+      begin
+        SetLength(FBlockRules_Detecters, Length(FBlockRules_Detecters)+1);
+        FBlockRules_Detecters[High(FBlockRules_Detecters)] := Rule;
+      end;
+  end;
 end;
 
 procedure TecSyntAnalyzer.SetBlockRules(const Value: TecBlockRuleCollection);
