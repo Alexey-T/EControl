@@ -508,7 +508,7 @@ type
     procedure SaveState;
     procedure RestoreState;
     procedure ClearTokenIndexer;
-    procedure UpdateTokenIndexer(const Token: TecSyntToken); inline;
+    procedure UpdateTokenIndexer(const Token: TecSyntToken);
     procedure ShowTokenIndexer;
   public
     //for each line index, array holds the index of first token overlapping that line
@@ -3519,13 +3519,13 @@ begin
            if (NLine <= High(TokenIndexer)) and (TokenIndexer[NLine] = NTokenIndex) then
            begin
              NIndentSize := TokenIndent(Token1);
-             for iLine := NLine+1 to FBuffer.Count-1 do
+             for iLine := NLine+1 to High(TokenIndexer) do // not FBuffer.Count-1, it can be bigger
              begin
                NTokenIndex := TokenIndexer[iLine];
                if (NTokenIndex >= 0) and (NTokenIndex < NTagCount) then
                begin
                  Token2 := Tags[NTokenIndex];
-                 if Token2.Rule.SyntOwner <> Owner then // Check that Token2 is not from sublexer
+                 if Token2.Rule.SyntOwner <> Owner then // check that Token2 is not from sublexer
                    Continue;
                  if Owner.SpecialKinds[Token2.TokenType] then
                    if TokenIndent(Token2) <= NIndentSize then
