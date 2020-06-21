@@ -501,6 +501,7 @@ type
     procedure CloseAtEnd(StartTagIdx: integer); virtual; abstract;
   protected
     FLastAnalPos: integer;
+
     procedure Finished; virtual;
     function IsEnabled(Rule: TRuleCollectionItem; OnlyGlobal: Boolean): Boolean; virtual;
     procedure ApplyStates(Rule: TRuleCollectionItem);
@@ -511,7 +512,7 @@ type
     procedure ShowTokenIndexer;
   public
     //for each line index, array holds the index of first token overlapping that line
-    TokenIndexer: array of integer;
+    TokenIndexer: array of integer; //Alexey
 
     constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer; const AClient: IecSyntClient); virtual;
     destructor Destroy; override;
@@ -551,7 +552,6 @@ type
     FStartSepRangeAnal: integer;
     FDisableIdleAppend: Boolean;
     FRepeateAnalysis: Boolean;
-    FSpecialKinds: array of boolean; //Alexey
 
     function GetDisabledFolding: boolean; //Alexey
     function GetRangeCount: integer;
@@ -560,7 +560,6 @@ type
     function GetOpenedCount: integer;
     procedure SetDisableIdleAppend(const Value: Boolean);
     function DoStopTimer(AndWait: boolean): boolean;
-    procedure UpdateSpecialKinds;
   protected
     procedure AddRange(Range: TecTextRange);
     function HasOpened(Rule: TRuleCollectionItem; Parent: TecTagBlockCondition; Strict: Boolean): Boolean;
@@ -741,6 +740,7 @@ type
     procedure SetCollapseStyleName(const Value: string);
     procedure SetCollapseStyle(const Value: TecSyntaxFormat);
     function GetSeparateBlocks: Boolean;
+    procedure UpdateSpecialKinds; //Alexey
   protected
     function GetToken(Client: TecParserResults; const Source: ecString;
                        APos: integer; OnlyGlobal: Boolean): TecSyntToken; virtual;
@@ -753,6 +753,9 @@ type
     procedure Change; dynamic;
     property SeparateBlockAnalysis: Boolean read GetSeparateBlocks;
   public
+    SpecialKinds: array of boolean; //Alexey
+    IndentBasedFolding: boolean; //Alexey
+
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
@@ -2781,10 +2784,10 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.ChangedAtPos(APos: integer);
-const
-  cDeltaRanges = 4; // Alexey
-  // lexer will update ranges, which have ending at changed-pos
-  // minus cDeltaRanges (in tokens)
+var
+  //Alexey
+  // lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
+  NDeltaRanges: integer;
 var
   i, N: integer;
   Sub: TecSubLexerRange;
@@ -2817,6 +2820,15 @@ begin
   end;
 
   DoStopTimer(False);
+
+  //Alexey
+  // delta>0 was added for Python: editing below block end must enlarge previous block to editing pos
+  // delta>0 breaks HTML lexer: on editing in any place,
+  // text in <p>text text</p> changes styles to "misspelled tag property"
+  if Owner.IndentBasedFolding then
+    NDeltaRanges := 4
+  else
+    NDeltaRanges := 0;
 
    // Check sub lexer ranges
    for i := FSubLexerBlocks.Count - 1 downto 0 do
@@ -2856,7 +2868,7 @@ begin
    for i := FRanges.Count - 1 downto 0 do
     with TecTextRange(FRanges[i]) do
      if (FCondIndex >= N) or (StartIdx >= N) then FRanges.Delete(i)  else
-      if (FEndCondIndex >= N - cDeltaRanges) or (EndIdx >= N - cDeltaRanges) then // Alexey: delta
+      if (FEndCondIndex >= N - NDeltaRanges) or (EndIdx >= N - NDeltaRanges) then // Alexey: delta
        begin
          EndIdx := -1;
          FEndCondIndex := -1;
@@ -3453,22 +3465,25 @@ begin
   end;
 end;
 
-procedure TecClientSyntAnalyzer.UpdateSpecialKinds;
+procedure TecSyntAnalyzer.UpdateSpecialKinds; //Alexey
 const
   cSpecTokenStart = '^';
-    //special char - must be first of token's type name (e.g. "1keyword");
-    //Also such tokens must contain spaces+tabs at the beginning (use parser regex like "^[\x20\x09]*\w+")
 var
   S: string;
   i: integer;
+  b: boolean;
 begin
-  if Length(FSpecialKinds) = 0 then
+  IndentBasedFolding := False;
+  if Length(SpecialKinds) = 0 then
   begin
-    SetLength(FSpecialKinds, Owner.TokenTypeNames.Count);
-    for i := 0 to High(FSpecialKinds) do
+    SetLength(SpecialKinds, TokenTypeNames.Count);
+    for i := 0 to High(SpecialKinds) do
     begin
-      S := Owner.TokenTypeNames[i];
-      FSpecialKinds[i] := (S <> '') and (S[1] = cSpecTokenStart);
+      S := TokenTypeNames[i];
+      b := (S <> '') and (S[1] = cSpecTokenStart);
+      SpecialKinds[i] := b;
+      if b then
+        IndentBasedFolding := True;
     end;
   end;
 end;
@@ -3481,7 +3496,6 @@ var
   Token1, Token2: PecSyntToken;
   i, iLine: integer;
 begin
-  UpdateSpecialKinds;
   NTagCount := TagCount;
 
   for i := FOpenedBlocks.Count - 1 downto 0 do
@@ -3498,7 +3512,7 @@ begin
          NTokenIndex := Range.StartIdx;
          if NTokenIndex >= NTagCount then Continue;
          Token1 := Tags[NTokenIndex];
-         if FSpecialKinds[Token1.TokenType] then
+         if Owner.SpecialKinds[Token1.TokenType] then
          begin
            NLine := Token1.Range.PointStart.Y;
            // check that Token1 is first in its line, using TokenIndexer
@@ -3513,7 +3527,7 @@ begin
                  Token2 := Tags[NTokenIndex];
                  if Token2.Rule.SyntOwner <> Owner then // Check that Token2 is not from sublexer
                    Continue;
-                 if FSpecialKinds[Token2.TokenType] then
+                 if Owner.SpecialKinds[Token2.TokenType] then
                    if TokenIndent(Token2) <= NIndentSize then
                    begin
                      // close range at prev token
@@ -3980,6 +3994,9 @@ begin
         FBlockRules_Detecters[High(FBlockRules_Detecters)] := Rule;
       end;
   end;
+
+  //Alexey
+  UpdateSpecialKinds;
 end;
 
 procedure TecSyntAnalyzer.SetBlockRules(const Value: TecBlockRuleCollection);
