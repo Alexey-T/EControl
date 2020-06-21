@@ -490,7 +490,7 @@ type
     FStateChanges: TecStateChanges;
 
     function GetLastPos: integer;
-    function ExtractTag(var FPos: integer): Boolean;
+    function ExtractTag(var FPos: integer; ADisableFolding: Boolean): Boolean;
     function GetTags(Index: integer): PecSyntToken;
     function GetSubLexerRangeCount: integer;
     function GetSubLexerRange(Index: integer): TecSubLexerRange;
@@ -542,7 +542,7 @@ type
   TecClientSyntAnalyzer = class(TecParserResults)
   private
     FRanges: TSortedList;
-    FOpenedBlocks: TSortedList;    // Opened ranges (without end)
+    FOpenedBlocks: TSortedList; // Opened ranges (without end)
 
     FTimerIdleMustStop: Boolean;
     FTimerIdleIsBusy: Boolean;
@@ -551,8 +551,9 @@ type
     FStartSepRangeAnal: integer;
     FDisableIdleAppend: Boolean;
     FRepeateAnalysis: Boolean;
-    FSpecialKinds: array of boolean;
+    FSpecialKinds: array of boolean; //Alexey
 
+    function GetDisabledFolding: boolean;
     function GetRangeCount: integer;
     function GetRanges(Index: integer): TecTextRange;
     function GetOpened(Index: integer): TecTextRange;
@@ -746,7 +747,7 @@ type
     procedure HighlightKeywords(Client: TecParserResults; const Source: ecString;
                        OnlyGlobal: Boolean); virtual;
     procedure SelectTokenFormat(Client: TecParserResults; const Source: ecString;
-                       OnlyGlobal: Boolean; N: integer = -1); virtual;
+                       DisableFolding, OnlyGlobal: Boolean; N: integer = -1); virtual;
     procedure Loaded; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Change; dynamic;
@@ -872,6 +873,9 @@ type
 
 var
   OnLexerParseProgress: TecParseProgressEvent;
+
+var
+  MaxLinesWhenParserEnablesFolding: integer = 10*1000;
 
 implementation
 
@@ -2195,7 +2199,7 @@ begin
 end;
 
 // True if end of the text
-function TecParserResults.ExtractTag(var FPos: integer): Boolean;
+function TecParserResults.ExtractTag(var FPos: integer; ADisableFolding: Boolean): Boolean;
 var
   Source: ecString;
   CurToken: TecSyntToken;
@@ -2357,9 +2361,9 @@ begin
 
     if not FOwner.SeparateBlockAnalysis then
      begin
-      FOwner.SelectTokenFormat(Self, Source, own <> FOwner);
+      FOwner.SelectTokenFormat(Self, Source, ADisableFolding, own <> FOwner);
       if own <> FOwner then
-        own.SelectTokenFormat(Self, Source, False);
+        own.SelectTokenFormat(Self, Source, ADisableFolding, False);
      end else
 //    if not IsIdle then
      begin  // Only for first iteration of analysis
@@ -2623,6 +2627,11 @@ begin
   FRepeateAnalysis := True;
 end;
 
+function TecClientSyntAnalyzer.GetDisabledFolding: boolean; //Alexey
+begin
+  Result := FBuffer.Count>MaxLinesWhenParserEnablesFolding;
+end;
+
 procedure TecClientSyntAnalyzer.TimerIdleTick(Sender: TObject);
 var FPos, tmp, i: integer;
     own: TecSyntAnalyzer;
@@ -2630,6 +2639,7 @@ var FPos, tmp, i: integer;
     Progress, ProgressPrev: integer;
     NMaxPercents, NTagCount: integer;
     bSeparateBlocks: boolean;
+    bDisableFolding: boolean;
 const
   ProgressMinPos = 2000;
   ProcessMsgStep1 = 1000; //stage1: finding tokens
@@ -2648,6 +2658,14 @@ begin
     NMaxPercents := 100;
   ProgressPrev := 0;
 
+  //Alexey
+  bDisableFolding := GetDisabledFolding;
+  if bDisableFolding then
+  begin
+    FRanges.Clear;
+    FOpenedBlocks.Clear;
+  end;
+
   try
     while True do
     begin
@@ -2660,7 +2678,7 @@ begin
       if tmp > FPos then
         FPos := tmp;
 
-      if ExtractTag(FPos) then
+      if ExtractTag(FPos, bDisableFolding) then
       begin
         //all tokens found, now find blocks (if bSeparateBlocks)
         if bSeparateBlocks then
@@ -2671,9 +2689,9 @@ begin
           for i := FStartSepRangeAnal + 1 to NTagCount do
             begin
               own := Tags[i - 1].Rule.SyntOwner;
-              FOwner.SelectTokenFormat(Self, FBuffer.FText, own <> FOwner, i);
+              FOwner.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, own <> FOwner, i);
               if own <> FOwner then
-                own.SelectTokenFormat(Self, FBuffer.FText, False, i);
+                own.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, False, i);
 
               if i mod ProcessMsgStep2 = 0 then
               begin
@@ -2735,14 +2753,18 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.AppendToPos(APos: integer; AUseTimer: boolean=true);
-var FPos: integer;
+var
+  FPos: integer;
+  bDisableFolding: boolean;
 begin
   if FBuffer.TextLength = 0 then Exit;
   if FFinished then Exit;
   FPos := GetLastPos;
+  bDisableFolding := GetDisabledFolding;
+
   while FPos - 1 <= APos + 1 do
    begin
-     if ExtractTag(FPos{, False}) then
+     if ExtractTag(FPos, bDisableFolding) then
       begin
        if not FOwner.SeparateBlockAnalysis then
          Finished else
@@ -3671,7 +3693,8 @@ begin
 end;
 
 procedure TecSyntAnalyzer.SelectTokenFormat(Client: TecParserResults;
-            const Source: ecString; OnlyGlobal: Boolean; N: integer);
+            const Source: ecString;
+            DisableFolding, OnlyGlobal: Boolean; N: integer);
 var i, li, ki, strt, RefIdx: integer;
     Range: TecTextRange;
     Accept: Boolean;
@@ -3693,6 +3716,8 @@ begin
     for i := 0 to FBlockRules.Count - 1 do
     begin
       Rule := FBlockRules[i];
+      if DisableFolding then
+        if Rule.BlockType in [btRangeStart, btRangeEnd] then Continue;
       with Rule do
        if not SeparateBlockAnalysis or (BlockType <> btTagDetect) or
           (Block = nil) or (FGrammaRule = nil) then
