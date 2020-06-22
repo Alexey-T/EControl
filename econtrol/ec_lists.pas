@@ -68,7 +68,7 @@ type
     //property Sorted: boolean read FSorted write FSorted;
     function Add(const Range: GRange): integer; virtual;
     function ClearFromPos(APos: integer): integer;
-    function InternalGet(AIndex: integer): PGRange;
+    function InternalGet(AIndex: integer): PGRange; inline;
     // At position or next
     function NextAt(APos: integer): integer;
     // At position or prior

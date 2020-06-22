@@ -144,6 +144,7 @@ type
 
   { TecSubLexerRange }
 
+  PecSubLexerRange = ^TecSubLexerRange;
   TecSubLexerRange = record
   public
     Range: TRange;
@@ -2213,7 +2214,7 @@ var
    // Select current lexer
    procedure GetOwner;
    var i, N: integer;
-       Sub: ^TecSubLexerRange;
+       Sub: PecSubLexerRange;
    begin
     own := FOwner;
     for i := FSubLexerBlocks.Count - 1 downto 0 do
@@ -2258,7 +2259,7 @@ var
 
    procedure CheckIntersect;
    var i: integer;
-       Sub: ^TecSubLexerRange;
+       Sub: PecSubLexerRange;
    begin
     for i := FSubLexerBlocks.Count - 1 downto 0 do
     begin
