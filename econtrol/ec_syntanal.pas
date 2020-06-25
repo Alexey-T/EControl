@@ -2088,6 +2088,7 @@ var
   T1, T2: PecSyntToken;
   Len1, Len2: integer;
   St1, St2: integer;
+  Ptr1, Ptr2: PWideChar;
 begin
   T1 := Tags[Index1];
   T2 := Tags[Index2];
@@ -2099,10 +2100,9 @@ begin
     Exit(false);
   // case-insensitive, like in original EControl compare
   // (used for HTML/XML lexer mostly)
-  Result := strlicomp(
-    @FBuffer.FText[St1+1],
-    @FBuffer.FText[St2+1],
-    Len1) = 0;
+  Ptr1 := @FBuffer.FText[St1+1];
+  Ptr2 := @FBuffer.FText[St2+1];
+  Result := strlicomp(Ptr1, Ptr2, Len1) = 0;
 end;
 
 function TecParserResults.TagSameAs(Index: integer; const Str: ecString): boolean; // Alexey
