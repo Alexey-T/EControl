@@ -2100,6 +2100,7 @@ begin
     Exit(false);
   // case-insensitive, like in original EControl compare
   // (used for HTML/XML lexer mostly)
+  // must! make vars to force correct strlicomp overload
   Ptr1 := @FBuffer.FText[St1+1];
   Ptr2 := @FBuffer.FText[St2+1];
   Result := strlicomp(Ptr1, Ptr2, Len1) = 0;
@@ -2110,6 +2111,7 @@ var
   T: PecSyntToken;
   Len: integer;
   St: integer;
+  Ptr: PWideChar;
 begin
   T := Tags[Index];
   St := T.Range.StartPos;
@@ -2117,10 +2119,8 @@ begin
   if Len <> Length(Str) then
     Exit(false);
   // case-sensitive
-  Result := strlcomp(
-    @FBuffer.FText[St+1],
-    PWideChar(Str),
-    Len) = 0;
+  Ptr := @FBuffer.FText[St+1]; // better to make var to force correct strlcomp overload
+  Result := strlcomp(PWideChar(Str), Ptr, Len) = 0;
 end;
 
 function TecParserResults.GetLastPos: integer;
