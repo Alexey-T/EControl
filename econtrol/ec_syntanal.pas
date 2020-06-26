@@ -3495,6 +3495,7 @@ var
   NIndentSize, NLine, NTokenIndex: integer;
   Range: TecTextRange;
   Token1, Token2: PecSyntToken;
+  Style: TecSyntaxFormat;
   i, iLine: integer;
 begin
   NTagCount := TagCount;
@@ -3534,8 +3535,13 @@ begin
                      // close range at prev token
                      Dec(NTokenIndex);
                      // make it nice for Python lexer: skip ending "comment" tokens
-                     while (NTokenIndex>0) and (Tags[NTokenIndex].Style.TokenKind=etkComment) do
+                     repeat
+                       if NTokenIndex<=0 then Break;
+                       Style:= Tags[NTokenIndex].Style;
+                       if Style=nil then Break;
+                       if Style.TokenKind<>etkComment then Break;
                        Dec(NTokenIndex);
+                     until false;
                      Range.EndIdx := NTokenIndex;
                      Break
                    end;
