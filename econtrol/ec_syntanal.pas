@@ -2078,7 +2078,15 @@ begin
       #13:
         Break;
       else
-        Exit(80); //if token begins not after spaces, return some big value
+        Exit(80);
+        {
+        if token begins not after spaces, return some big value
+        big value is needed for multiline tokens in Python:
+        def f():
+           s = '''ddd
+           dddd
+           dddd'''
+        }
     end;
   end;
 end;
