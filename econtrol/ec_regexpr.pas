@@ -134,6 +134,25 @@ begin
   end;
 end;
 
+function BufferStrToInt(p: PWideChar; Len: integer): integer; //Alexey
+var
+  N, i: integer;
+  ch: WideChar;
+begin
+  Result:= 0;
+  for i:= 1 to Len do
+  begin
+    ch:= p^;
+    if IsDigitChar(ch) then
+      N:= Ord(ch)-Ord('0')
+    else
+      exit(-1);
+    Inc(p);
+    Result:= Result*10+N;
+  end;
+end;
+
+
 {$IFDEF RE_DEBUG}
 var
   LastNodeID: integer;
@@ -884,7 +903,7 @@ var Len: integer;
        Inc(aPos);
       if strt = aPos then
        raise Exception.Create('Number is expected');
-      Result := StrToInt(Copy(Expression, strt, aPos - strt));
+      Result := BufferStrToInt(@Expression[strt], aPos - strt);
       Dec(aPos);
     end;
 
