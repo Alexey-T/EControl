@@ -110,6 +110,30 @@ implementation
 
 uses SysUtils, Contnrs, Math;
 
+function BufferHexToInt(p: PWideChar; Len: integer): integer; //Alexey
+var
+  N, i: integer;
+  ch: WideChar;
+begin
+  Result:= 0;
+  for i:= 1 to Len do
+  begin
+    ch:= p^;
+    case ch of
+      '0'..'9':
+        N:= Ord(ch)-Ord('0');
+      'a'..'f':
+        N:= Ord(ch)-(Ord('a')-10);
+      'A'..'F':
+        N:= Ord(ch)-(Ord('A')-10);
+      else
+        exit(-1);
+    end;
+    Inc(p);
+    Result:= Result*16+N;
+  end;
+end;
+
 {$IFDEF RE_DEBUG}
 var
   LastNodeID: integer;
@@ -318,7 +342,9 @@ begin
 end;
 
 function GetEscape(const Expression: UCString; var aPos: integer): UCChar; overload;
-var strt: integer;
+var
+  strt: integer;
+  N: integer;
 begin
   Result := #0;
   case Expression[aPos] of
@@ -338,14 +364,20 @@ begin
              strt := aPos;
              while (aPos < Length(Expression)) and (Expression[aPos] <> '}') do
                inc(aPos);
-             Result := UCChar(StrToInt('$' + Trim(Copy(Expression, strt, aPos - strt))));
+             N := BufferHexToInt(@Expression[strt], aPos - strt);
+             if N<0 then
+               raise Exception.Create('Invalid hex digit in \x');
+             Result := UCChar(N);
            end else
             begin
-             Result := UCChar(StrToInt('$' + Copy(Expression, aPos, 2)));
-             Inc(aPos);
+              N := BufferHexToInt(@Expression[aPos], 2);
+              if N<0 then
+                raise Exception.Create('Invalid hex digit in \x');
+              Result := UCChar(N);
+              Inc(aPos);
             end;
           if Result = '' then
-            raise Exception.Create('Invalid HEX char');
+            raise Exception.Create('Invalid hex digit in \x');
          end;
   end;
 end;
