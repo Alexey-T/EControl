@@ -39,6 +39,7 @@ function IsIdentLetterChar(C: UCChar): Boolean; inline;
 function IsWordBreak(aPos: integer; const Text: UCString): Boolean;
 
 function ecUpCase(C: UCChar): UCChar; inline;
+procedure CharToUpCase(var C: UCChar); inline;
 function SkipSpacesAndBreaks(const Source: ecString; var APos: integer): integer;
 function SkipSpacesNoLineBreak(const Source: ecString; var APos: integer): integer;
 
@@ -105,7 +106,8 @@ end;
 
 function IsWordChar(C: UCChar): Boolean; inline;
 begin
-  Result := WordDetectArray[Ord(C)];
+  // bit 7 in value: is word char
+  Result := CharCategoryArray[Ord(C)] and 128 <> 0;
 end;
 
 
@@ -162,6 +164,12 @@ begin
   Result := C;
   if (C >= 'a') and (C <= 'z') then
     Dec(Result, 32);
+end;
+
+procedure CharToUpCase(var C: UCChar); inline;
+begin
+  if (C >= 'a') and (C <= 'z') then
+    Dec(C, 32);
 end;
 
 function SkipSpacesNoLineBreak(const Source: ecString; var APos: integer): integer;

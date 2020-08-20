@@ -453,7 +453,7 @@ end;
 procedure TCharSetNode.AddChar(C: UCChar);
 begin
   if FIgnoreCase then
-    C := ecUpCase(C);
+    CharToUpCase(C);
   if Pos(C, FCharArray) = 0 then
     FCharArray := FCharArray + C;
 end;
@@ -462,8 +462,8 @@ procedure TCharSetNode.AddRange(st, en: UCChar);
 begin
   if FIgnoreCase then
    begin
-    st := ecUpCase(st);
-    en := ecUpCase(en);
+    CharToUpCase(st);
+    CharToUpCase(en);
    end;
   FCharRanges := FCharRanges + st + en;
 end;
@@ -484,7 +484,7 @@ begin
     end;
 
   C := InputString[aPos];
-  if FIgnoreCase then C := ecUpCase(C);
+  if FIgnoreCase then CharToUpCase(C);
   b := HasChar(C) xor FInvert;
   if b then Inc(aPos);
   if b then Result := 1 else Result := 0;
@@ -501,7 +501,7 @@ begin
     end;
 
   C := InputString[aPos - 1];
-  if FIgnoreCase then C := ecUpCase(C);
+  if FIgnoreCase then CharToUpCase(C);
   b := HasChar(C) xor FInvert;
   if b then Dec(aPos);
   if b then Result := 1 else Result := 0;
@@ -517,7 +517,7 @@ begin
     begin
       C := InputString[aPos - 1];
       if FIgnoreCase then
-        C := ecUpCase(C);
+        CharToUpCase(C);
       if C = FChar then
         begin
           Dec(aPos);
@@ -534,7 +534,7 @@ begin
     begin
       C := InputString[aPos];
       if FIgnoreCase then
-        C := ecUpCase(C);
+        CharToUpCase(C);
       if C = FChar then
         begin
           Inc(aPos, 1);
