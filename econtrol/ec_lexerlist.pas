@@ -14,7 +14,7 @@ interface
 uses
   Classes, SysUtils,
   FileUtil,
-  ATStringProc,
+  ATStringProc_Separator,
   ec_SyntAnal;
 
 type
