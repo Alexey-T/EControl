@@ -575,6 +575,7 @@ type
     procedure Clear; override;
     procedure ChangedAtPos(APos: integer);
     function PriorTokenAt(Pos: integer): integer;
+    function FindTokenAt(Pos: integer): integer;
 
     function RangeFormat(const FmtStr: ecString; Range: TecTextRange): ecString;
     function GetRangeName(Range: TecTextRange): ecString;
@@ -2918,6 +2919,11 @@ end;
 function TecClientSyntAnalyzer.PriorTokenAt(Pos: integer): integer;
 begin
   Result := FTagList.PriorAt(Pos);
+end;
+
+function TecClientSyntAnalyzer.FindTokenAt(Pos: integer): integer;
+begin
+  Result := FTagList.FindAt(Pos);
 end;
 
 function TecClientSyntAnalyzer.GetRangeCount: integer;

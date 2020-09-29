@@ -73,6 +73,8 @@ type
     function NextAt(APos: integer): integer;
     // At position or prior
     function PriorAt(APos: integer): integer;
+    // At position exactly, -1 if pos between tokens
+    function FindAt(APos: integer): integer;
   end;
 
   TecRangeList = GRangeList<TRange>;
@@ -194,37 +196,58 @@ end;
 
 function GRangeList<GRange>.PriorAt(APos: integer): integer; 
 var
-  H, I, C, NCount: Integer;
+  H, I, Diff, NCount: Integer;
 begin
   NCount := Count;
   if NCount = 0 then
-  begin
     Exit(-1);
-  end
-  else
+
+  Result := 0;
+  H := NCount - 1;
+  while Result <= H do
   begin
-    Result := 0;
-    H := NCount - 1;
-    while Result <= H do
+    I := (Result + H) shr 1;
+    Diff := CompProc(TRange(InternalItems[i]^), APos);
+    if Diff < 0 then
+      Result := I + 1
+    else
     begin
-      I := (Result + H) shr 1;
-      C := CompProc(TRange(InternalItems[i]^), APos);
-      if C < 0 then
-        Result := I + 1
-      else
-      begin
-        if C = 0 then
-        begin
-          Exit(I);
-        end;
-        H := I - 1;
-      end;
+      if Diff = 0 then
+        Exit(I);
+      H := I - 1;
     end;
-    if Result >= NCount then
-      Result := NCount - 1;
-    if Result >= 0 then
-      if CompProc(TRange(InternalItems[i]^), APos) > 0 then
-        dec(Result);
+  end;
+
+  if Result >= NCount then
+    Result := NCount - 1;
+  if Result >= 0 then
+    if CompProc(TRange(InternalItems[i]^), APos) > 0 then
+      Dec(Result);
+end;
+
+function GRangeList<GRange>.FindAt(APos: integer): integer;
+var
+  L, H, I, Diff, NCount: Integer;
+begin
+  Result := -1;
+  NCount := Count;
+  if NCount = 0 then
+    Exit;
+
+  L := 0;
+  H := NCount - 1;
+  while L <= H do
+  begin
+    I := (L + H) shr 1;
+    Diff := CompProc(TRange(InternalItems[i]^), APos);
+    if Diff < 0 then
+      L := I + 1
+    else
+    begin
+      if Diff = 0 then
+        Exit(I);
+      H := I - 1;
+    end;
   end;
 end;
 
