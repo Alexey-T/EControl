@@ -554,6 +554,7 @@ type
     FDisableIdleAppend: Boolean;
     FRepeateAnalysis: Boolean;
 
+    function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
     function GetDisabledFolding: boolean; //Alexey
     function GetRangeCount: integer;
     function GetRanges(Index: integer): TecTextRange;
@@ -3528,6 +3529,51 @@ begin
   end;
 end;
 
+function TecClientSyntAnalyzer.CheckBracketsAreClosed(
+  ATokenIndexFrom, ATokenIndexTo: integer): boolean; // Alexey
+// https://github.com/Alexey-T/CudaText/issues/2773
+var
+  Token: PecSyntToken;
+  iToken: integer;
+  LevelRound, LevelSquare, LevelCurly: integer;
+  NPosStart, NLen: integer;
+  ch: WideChar;
+begin
+  LevelRound := 0;
+  LevelSquare := 0;
+  LevelCurly := 0;
+  NLen := Length(FBuffer.FText);
+
+  for iToken := ATokenIndexFrom to ATokenIndexTo do
+  begin
+     Token := Tags[iToken];
+     // count only tokens of length=1
+     NPosStart := Token.Range.StartPos;
+     if Token.Range.EndPos <> NPosStart+1 then
+       Continue;
+     if NPosStart >= NLen then
+       Continue;
+
+     ch := FBuffer.FText[NPosStart+1];
+     case ch of
+       '(':
+         Inc(LevelRound);
+       ')':
+         Dec(LevelRound);
+       '[':
+         Inc(LevelSquare);
+       ']':
+         Dec(LevelSquare);
+       '{':
+         Inc(LevelCurly);
+       '}':
+         Dec(LevelCurly);
+     end;
+  end;
+
+  Result := (LevelRound <= 0) and (LevelSquare <= 0) and (LevelCurly <= 0);
+end;
+
 procedure TecClientSyntAnalyzer.CloseAtEnd(AStartTagIdx: integer);
 var
   NTagCount: integer;
@@ -3570,20 +3616,23 @@ begin
                    Continue;
                  if Owner.SpecialKinds[Token2.TokenType] then
                    if TokenIndent(Token2) <= NIndentSize then
-                   begin
-                     // close range at prev token
-                     Dec(NTokenIndex);
-                     // make it nice for Python lexer: skip ending "comment" tokens
-                     repeat
-                       if NTokenIndex<=0 then Break;
-                       Style:= Tags[NTokenIndex].Style;
-                       if Style=nil then Break;
-                       if Style.TokenKind<>etkComment then Break;
+                     // also check that all brackets ()[]{} are closed at this pos
+                     // https://github.com/Alexey-T/CudaText/issues/2773
+                     if CheckBracketsAreClosed(Range.StartIdx, NTokenIndex) then
+                     begin
+                       // close range at prev token
                        Dec(NTokenIndex);
-                     until false;
-                     Range.EndIdx := NTokenIndex;
-                     Break
-                   end;
+                       // make it nice for Python lexer: skip ending "comment" tokens
+                       repeat
+                         if NTokenIndex<=0 then Break;
+                         Style:= Tags[NTokenIndex].Style;
+                         if Style=nil then Break;
+                         if Style.TokenKind<>etkComment then Break;
+                         Dec(NTokenIndex);
+                       until false;
+                       Range.EndIdx := NTokenIndex;
+                       Break
+                     end;
                end;
              end;
            end;
