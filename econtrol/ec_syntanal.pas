@@ -2704,11 +2704,8 @@ begin
 
   Range := TecTextRange.Create(AStartIdx, TokenPtr^.Range.StartPos);
   Range.EndIdx := AEndIdx;
-  Range.Index := FRanges.Count;
   Range.Rule := FDummyRule;
-  FRanges.Add(Range);
-  if FOpenedBlocks.Count > 0 then
-    Range.Parent := TecTextRange(FOpenedBlocks[FOpenedBlocks.Count - 1]);
+  AddRange(Range);
 end;
 
 
