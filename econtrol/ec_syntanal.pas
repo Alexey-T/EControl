@@ -2197,6 +2197,7 @@ procedure TecParserResults.UpdateTokenIndexer(const Token: TecSyntToken);
 var
   NNewLen, NPrevLen, NTokenIndex, NLine, NLine2, i: integer;
   Style: TecSyntaxFormat;
+  bComment: boolean;
 begin
   NNewLen := FBuffer.Count;
   NPrevLen := Length(TokenIndexer);
@@ -2215,20 +2216,21 @@ begin
   NLine2 := Token.Range.PointEnd.Y;
   if NLine >= NNewLen then Exit;
 
+  Style := Token.Style;
+  bComment := Assigned(Style) and (Style.TokenKind = etkComment);
+
   NTokenIndex := FTagList.Count-1;
   if (TokenIndexer[NLine] < 0) or (NTokenIndex < TokenIndexer[NLine]) then
   begin
     TokenIndexer[NLine] := NTokenIndex;
-    Style := Token.Style;
-    CmtIndexer[NLine] := Assigned(Style) and (Style.TokenKind = etkComment);
+    CmtIndexer[NLine] := bComment;
   end;
 
   //handle multi-line tokens
   for i := NLine + 1 to NLine2 do
   begin
     TokenIndexer[i] := NTokenIndex;
-    Style := Token.Style;
-    CmtIndexer[i] := Assigned(Style) and (Style.TokenKind = etkComment);
+    CmtIndexer[i] := bComment;
   end;
 end;
 
