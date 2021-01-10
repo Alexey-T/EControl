@@ -511,9 +511,12 @@ type
     procedure ClearTokenIndexer;
     procedure UpdateTokenIndexer(const Token: TecSyntToken);
     procedure ShowTokenIndexer;
+    procedure ShowCmtIndexer;
   public
     //for each line index, array holds the index of first token overlapping that line
     TokenIndexer: array of integer; //Alexey
+    //holds booleans: is starting token of i-th line is 'comment'
+    CmtIndexer: array of boolean; //Alexey
 
     constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer; const AClient: IecSyntClient); virtual;
     destructor Destroy; override;
@@ -2016,6 +2019,7 @@ begin
   FStateChanges.Clear;
   FCurState := 0;
   SetLength(TokenIndexer, 0);
+  SetLength(CmtIndexer, 0);
   FPrevChangePos := -1;
 end;
 
@@ -2183,20 +2187,28 @@ begin
   end;
 
   for i := NLastLine + 1 to High(TokenIndexer) do
+  begin
     TokenIndexer[i] := -1;
+    CmtIndexer[i] := false;
+  end;
 end;
 
 procedure TecParserResults.UpdateTokenIndexer(const Token: TecSyntToken);
 var
   NNewLen, NPrevLen, NTokenIndex, NLine, NLine2, i: integer;
+  Style: TecSyntaxFormat;
 begin
   NNewLen := FBuffer.Count;
   NPrevLen := Length(TokenIndexer);
   if NPrevLen <> NNewLen then
   begin
     SetLength(TokenIndexer, NNewLen);
+    SetLength(CmtIndexer, NNewLen);
     for i := NPrevLen to NNewLen - 1 do
+    begin
       TokenIndexer[i] := -1;
+      CmtIndexer[i] := false;
+    end;
   end;
 
   NLine := Token.Range.PointStart.Y;
@@ -2205,11 +2217,19 @@ begin
 
   NTokenIndex := FTagList.Count-1;
   if (TokenIndexer[NLine] < 0) or (NTokenIndex < TokenIndexer[NLine]) then
+  begin
     TokenIndexer[NLine] := NTokenIndex;
+    Style := Token.Style;
+    CmtIndexer[NLine] := Assigned(Style) and (Style.TokenKind = etkComment);
+  end;
 
   //handle multi-line tokens
   for i := NLine + 1 to NLine2 do
+  begin
     TokenIndexer[i] := NTokenIndex;
+    Style := Token.Style;
+    CmtIndexer[i] := Assigned(Style) and (Style.TokenKind = etkComment);
+  end;
 end;
 
 procedure TecParserResults.ShowTokenIndexer;
@@ -2220,6 +2240,19 @@ begin
   S := '';
   for i := 0 to High(TokenIndexer) do
     S += IntToStr(i) + ':' + IntToStr(TokenIndexer[i])+' ';
+  Application.MainForm.Caption := S;
+end;
+
+procedure TecParserResults.ShowCmtIndexer;
+const
+  strs: array[boolean] of char = ('0', '1');
+var
+  S: string;
+  i: integer;
+begin
+  S := '';
+  for i := 0 to High(CmtIndexer) do
+    S += IntToStr(i) + ':' + strs[CmtIndexer[i]]+' ';
   Application.MainForm.Caption := S;
 end;
 
@@ -2550,6 +2583,7 @@ begin
   FRanges.Clear;
   FOpenedBlocks.Clear;
   SetLength(TokenIndexer, 0);
+  SetLength(CmtIndexer, 0);
 
   DoStopTimer(False);
   FFinished := False;
@@ -2641,6 +2675,7 @@ var i: integer;
   Sub: TecSubLexerRange;
 begin
   //ShowTokenIndexer; //debugging only!
+  //ShowCmtIndexer;
 
   if FFinished then Exit;
   inherited Finished;
