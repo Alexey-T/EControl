@@ -508,10 +508,12 @@ type
     procedure ApplyStates(Rule: TRuleCollectionItem);
     procedure SaveState;
     procedure RestoreState;
-    procedure ClearTokenIndexer;
-    procedure UpdateTokenIndexer(const Token: TecSyntToken);
-    procedure ShowTokenIndexer;
-    procedure ShowCmtIndexer;
+    procedure ClearTokenIndexer; //Alexey
+    procedure UpdateTokenIndexer(const Token: TecSyntToken); //Alexey
+    procedure FindCommentRangeBeforeToken(const Token: TecSyntToken;
+      ATokenIndex: integer; out ALineFrom, ALineTo: integer); //Alexey
+    procedure ShowTokenIndexer; //Alexey
+    procedure ShowCmtIndexer; //Alexey
   public
     //holds index of first token overlapping that i-th line ("overlapping" is for multi-line tokens)
     TokenIndexer: array of integer; //Alexey
@@ -885,6 +887,7 @@ var
 
 var
   MaxLinesWhenParserEnablesFolding: integer = 10*1000;
+  AutoFoldComments: integer = 5;
 
 implementation
 
@@ -2195,9 +2198,11 @@ end;
 
 procedure TecParserResults.UpdateTokenIndexer(const Token: TecSyntToken);
 var
-  NNewLen, NPrevLen, NTokenIndex, NLine, NLine2, i: integer;
+  NNewLen, NPrevLen, NTokenIndex, NLine, NLine2: integer;
+  NCmtFrom, NCmtTo: integer;
   Style: TecSyntaxFormat;
   bComment: boolean;
+  i: integer;
 begin
   NNewLen := FBuffer.Count;
   NPrevLen := Length(TokenIndexer);
@@ -2224,6 +2229,11 @@ begin
   begin
     TokenIndexer[NLine] := NTokenIndex;
     CmtIndexer[NLine] := bComment;
+    if not bComment then
+    begin
+      //FindCommentRangeBeforeToken(Token, NTokenIndex, NCmtFrom, NCmtTo);
+      //TODO
+    end;
   end;
 
   //handle multi-line tokens
@@ -2231,6 +2241,54 @@ begin
   begin
     TokenIndexer[i] := NTokenIndex;
     CmtIndexer[i] := bComment;
+  end;
+end;
+
+procedure TecParserResults.FindCommentRangeBeforeToken(const Token: TecSyntToken;
+  ATokenIndex: integer; out ALineFrom, ALineTo: integer);
+//returns ALineFrom=-1 if failed to get range
+//ALineTo is always filled
+  //
+  function IsTokenComment(N: integer): boolean;
+  var
+    St: TecSyntaxFormat;
+    TokenPtr: PecSyntToken;
+  begin
+    if N<0 then exit(false);
+    TokenPtr := FTagList.InternalGet(N);
+    St := TokenPtr^.Style;
+    Result:= Assigned(St) and (St.TokenKind = etkComment);
+  end;
+  //
+var
+  NLineFrom, NLineOld: integer;
+  NTokenIndex1, NTokenIndex2: integer;
+begin
+  ALineFrom := -1;
+  ALineTo := Token.Range.PointStart.Y - 1;
+  if ALineTo < AutoFoldComments then exit;
+  if ATokenIndex < 1 then exit;
+  if not IsTokenComment(ATokenIndex-1) then exit;
+
+  NLineFrom := ALineTo;
+  NLineOld := ALineTo+1;
+
+  repeat
+    if not IsTokenComment(TokenIndexer[NLineFrom-1]) then Break;
+
+    NTokenIndex1 := TokenIndexer[NLineFrom];
+    NTokenIndex2 := TokenIndexer[NLineOld];
+    //allow only 0..1 tokens per line! 0 is for multi-line comments.
+    if NTokenIndex2-NTokenIndex1 > 1 then Break;
+
+    Dec(NLineFrom);
+    Dec(NLineOld);
+  until false;
+
+  if ALineTo - NLineFrom + 1 >= AutoFoldComments then
+  begin
+    ALineFrom := NLineFrom;
+    //ShowMessage(Format('rng %d..%d', [ALineFrom+1, ALineTo+1]));
   end;
 end;
 
