@@ -513,10 +513,10 @@ type
     procedure ShowTokenIndexer;
     procedure ShowCmtIndexer;
   public
-    //for each line index, array holds the index of first token overlapping that line
+    //holds index of first token overlapping that i-th line ("overlapping" is for multi-line tokens)
     TokenIndexer: array of integer; //Alexey
-    //holds booleans: is starting token of i-th line is 'comment'
-    CmtIndexer: array of boolean; //Alexey
+    //holds booleans: first token of i-th line is a 'comment'
+    CmtIndexer: packed array of boolean; //Alexey
 
     constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer; const AClient: IecSyntClient); virtual;
     destructor Destroy; override;
