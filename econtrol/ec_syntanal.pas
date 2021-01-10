@@ -476,6 +476,8 @@ type
   TecTokenList = GRangeList<TecSyntToken>;
   TecSubLexerRanges = GRangeList<TecSubLexerRange>;
 
+  TecOnAddRangeSimple = procedure(AStartIdx, AEndIdx: integer) of object;
+
   { TecParserResults }
 
   TecParserResults = class(TTokenHolder)
@@ -489,6 +491,7 @@ type
     FTagList: TecTokenList;
     FCurState: integer;
     FStateChanges: TecStateChanges;
+    FOnAddRangeSimple: TecOnAddRangeSimple; //Alexey
 
     function GetLastPos: integer;
     function ExtractTag(var FPos: integer; ADisableFolding: Boolean): Boolean;
@@ -538,6 +541,7 @@ type
     property SubLexerRangeCount: integer read GetSubLexerRangeCount;
     property SubLexerRanges[Index: integer]: TecSubLexerRange read GetSubLexerRange;
     property ParserState: integer read FCurState write FCurState;
+    property OnAddRangeSimple: TecOnAddRangeSimple read FOnAddRangeSimple write FOnAddRangeSimple; // Alexey
 
     procedure CopyTags(L: TecTokenList);
     procedure CopyRangesSublexer(L: TecSubLexerRanges);
@@ -549,6 +553,7 @@ type
   private
     FRanges: TSortedList;
     FOpenedBlocks: TSortedList; // Opened ranges (without end)
+    FDummyRule: TecTagBlockCondition; //Alexey
 
     FTimerIdleMustStop: Boolean;
     FTimerIdleIsBusy: Boolean;
@@ -568,6 +573,7 @@ type
     function DoStopTimer(AndWait: boolean): boolean;
   protected
     procedure AddRange(Range: TecTextRange);
+    procedure AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
     function HasOpened(Rule: TRuleCollectionItem; Parent: TecTagBlockCondition; Strict: Boolean): Boolean;
     function IsEnabled(Rule: TRuleCollectionItem; OnlyGlobal: Boolean): Boolean; override;
     procedure Finished; override;
@@ -2201,6 +2207,8 @@ var
   NCmtFrom, NCmtTo: integer;
   Style: TecSyntaxFormat;
   bComment: boolean;
+  Range: TecTextRange;
+  TokenPtr: PecSyntToken;
   i: integer;
 begin
   NNewLen := FBuffer.Count;
@@ -2228,10 +2236,11 @@ begin
   begin
     TokenIndexer[NLine] := NTokenIndex;
     CmtIndexer[NLine] := bComment;
-    if not bComment then
+    if (not bComment) and (AutoFoldComments>1) then
     begin
       FindCommentRangeBeforeToken(Token, NCmtFrom, NCmtTo);
-      //TODO
+      if NCmtFrom >= 0 then
+        OnAddRangeSimple(TokenIndexer[NCmtFrom], TokenIndexer[NCmtTo]);
     end;
   end;
 
@@ -2621,6 +2630,8 @@ begin
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
 
+  inherited OnAddRangeSimple := AddRangeSimple;
+
   FTimerIdle := TTimer.Create(nil);
   FTimerIdle.OnTimer := TimerIdleTick;
   FTimerIdle.Enabled := False;
@@ -2674,6 +2685,32 @@ begin
   if Range.EndIdx = -1 then
     FOpenedBlocks.Add(Range);
 end;
+
+procedure TecClientSyntAnalyzer.AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
+var
+  Range: TecTextRange;
+  TokenPtr: PecSyntToken;
+begin
+  TokenPtr := FTagList.InternalGet(AStartIdx);
+  if TokenPtr=nil then exit;
+
+  if FDummyRule=nil then
+  begin
+    FDummyRule := Owner.BlockRules.Add;
+    FDummyRule.BlockType := btRangeStart;
+    FDummyRule.DisplayInTree := false;
+    FDummyRule.NoEndRule := true;
+  end;
+
+  Range := TecTextRange.Create(AStartIdx, TokenPtr^.Range.StartPos);
+  Range.EndIdx := AEndIdx;
+  Range.Index := FRanges.Count;
+  Range.Rule := FDummyRule;
+  FRanges.Add(Range);
+  if FOpenedBlocks.Count > 0 then
+    Range.Parent := TecTextRange(FOpenedBlocks[FOpenedBlocks.Count - 1]);
+end;
+
 
 function TecClientSyntAnalyzer.CloseRange(Cond: TecTagBlockCondition; RefTag: integer): Boolean;
 var j: integer;
