@@ -2256,7 +2256,7 @@ procedure TecParserResults.FindCommentRangeBeforeToken(const Token: TecSyntToken
   out ALineFrom, ALineTo: integer);
 //returns ALineFrom=-1 if failed to get range
 //ALineTo is always filled
-  //
+  {
   function IsTokenComment(N: integer): boolean;
   var
     St: TecSyntaxFormat;
@@ -2267,7 +2267,7 @@ procedure TecParserResults.FindCommentRangeBeforeToken(const Token: TecSyntToken
     St := TokenPtr^.Style;
     Result:= Assigned(St) and (St.TokenKind = etkComment);
   end;
-  //
+  }
 var
   NLineFrom, NLineOld: integer;
   NTokenIndex1, NTokenIndex2: integer;
