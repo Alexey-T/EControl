@@ -2236,12 +2236,14 @@ begin
   begin
     TokenIndexer[NLine] := NTokenIndex;
     CmtIndexer[NLine] := bComment;
-    if (not bComment) and (AutoFoldComments>1) then
-    begin
-      FindCommentRangeBeforeToken(Token, NCmtFrom, NCmtTo);
-      if NCmtFrom >= 0 then
-        OnAddRangeSimple(TokenIndexer[NCmtFrom], TokenIndexer[NCmtTo]);
-    end;
+    if AutoFoldComments>1 then
+      if (not bComment) //non-comment token was added
+        or (bComment and (NTokenIndex=TagCount-1)) then //comment token was added, and it is last token
+      begin
+        FindCommentRangeBeforeToken(Token, NCmtFrom, NCmtTo);
+        if NCmtFrom >= 0 then
+          OnAddRangeSimple(TokenIndexer[NCmtFrom], TokenIndexer[NCmtTo]);
+      end;
   end;
 
   //handle multi-line tokens
