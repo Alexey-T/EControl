@@ -572,6 +572,7 @@ type
     function GetOpenedCount: integer;
     procedure SetDisableIdleAppend(const Value: Boolean);
     function DoStopTimer(AndWait: boolean): boolean;
+    procedure InitDummyRules; //Alexey
   protected
     procedure AddRange(Range: TecTextRange);
     procedure AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
@@ -893,7 +894,7 @@ var
 
 var
   MaxLinesWhenParserEnablesFolding: integer = 10*1000;
-  AutoFoldComments: integer = 0; //5;
+  AutoFoldComments: integer = 5;
 
 implementation
 
@@ -2629,12 +2630,17 @@ begin
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
 
-  inherited OnAddRangeSimple := AddRangeSimple;
-
   FTimerIdle := TTimer.Create(nil);
   FTimerIdle.OnTimer := TimerIdleTick;
   FTimerIdle.Enabled := False;
   FTimerIdle.Interval := 100;
+
+  //Alexey
+  if AutoFoldComments>1 then
+  begin
+    InitDummyRules;
+    inherited OnAddRangeSimple := AddRangeSimple;
+  end;
 
   IdleAppend;
 end;
@@ -2685,6 +2691,25 @@ begin
     FOpenedBlocks.Add(Range);
 end;
 
+procedure TecClientSyntAnalyzer.InitDummyRules;
+begin
+  if FDummyRule=nil then
+  begin
+    FDummyRule := Owner.BlockRules.Add;
+    FDummyRule.BlockType := btRangeStart;
+    FDummyRule.DisplayInTree := false;
+    FDummyRule.NoEndRule := false;
+    FDummyRule.Enabled := false;
+
+    FDummyRule2 := Owner.BlockRules.Add;
+    FDummyRule2.BlockType := btRangeEnd;
+    FDummyRule2.DisplayInTree := false;
+    FDummyRule2.Enabled := false;
+
+    FDummyRule.BlockEndCond:= FDummyRule2;
+  end;
+end;
+
 procedure TecClientSyntAnalyzer.AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
 var
   Range: TecTextRange;
@@ -2694,20 +2719,6 @@ begin
   TokenPtr := FTagList.InternalGet(AStartIdx);
   if TokenPtr=nil then exit;
   NStartPos := TokenPtr^.Range.StartPos;
-
-  if FDummyRule=nil then
-  begin
-    FDummyRule := Owner.BlockRules.Add;
-    FDummyRule.BlockType := btRangeStart;
-    FDummyRule.DisplayInTree := false;
-    FDummyRule.NoEndRule := false;
-
-    FDummyRule2 := Owner.BlockRules.Add;
-    FDummyRule2.BlockType := btRangeEnd;
-    FDummyRule2.DisplayInTree := false;
-
-    FDummyRule.BlockEndCond:= FDummyRule2;
-  end;
 
   Range := TecTextRange.Create(AStartIdx, NStartPos);
   Range.EndIdx := AEndIdx;
