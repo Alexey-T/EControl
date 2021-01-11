@@ -2694,6 +2694,7 @@ begin
     FDummyRule.BlockType := btRangeStart;
     FDummyRule.DisplayInTree := false;
     FDummyRule.NoEndRule := false;
+    FDummyRule.CollapseFmt:= '// ...';
 
     FDummyRule2 := AOwner.BlockRules.Add;
     FDummyRule2.Enabled := false;
