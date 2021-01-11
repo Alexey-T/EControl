@@ -2228,22 +2228,21 @@ begin
   NLine2 := Token.Range.PointEnd.Y;
   if NLine >= NNewLen then Exit;
 
-  Style := Token.Style;
-  bComment := Assigned(Style) and (Style.TokenKind = etkComment);
-
   NTokenIndex := FTagList.Count-1;
   if (TokenIndexer[NLine] < 0) or (NTokenIndex < TokenIndexer[NLine]) then
   begin
+    Style := Token.Style;
+    bComment := Assigned(Style) and (Style.TokenKind = etkComment);
+
     TokenIndexer[NLine] := NTokenIndex;
     CmtIndexer[NLine] := bComment;
+
     if AutoFoldComments>1 then
-      if (not bComment) //non-comment token was added
-        or (bComment and (NTokenIndex=TagCount-1)) then //comment token was added, and it is last token
-      begin
-        FindCommentRangeBeforeToken(Token, NCmtFrom, NCmtTo);
-        if NCmtFrom >= 0 then
-          OnAddRangeSimple(TokenIndexer[NCmtFrom], TokenIndexer[NCmtTo]);
-      end;
+    begin
+      FindCommentRangeBeforeToken(Token, NCmtFrom, NCmtTo);
+      if NCmtFrom >= 0 then
+        OnAddRangeSimple(TokenIndexer[NCmtFrom], TokenIndexer[NCmtTo]);
+    end;
   end;
 
   //handle multi-line tokens
