@@ -572,7 +572,7 @@ type
     function GetOpenedCount: integer;
     procedure SetDisableIdleAppend(const Value: Boolean);
     function DoStopTimer(AndWait: boolean): boolean;
-    procedure InitDummyRules; //Alexey
+    procedure InitDummyRules(AOwner: TecSyntAnalyzer); //Alexey
   protected
     procedure AddRange(Range: TecTextRange);
     procedure AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
@@ -2638,7 +2638,7 @@ begin
   //Alexey
   if AutoFoldComments>1 then
   begin
-    InitDummyRules;
+    InitDummyRules(AOwner);
     inherited OnAddRangeSimple := AddRangeSimple;
   end;
 
@@ -2691,20 +2691,20 @@ begin
     FOpenedBlocks.Add(Range);
 end;
 
-procedure TecClientSyntAnalyzer.InitDummyRules;
+procedure TecClientSyntAnalyzer.InitDummyRules(AOwner: TecSyntAnalyzer);
 begin
   if FDummyRule=nil then
   begin
-    FDummyRule := Owner.BlockRules.Add;
+    FDummyRule := AOwner.BlockRules.Add;
+    FDummyRule.Enabled := false;
     FDummyRule.BlockType := btRangeStart;
     FDummyRule.DisplayInTree := false;
     FDummyRule.NoEndRule := false;
-    FDummyRule.Enabled := false;
 
-    FDummyRule2 := Owner.BlockRules.Add;
+    FDummyRule2 := AOwner.BlockRules.Add;
+    FDummyRule2.Enabled := false;
     FDummyRule2.BlockType := btRangeEnd;
     FDummyRule2.DisplayInTree := false;
-    FDummyRule2.Enabled := false;
 
     FDummyRule.BlockEndCond:= FDummyRule2;
   end;
