@@ -513,7 +513,8 @@ type
     procedure RestoreState;
     procedure ClearTokenIndexer; //Alexey
     procedure UpdateTokenIndexer(const Token: TecSyntToken); //Alexey
-    procedure FindCommentRangeBeforeToken(const Token: TecSyntToken; out ALineFrom, ALineTo: integer); //Alexey
+    procedure FindCommentRangeBeforeToken(const Token: TecSyntToken;
+      ATokenIsComment: boolean; out ALineFrom, ALineTo: integer); //Alexey
     procedure ShowTokenIndexer; //Alexey
     procedure ShowCmtIndexer; //Alexey
   public
@@ -2239,7 +2240,7 @@ begin
 
     if AutoFoldComments>1 then
     begin
-      FindCommentRangeBeforeToken(Token, NCmtFrom, NCmtTo);
+      FindCommentRangeBeforeToken(Token, bComment, NCmtFrom, NCmtTo);
       if NCmtFrom >= 0 then
         OnAddRangeSimple(TokenIndexer[NCmtFrom], TokenIndexer[NCmtTo]);
     end;
@@ -2254,27 +2255,15 @@ begin
 end;
 
 procedure TecParserResults.FindCommentRangeBeforeToken(const Token: TecSyntToken;
-  out ALineFrom, ALineTo: integer);
-//returns ALineFrom=-1 if failed to get range
-//ALineTo is always filled
-  {
-  function IsTokenComment(N: integer): boolean;
-  var
-    St: TecSyntaxFormat;
-    TokenPtr: PecSyntToken;
-  begin
-    if N<0 then exit(false);
-    TokenPtr := FTagList.InternalGet(N);
-    St := TokenPtr^.Style;
-    Result:= Assigned(St) and (St.TokenKind = etkComment);
-  end;
-  }
+  ATokenIsComment: boolean; out ALineFrom, ALineTo: integer);
 var
   NLineFrom, NLineOld: integer;
   NTokenIndex1, NTokenIndex2: integer;
 begin
   ALineFrom := -1;
-  ALineTo := Token.Range.PointStart.Y-1;
+  ALineTo := Token.Range.PointStart.Y;
+  if not ATokenIsComment then
+    Dec(ALineTo);
 
   //skip empty lines
   while (ALineTo>0) and (TokenIndexer[ALineTo]=-1) do
