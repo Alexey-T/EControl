@@ -2278,7 +2278,9 @@ begin
 
   repeat
     if NLineFrom=0 then Break;
-    if TokenIndexer[NLineFrom]=-1 then
+
+    //skip line w/o tokens
+    if TokenIndexer[NLineFrom]<0 then
     begin
       Dec(NLineFrom);
       Dec(NLineOld);
@@ -2288,15 +2290,17 @@ begin
     NTokenIndex1 := TokenIndexer[NLineFrom];
     NTokenIndex2 := TokenIndexer[NLineOld];
     //allow max 1 token per line! 0 is for multi-line comments
-    if NTokenIndex2-NTokenIndex1 > 1 then Break;
+    if (NTokenIndex1>=0) and (NTokenIndex2>=0) then
+      if NTokenIndex2-NTokenIndex1 > 1 then Break;
 
     Dec(NLineFrom);
     Dec(NLineOld);
 
+    //stop at non-comment line
     if not CmtIndexer[NLineFrom-1] then Break;
   until false;
 
-  if ALineTo - NLineFrom + 1 >= AutoFoldComments then
+  if ALineTo-NLineFrom+1 >= AutoFoldComments then
   begin
     ALineFrom := NLineFrom;
     //ShowMessage(Format('rng %d..%d', [ALineFrom+1, ALineTo+1]));
