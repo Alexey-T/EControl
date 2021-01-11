@@ -554,6 +554,7 @@ type
     FRanges: TSortedList;
     FOpenedBlocks: TSortedList; // Opened ranges (without end)
     FDummyRule: TecTagBlockCondition; //Alexey
+    FDummyRule2: TecTagBlockCondition; //Alexey
 
     FTimerIdleMustStop: Boolean;
     FTimerIdleIsBusy: Boolean;
@@ -2207,8 +2208,6 @@ var
   NCmtFrom, NCmtTo: integer;
   Style: TecSyntaxFormat;
   bComment: boolean;
-  Range: TecTextRange;
-  TokenPtr: PecSyntToken;
   i: integer;
 begin
   NNewLen := FBuffer.Count;
@@ -2690,19 +2689,27 @@ procedure TecClientSyntAnalyzer.AddRangeSimple(AStartIdx, AEndIdx: integer); //A
 var
   Range: TecTextRange;
   TokenPtr: PecSyntToken;
+  NStartPos: integer;
 begin
   TokenPtr := FTagList.InternalGet(AStartIdx);
   if TokenPtr=nil then exit;
+  NStartPos := TokenPtr^.Range.StartPos;
 
   if FDummyRule=nil then
   begin
     FDummyRule := Owner.BlockRules.Add;
     FDummyRule.BlockType := btRangeStart;
     FDummyRule.DisplayInTree := false;
-    FDummyRule.NoEndRule := true;
+    FDummyRule.NoEndRule := false;
+
+    FDummyRule2 := Owner.BlockRules.Add;
+    FDummyRule2.BlockType := btRangeEnd;
+    FDummyRule2.DisplayInTree := false;
+
+    FDummyRule.BlockEndCond:= FDummyRule2;
   end;
 
-  Range := TecTextRange.Create(AStartIdx, TokenPtr^.Range.StartPos);
+  Range := TecTextRange.Create(AStartIdx, NStartPos);
   Range.EndIdx := AEndIdx;
   Range.Rule := FDummyRule;
   AddRange(Range);
