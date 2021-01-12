@@ -2256,35 +2256,44 @@ end;
 
 procedure TecParserResults.FindCommentRangeBeforeToken(const Token: TecSyntToken;
   ATokenIsComment: boolean; out ALineFrom, ALineTo: integer);
+  //
+  function IsBadLine(N: integer): boolean; inline;
+  begin
+    Result := (TokenIndexer[N]>=0) and (not CmtIndexer[N]);
+  end;
+  //
 var
   NLineFrom, NLineOld: integer;
   NTokenIndex1, NTokenIndex2: integer;
 begin
-  ALineFrom := -1;
-  ALineTo := Token.Range.PointStart.Y;
+  ALineFrom := -1; //-1 means that we found nothing
+  ALineTo := Token.Range.PointStart.Y; //it's always set
   if not ATokenIsComment then
     Dec(ALineTo);
 
   //skip empty lines
-  while (ALineTo>0) and (TokenIndexer[ALineTo]=-1) do
+  while (ALineTo>0) and (TokenIndexer[ALineTo]<0) do
     Dec(ALineTo);
 
   if ALineTo < AutoFoldComments-1 then exit;
 
-  if not CmtIndexer[ALineTo] then exit;
+  if IsBadLine(ALineTo) then exit;
 
-  NLineFrom := ALineTo;
-  NLineOld := ALineTo+1;
+  NLineFrom := ALineTo+1;
+  NLineOld := NLineFrom+1;
 
   repeat
+    Dec(NLineFrom);
+    Dec(NLineOld);
     if NLineFrom=0 then Break;
 
-    //skip line w/o tokens
-    if TokenIndexer[NLineFrom]<0 then
+    //skip empty lines
+    if TokenIndexer[NLineFrom]<0 then Continue;
+
+    if IsBadLine(NLineFrom) then
     begin
-      Dec(NLineFrom);
-      Dec(NLineOld);
-      Continue;
+      Inc(NLineFrom);
+      Break;
     end;
 
     NTokenIndex1 := TokenIndexer[NLineFrom];
@@ -2292,13 +2301,11 @@ begin
     //allow max 1 token per line! 0 is for multi-line comments
     if (NTokenIndex1>=0) and (NTokenIndex2>=0) then
       if NTokenIndex2-NTokenIndex1 > 1 then Break;
-
-    Dec(NLineFrom);
-    Dec(NLineOld);
-
-    //stop at non-comment line
-    if not CmtIndexer[NLineFrom-1] then Break;
   until false;
+
+  //move down to 1st non-empty
+  while (TokenIndexer[NLineFrom]<0) and (NLineFrom<ALineTo) do
+    Inc(NLineFrom);
 
   if ALineTo-NLineFrom+1 >= AutoFoldComments then
   begin
