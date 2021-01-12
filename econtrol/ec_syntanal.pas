@@ -2718,10 +2718,6 @@ var
   TokenPtr: PecSyntToken;
   NCount, NStartPos: integer;
 begin
-  TokenPtr := FTagList.InternalGet(AStartIdx);
-  if TokenPtr=nil then exit;
-  NStartPos := TokenPtr^.Range.StartPos;
-
   //must avoid many ranges starting at the same comment beginning: line 5..9, 5..10, 5..11 etc
   NCount := FRanges.Count;
   if NCount>0 then
@@ -2733,6 +2729,10 @@ begin
       exit;
     end;
   end;
+
+  TokenPtr := FTagList.InternalGet(AStartIdx);
+  if TokenPtr=nil then exit;
+  NStartPos := TokenPtr^.Range.StartPos;
 
   Range := TecTextRange.Create(AStartIdx, NStartPos);
   Range.EndIdx := AEndIdx;
