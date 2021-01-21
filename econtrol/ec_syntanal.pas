@@ -5018,8 +5018,7 @@ begin
   finally
     FSkipNewName := False;
     CheckExistingName := False;
-    FFileName := FileName;
- end;
+  end;
 end;
 
 function TLoadableComponent.NotStored: Boolean;
