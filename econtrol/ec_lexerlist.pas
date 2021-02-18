@@ -188,19 +188,21 @@ begin
   Result:= nil;
 
   //strip path, lower case
-  AFileName:= LowerCase(ExtractFileName(AFileName));
+  AFileName:= ExtractFileName(AFileName);
   fname:= '/'+AFileName;
 
   //usual extension
-  ext1:= ExtractFileExt(AFileName);
-  if SBeginsWithChar(ext1, '.') then Delete(ext1, 1, 1);
+  ext1:= LowerCase(ExtractFileExt(AFileName));
+  if SBeginsWithChar(ext1, '.') then
+    Delete(ext1, 1, 1);
 
   //double extension
   ext2:= '';
   if ext1<>'' then
   begin
-    ext2:= ExtractFileExt(ChangeFileExt(AFileName, ''));
-    if SBeginsWithChar(ext2, '.') then Delete(ext2, 1, 1);
+    ext2:= LowerCase(ExtractFileExt(ChangeFileExt(AFileName, '')));
+    if SBeginsWithChar(ext2, '.') then
+      Delete(ext2, 1, 1);
     if ext2<>'' then
       ext2:= ext2+'.'+ext1;
   end;
