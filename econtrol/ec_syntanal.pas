@@ -3130,26 +3130,6 @@ begin
     end;
 end;
 
-(*
-//not needed in CudaText
-procedure TecClientSyntAnalyzer.CompleteAnalysis;
-var own: TecSyntAnalyzer;
-    i: integer;
-begin
-  AppendToPos(FBuffer.TextLength);
-  if FOwner.SeparateBlockAnalysis then
-    for i := FStartSepRangeAnal + 1 to TagCount do
-     begin
-      own := Tags[i - 1].Rule.SyntOwner;
-      FOwner.SelectTokenFormat(Self, FBuffer.FText, own <> FOwner, i);
-      if own <> FOwner then
-        own.SelectTokenFormat(Self, FBuffer.FText, False, i);
-      DoStopTimer(True);
-      Finished;
-     end;
-end;
-*)
-
 type
   TecParserLineMode = (plmNone, plmFromStart, plmToEnd, plmExplicitRange);
 
