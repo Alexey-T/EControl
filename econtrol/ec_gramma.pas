@@ -485,7 +485,7 @@ begin
             AddTokenRule(9, '[\(]');                 // Open sub-rule
             AddTokenRule(10,'[\)]');                 // Close sub-rule
             // Extract all tokens
-            Res.Analyze;
+            Res.ParseAll;
             // extract rules
             Cur := 0;
             while ValidCur do
