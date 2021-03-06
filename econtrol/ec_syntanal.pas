@@ -600,7 +600,8 @@ type
     procedure TextChangedOnLine(ALine: integer);
     procedure AppendToPos(APos: integer; AUseTimer: boolean= true); // Requires analyzed to APos
     procedure Analyze(ResetContent: Boolean = True); // Requires analyzed all text
-    procedure IdleAppend;                 // Start idle analysis
+    procedure ParseViaTimer;                 // Start timer which does parsing
+    procedure ParseSome(var AFlagStopper: boolean); // Make portion of parsing (called from OnTimer)
     //procedure CompleteAnalysis;
 
     function CloseRange(Cond: TecTagBlockCondition; RefTag: integer): Boolean;
@@ -2643,7 +2644,7 @@ begin
     inherited OnAddRangeSimple := AddRangeSimple;
   end;
 
-  IdleAppend;
+  ParseViaTimer;
 end;
 
 destructor TecClientSyntAnalyzer.Destroy;
@@ -2679,7 +2680,7 @@ begin
   FLastAnalPos := 0;
   FStartSepRangeAnal := 0;
 
-  IdleAppend;
+  ParseViaTimer;
 end;
 
 procedure TecClientSyntAnalyzer.AddRange(Range: TecTextRange);
@@ -2847,6 +2848,19 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.TimerIdleTick(Sender: TObject);
+begin
+  if FTimerIdleIsBusy or FDisableIdleAppend then Exit;
+  FTimerIdle.Enabled := False;
+  FTimerIdleMustStop := False;
+  FTimerIdleIsBusy := True;
+  try
+    ParseSome(FTimerIdleMustStop);
+  finally
+    FTimerIdleIsBusy := False;
+  end;
+end;
+
+procedure TecClientSyntAnalyzer.ParseSome(var AFlagStopper: boolean);
 var FPos, tmp, i: integer;
     own: TecSyntAnalyzer;
     BufLen: integer;
@@ -2859,10 +2873,6 @@ const
   ProcessMsgStep1 = 1000; //stage1: finding tokens
   ProcessMsgStep2 = 1000; //stage2: finding ranges
 begin
-  if FTimerIdleIsBusy or FDisableIdleAppend then Exit;
-  FTimerIdle.Enabled := False;
-  FTimerIdleMustStop := False;
-  FTimerIdleIsBusy := True;
   FPos := 0;
   BufLen := FBuffer.TextLength;
   bSeparateBlocks := FOwner.SeparateBlockAnalysis;
@@ -2880,10 +2890,9 @@ begin
     FOpenedBlocks.Clear;
   end;
 
-  try
     while True do
     begin
-      if FTimerIdleMustStop then exit;
+      if AFlagStopper then exit;
       if FFinished then exit;
       if Application.Terminated then exit;
       if FBuffer=nil then exit;
@@ -2920,7 +2929,7 @@ begin
 
                 Application.ProcessMessages;
                 if Application.Terminated then Exit;
-                if FTimerIdleMustStop then Exit;
+                if AFlagStopper then Exit;
               end;
             end;
         end;
@@ -2947,12 +2956,9 @@ begin
         end;
       end;
     end;
-  finally
-    FTimerIdleIsBusy := False;
-  end;
 end;
 
-procedure TecClientSyntAnalyzer.IdleAppend;
+procedure TecClientSyntAnalyzer.ParseViaTimer;
 begin
   //sets FTimerIdle interval and restarts it
   if not FFinished then
@@ -2984,7 +2990,7 @@ begin
          Finished else
        if not FTimerIdleIsBusy then
          if AUseTimer then
-           IdleAppend
+           ParseViaTimer
          else
            TimerIdleTick(nil);
        Break;
@@ -3087,7 +3093,7 @@ begin
    // Restore parser state
    RestoreState;
 
-  IdleAppend;
+  ParseViaTimer;
 end;
 
 function TecClientSyntAnalyzer.PriorTokenAt(Pos: integer): integer;
@@ -3932,7 +3938,7 @@ begin
   end;
   UpdateClients;
   for i := 0 to FClientList.Count - 1 do
-   TecClientSyntAnalyzer(FClientList[i]).IdleAppend;
+   TecClientSyntAnalyzer(FClientList[i]).ParseViaTimer;
 end;
 
 procedure TecSyntAnalyzer.HighlightKeywords(Client: TecParserResults;
@@ -4201,7 +4207,7 @@ begin
      with TecClientSyntAnalyzer(FClientList[i]) do
       begin
         Clear;
-        IdleAppend;
+        ParseViaTimer;
       end;
     for i := 0 to FMasters.Count - 1 do
       TecSyntAnalyzer(FMasters[i]).ClearClientContents;
