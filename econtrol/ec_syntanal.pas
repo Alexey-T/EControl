@@ -562,7 +562,6 @@ type
     FTimerIdle: TTimer;
 
     FStartSepRangeAnal: integer;
-    FDisableIdleAppend: Boolean;
     FRepeateAnalysis: Boolean;
 
     function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
@@ -571,7 +570,6 @@ type
     function GetRanges(Index: integer): TecTextRange;
     function GetOpened(Index: integer): TecTextRange;
     function GetOpenedCount: integer;
-    procedure SetDisableIdleAppend(const Value: Boolean);
     function DoStopTimer(AndWait: boolean): boolean;
     procedure InitDummyRules(AOwner: TecSyntAnalyzer); //Alexey
   protected
@@ -612,7 +610,6 @@ type
 
     property RangeCount: integer read GetRangeCount;
     property Ranges[Index: integer]: TecTextRange read GetRanges;
-    property DisableIdleAppend: Boolean read FDisableIdleAppend write SetDisableIdleAppend;
     property TimerIdleIsBusy: Boolean read FTimerIdleIsBusy;
 
     procedure CopyRanges(L: TSortedList);
@@ -2849,7 +2846,7 @@ end;
 
 procedure TecClientSyntAnalyzer.TimerIdleTick(Sender: TObject);
 begin
-  if FTimerIdleIsBusy or FDisableIdleAppend then Exit;
+  if FTimerIdleIsBusy {or FDisableIdleAppend} then Exit;
   FTimerIdle.Enabled := False;
   FTimerIdleMustStop := False;
   FTimerIdleIsBusy := True;
@@ -3630,16 +3627,6 @@ end;
 function TecClientSyntAnalyzer.GetOpenedCount: integer;
 begin
   Result := FOpenedBlocks.Count;
-end;
-
-procedure TecClientSyntAnalyzer.SetDisableIdleAppend(const Value: Boolean);
-begin
-  if FDisableIdleAppend <> Value then
-    begin
-      FDisableIdleAppend := Value;
-      if not IsFinished then
-        TimerIdleTick(nil);
-    end;
 end;
 
 function TecClientSyntAnalyzer.DoStopTimer(AndWait: boolean): boolean;
