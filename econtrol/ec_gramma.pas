@@ -302,15 +302,13 @@ var Lex: TecSyntAnalyzer;
   end;
 
   procedure ReadRepeater(RuleItem: TParserRuleItem);
-  var s: string;
   begin
     if not ValidCur then Exit;
     if Res.Tags[Cur].TokenType = 8 then
      begin
-       s := Res.TagStr[Cur];
-       if s = '+' then RuleItem.RepMax := -1 else
-        if s = '?' then RuleItem.RepMin := 0 else
-         if s = '*' then
+       if Res.TagSameAs(Cur, '+') then RuleItem.RepMax := -1 else
+        if Res.TagSameAs(Cur, '?') then RuleItem.RepMin := 0 else
+         if Res.TagSameAs(Cur, '*') then
           begin
            RuleItem.RepMin := 0;
            RuleItem.RepMax := -1;
