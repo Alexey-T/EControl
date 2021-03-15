@@ -472,7 +472,8 @@ begin
       Lex := TecSyntAnalyzer.Create(nil);
       try
         //Res := Lex.AddClient(nil, GetGrammaLines);
-        Res := TecClientSyntAnalyzer.Create(Lex, GetGrammaLines, nil);
+        //AUseTimer=False for grammar
+        Res := TecClientSyntAnalyzer.Create(Lex, GetGrammaLines, nil, False);
         if Res <> nil then
           try
             // Prepare Lexer

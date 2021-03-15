@@ -523,7 +523,8 @@ type
     //holds booleans: first token of i-th line is a 'comment'
     CmtIndexer: packed array of boolean; //Alexey
 
-    constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer; const AClient: IecSyntClient); virtual;
+    constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer;
+      const AClient: IecSyntClient; AUseTimer: boolean); virtual;
     destructor Destroy; override;
     procedure Clear; virtual;
 
@@ -557,6 +558,7 @@ type
     FDummyRule: TecTagBlockCondition; //Alexey
     FDummyRule2: TecTagBlockCondition; //Alexey
 
+    FTimerUsed: Boolean;
     FTimerIdleMustStop: Boolean;
     FTimerIdleIsBusy: Boolean;
     FTimerIdle: TTimer;
@@ -582,7 +584,8 @@ type
     procedure CloseAtEnd(AStartTagIdx: integer); override;
 
   public
-    constructor Create(AOwner: TecSyntAnalyzer; SrcProc: TATStringBuffer; const AClient: IecSyntClient); override;
+    constructor Create(AOwner: TecSyntAnalyzer; SrcProc: TATStringBuffer;
+      const AClient: IecSyntClient; AUseTimer: boolean); override;
     destructor Destroy; override;
     procedure Clear; override;
     procedure ChangedAtPos(APos: integer);
@@ -1996,7 +1999,7 @@ end;
 { TecParserResults }
 
 constructor TecParserResults.Create(AOwner: TecSyntAnalyzer;
-  ABuffer: TATStringBuffer; const AClient: IecSyntClient);
+  ABuffer: TATStringBuffer; const AClient: IecSyntClient; AUseTimer: boolean);
 begin
   inherited Create;
   if ABuffer = nil then
@@ -2623,16 +2626,17 @@ end;
 { TecClientSyntAnalyzer }
 
 constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer; SrcProc: TATStringBuffer;
-  const AClient: IecSyntClient);
+  const AClient: IecSyntClient; AUseTimer: boolean);
 begin
-  inherited Create( AOwner, SrcProc, AClient);
+  inherited Create( AOwner, SrcProc, AClient, AUseTimer);
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
 
+  FTimerUsed := AUseTimer;
   FTimerIdle := TTimer.Create(nil);
-  FTimerIdle.OnTimer := TimerIdleTick;
   FTimerIdle.Enabled := False;
   FTimerIdle.Interval := 100;
+  FTimerIdle.OnTimer := TimerIdleTick;
 
   //Alexey
   if AutoFoldComments>1 then
@@ -2924,7 +2928,8 @@ begin
                     OnLexerParseProgress(Owner, Progress);
                 end;
 
-                Application.ProcessMessages;
+                if FTimerUsed then
+                  Application.ProcessMessages;
                 if Application.Terminated then Exit;
                 if AFlagStopper then Exit;
               end;
@@ -2949,7 +2954,8 @@ begin
               OnLexerParseProgress(Owner, Progress);
           end;
 
-          Application.ProcessMessages;
+          if FTimerUsed then
+            Application.ProcessMessages;
         end;
       end;
     end;
@@ -2960,6 +2966,12 @@ begin
   //sets FTimerIdle interval and restarts it
   if not FFinished then
   begin
+    if not FTimerUsed then
+    begin
+      ParseAll(False, False);
+      Exit
+    end;
+
     FTimerIdle.Enabled := False;
     if FRepeateAnalysis then
       FTimerIdle.Interval := Owner.IdleAppendDelay
