@@ -16,9 +16,6 @@
           <RangeChecks Value="True"/>
           <OverflowChecks Value="True"/>
         </Checks>
-        <Optimizations>
-          <OptimizationLevel Value="0"/>
-        </Optimizations>
       </CodeGeneration>
       <Linking>
         <Debugging>
