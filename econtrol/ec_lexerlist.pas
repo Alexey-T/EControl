@@ -31,7 +31,9 @@ type
     FFolder: string;
     FOnLexerLoaded: TecLexerLoadedEvent;
     function GetLexer(AIndex: integer): TecSyntAnalyzer;
+    procedure CheckInited(const AMsg: string);
   public
+    AllowedThreadId: TThreadID;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Clear;
@@ -82,7 +84,15 @@ end;
 
 function TecLexerList.GetLexer(AIndex: integer): TecSyntAnalyzer;
 begin
+  CheckInited('GetLexer');
   Result:= TecSyntAnalyzer(FList[AIndex]);
+end;
+
+procedure TecLexerList.CheckInited(const AMsg: string);
+begin
+  if (AllowedThreadId<>0) then
+    if (GetCurrentThreadId<>AllowedThreadId) then
+      raise Exception.Create('Too early access to lexer manager in '+AMsg);
 end;
 
 procedure TecLexerList.Clear;
@@ -90,6 +100,7 @@ var
   an: TecSyntAnalyzer;
   i: integer;
 begin
+  CheckInited('Clear');
   //don't free objects, only mark them as deleted
   for i:= FList.Count-1 downto 0 do
   begin
@@ -101,6 +112,7 @@ end;
 
 function TecLexerList.LexerCount: integer;
 begin
+  CheckInited('LexerCount');
   Result:= FList.Count;
 end;
 
@@ -147,6 +159,7 @@ end;
 
 function TecLexerList.AddLexer: TecSyntAnalyzer;
 begin
+  CheckInited('AddLexer');
   Result:= TecSyntAnalyzer.Create(Self);
   FList.Add(Result);
 end;
@@ -155,6 +168,7 @@ procedure TecLexerList.DeleteLexer(An: TecSyntAnalyzer);
 var
   N: integer;
 begin
+  CheckInited('DeleteLexer');
   N:= FList.IndexOf(An);
   if N>=0 then
   begin
@@ -185,6 +199,7 @@ var
   fname, ext1, ext2: string;
   i: integer;
 begin
+  CheckInited('FindLexerByFilename');
   Result:= nil;
 
   //strip path, lower case
@@ -260,6 +275,7 @@ var
   Lexer: TecSyntAnalyzer;
   i: integer;
 begin
+  CheckInited('FindLexerByName');
   Result:= nil;
   for i:= 0 to LexerCount-1 do
   begin
@@ -301,6 +317,7 @@ var
   SItem: string;
   Cnt: Integer;
 begin
+  CheckInited('SetSublexersFromString');
   Cnt:= 0;
   Sep.Init(ALinks, ASep);
   repeat
