@@ -33,7 +33,7 @@ type
     function GetLexer(AIndex: integer): TecSyntAnalyzer;
     procedure CheckInited(const AMsg: string);
   public
-    AllowedThreadId: TThreadID;
+    //AllowedThreadId: TThreadID;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Clear;
@@ -90,9 +90,11 @@ end;
 
 procedure TecLexerList.CheckInited(const AMsg: string);
 begin
+  {
   if (AllowedThreadId<>0) then
     if (GetCurrentThreadId<>AllowedThreadId) then
       raise Exception.Create('Too early access to lexer manager in '+AMsg);
+      }
 end;
 
 procedure TecLexerList.Clear;
