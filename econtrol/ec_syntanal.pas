@@ -482,7 +482,8 @@ type
     Tokens: TecTokenList;
     FoldRanges: TSortedList;
     SublexRanges: TecSubLexerRanges;
-    ToLine: integer;
+    LineTo: integer;
+    Finished: boolean;
   end;
 
   { TecParserResults }
@@ -581,7 +582,8 @@ type
     function GetOpenedCount: integer;
     function DoStopTimer(AndWait: boolean): boolean;
     procedure InitDummyRules(AOwner: TecSyntAnalyzer); //Alexey
-    procedure UpdatePublicData;
+    procedure ClearPublicData;
+    procedure UpdatePublicData(AParseFinished: boolean);
   protected
     procedure AddRange(Range: TecTextRange);
     procedure AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
@@ -592,6 +594,7 @@ type
     procedure CloseAtEnd(AStartTagIdx: integer); override;
 
   public
+    PublicDataNeedTo: integer;
     PublicData: TecPublicData;
 
     constructor Create(AOwner: TecSyntAnalyzer; SrcProc: TATStringBuffer;
@@ -2859,15 +2862,54 @@ begin
   FOpenedBlocks.Clear; //Alexey
 
   FRepeateAnalysis := True;
-
-  UpdatePublicData;
 end;
 
-procedure TecClientSyntAnalyzer.UpdatePublicData;
+procedure TecClientSyntAnalyzer.ClearPublicData;
 begin
-  CopyTags(PublicData.Tokens);
-  CopyRanges(PublicData.FoldRanges);
-  CopyRangesSublexer(PublicData.SublexRanges);
+  PublicData.Tokens.Clear;
+  PublicData.FoldRanges.Clear;
+  PublicData.SublexRanges.Clear;
+  PublicData.LineTo := 0;
+  PublicData.Finished := False;
+end;
+
+procedure TecClientSyntAnalyzer.UpdatePublicData(AParseFinished: boolean);
+var
+  NeedUpdate: boolean;
+  TagPtr: PecSyntToken;
+  NCount, NLastParsedLine: integer;
+begin
+  if PublicData.Finished then Exit;
+
+  NCount := FTagList.Count;
+  if NCount=0 then
+  begin
+    ClearPublicData;
+    Exit;
+  end;
+
+  TagPtr := FTagList._GetItemPtr(NCount-1);
+  NLastParsedLine := TagPtr^.Range.PointStart.Y;
+
+  if AParseFinished then
+  begin
+    NeedUpdate := True;
+    PublicData.Finished := True;
+  end
+  else
+  begin
+    NeedUpdate :=
+      (NLastParsedLine >= PublicDataNeedTo) and
+      (PublicData.LineTo < PublicDataNeedTo);
+  end;
+
+  if NeedUpdate then
+  begin
+    CopyTags(PublicData.Tokens);
+    CopyRanges(PublicData.FoldRanges);
+    CopyRangesSublexer(PublicData.SublexRanges);
+    PublicData.LineTo := NLastParsedLine;
+  end;
 end;
 
 function TecClientSyntAnalyzer.GetDisabledFolding: boolean; //Alexey
@@ -2962,10 +3004,13 @@ begin
               end;
             end;
         end;
+        UpdatePublicData(True);
         Finished;
       end
       else
       begin
+        UpdatePublicData(False);
+
         if TagCount mod ProcessMsgStep1 = 0 then
         begin
           //if bSeparateBlocks, it's progress for 1st half of parsing, 0..50
