@@ -3108,15 +3108,15 @@ end;
 
 procedure TecClientSyntAnalyzer.ChangedAtPos(APos: integer);
 var
-  N: integer;
+  NTagCount: integer;
  //
  procedure CleanRangeList(List: TSortedList; IsClosed: Boolean);
  var i: integer;
  begin
    for i := List.Count - 1 downto 0 do
     with TecTextRange(List[i]) do
-     if (FCondIndex >= N) or (StartIdx >= N) or IsClosed and
-        ((FEndCondIndex >= N) or (EndIdx >= N)) then
+     if (FCondIndex >= NTagCount) or (StartIdx >= NTagCount) or IsClosed and
+        ((FEndCondIndex >= NTagCount) or (EndIdx >= NTagCount)) then
       List.Delete(i);
  end;
  //
@@ -3177,8 +3177,8 @@ begin
    ClearTokenIndexer;
 
    FLastAnalPos := 0;   // Reset current position
-   N := FTagList.Count;
-   FStartSepRangeAnal := N;
+   NTagCount := FTagList.Count;
+   FStartSepRangeAnal := NTagCount;
 
    // Remove text ranges from service containers
    CleanRangeList(FOpenedBlocks, False);
@@ -3191,8 +3191,8 @@ begin
    // Remove text ranges from main storage
    for i := FRanges.Count - 1 downto 0 do
     with TecTextRange(FRanges[i]) do
-     if (FCondIndex >= N) or (StartIdx >= N) then FRanges.Delete(i)  else
-      if (FEndCondIndex >= N - NDeltaRanges) or (EndIdx >= N - NDeltaRanges) then // Alexey: delta
+     if (FCondIndex >= NTagCount) or (StartIdx >= NTagCount) then FRanges.Delete(i)  else
+      if (FEndCondIndex >= NTagCount - NDeltaRanges) or (EndIdx >= NTagCount - NDeltaRanges) then // Alexey: delta
        begin
          EndIdx := -1;
          FEndCondIndex := -1;
