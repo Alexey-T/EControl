@@ -510,6 +510,7 @@ type
   protected
     function GetTokenCount: integer; override;
     function GetTokenStr(Index: integer): ecString; override;
+    function GetTokenStrEx(Index: integer; ATags: TecTokenList): ecString;
     function GetTokenType(Index: integer): integer; override;
     procedure CloseAtEnd(StartTagIdx: integer); virtual; abstract;
   protected
@@ -606,7 +607,7 @@ type
     function FindTokenAt(Pos: integer): integer;
 
     function RangeFormat(const FmtStr: ecString; Range: TecTextRange): ecString;
-    function GetRangeName(Range: TecTextRange): ecString;
+    function GetRangeName(Range: TecTextRange; ATags: TecTokenList): ecString;
     function GetRangeGroup(Range: TecTextRange): ecString;
     function GetCollapsedText(Range: TecTextRange): ecString;
     function Stop: boolean;
@@ -2076,17 +2077,22 @@ begin
   Result := FTagList.InternalGet(Index);
 end;
 
-function TecParserResults.GetTokenStr(Index: integer): ecString;
+function TecParserResults.GetTokenStrEx(Index: integer; ATags: TecTokenList): ecString;
 var
   Ptr: PecSyntToken;
 begin
   if Index >= 0 then
   begin
-    Ptr := Tags[Index];
+    Ptr := ATags._GetItemPtr(Index);
     Result := FBuffer.SubString(Ptr.Range.StartPos + 1, Ptr.Range.EndPos - Ptr.Range.StartPos)
   end
   else
     Result := '';
+end;
+
+function TecParserResults.GetTokenStr(Index: integer): ecString;
+begin
+  Result := GetTokenStrEx(Index, FTagList);
 end;
 
 function TecParserResults.TokenIndent(Token: PecSyntToken): integer; //Alexey
@@ -3665,13 +3671,13 @@ begin
   end;
 end;
 
-function TecClientSyntAnalyzer.GetRangeName(Range: TecTextRange): ecString;
+function TecClientSyntAnalyzer.GetRangeName(Range: TecTextRange; ATags: TecTokenList): ecString;
 begin
   Result := '';
   if Assigned(Range.Rule) and (Range.Rule.NameFmt <> '') then
-     Result := RangeFormat(Range.Rule.NameFmt, Range);
+    Result := RangeFormat(Range.Rule.NameFmt, Range);
   if Result = '' then
-   Result := TagStr[Range.IdentIdx];
+    Result := GetTokenStrEx(Range.IdentIdx, ATags);
 end;
 
 function TecClientSyntAnalyzer.GetRangeGroup(Range: TecTextRange): ecString;
