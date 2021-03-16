@@ -478,6 +478,13 @@ type
 
   TecOnAddRangeSimple = procedure(AStartIdx, AEndIdx: integer) of object;
 
+  TecPublicData = record
+    Tokens: TecTokenList;
+    FoldRanges: TSortedList;
+    SublexRanges: TecSubLexerRanges;
+    ToLine: integer;
+  end;
+
   { TecParserResults }
 
   TecParserResults = class(TTokenHolder)
@@ -574,6 +581,7 @@ type
     function GetOpenedCount: integer;
     function DoStopTimer(AndWait: boolean): boolean;
     procedure InitDummyRules(AOwner: TecSyntAnalyzer); //Alexey
+    procedure UpdatePublicData;
   protected
     procedure AddRange(Range: TecTextRange);
     procedure AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
@@ -584,6 +592,8 @@ type
     procedure CloseAtEnd(AStartTagIdx: integer); override;
 
   public
+    PublicData: TecPublicData;
+
     constructor Create(AOwner: TecSyntAnalyzer; SrcProc: TATStringBuffer;
       const AClient: IecSyntClient; AUseTimer: boolean); override;
     destructor Destroy; override;
@@ -2632,6 +2642,10 @@ begin
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
 
+  PublicData.Tokens := TecTokenList.Create;
+  PublicData.FoldRanges := TSortedList.Create(False);
+  PublicData.SublexRanges := TecSubLexerRanges.Create;
+
   FTimerUsed := AUseTimer;
   FTimerIdle := TTimer.Create(nil);
   FTimerIdle.Enabled := False;
@@ -2653,6 +2667,10 @@ begin
   DoStopTimer(True);
   if Assigned(FTimerIdle) then
     FreeAndNil(FTimerIdle);
+
+  FreeAndNil(PublicData.Tokens);
+  FreeAndNil(PublicData.FoldRanges);
+  FreeAndNil(PublicData.SublexRanges);
 
   FreeAndNil(FRanges);
   FreeAndNil(FOpenedBlocks);
@@ -2841,6 +2859,15 @@ begin
   FOpenedBlocks.Clear; //Alexey
 
   FRepeateAnalysis := True;
+
+  UpdatePublicData;
+end;
+
+procedure TecClientSyntAnalyzer.UpdatePublicData;
+begin
+  CopyTags(PublicData.Tokens);
+  CopyRanges(PublicData.FoldRanges);
+  CopyRangesSublexer(PublicData.SublexRanges);
 end;
 
 function TecClientSyntAnalyzer.GetDisabledFolding: boolean; //Alexey
