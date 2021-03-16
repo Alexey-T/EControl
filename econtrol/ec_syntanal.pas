@@ -585,6 +585,7 @@ type
     procedure InitDummyRules(AOwner: TecSyntAnalyzer); //Alexey
     procedure ClearPublicData;
     procedure UpdatePublicData(AParseFinished: boolean);
+    procedure UpdatePublicDataOnChange;
   protected
     procedure AddRange(Range: TecTextRange);
     procedure AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
@@ -2703,6 +2704,7 @@ begin
   FLastAnalPos := 0;
   FStartSepRangeAnal := 0;
 
+  ClearPublicData;
   ParseViaTimer;
 end;
 
@@ -2873,6 +2875,29 @@ begin
   SetLength(PublicData.TokenIndexer, 0);
   PublicData.LineTo := 0;
   PublicData.Finished := False;
+end;
+
+procedure TecClientSyntAnalyzer.UpdatePublicDataOnChange;
+var
+  TagPtr: PecSyntToken;
+  NCount, NLastParsedLine: integer;
+begin
+  NCount := FTagList.Count;
+  if NCount=0 then
+  begin
+    ClearPublicData;
+    Exit;
+  end;
+
+  TagPtr := FTagList._GetItemPtr(NCount-1);
+  NLastParsedLine := TagPtr^.Range.PointStart.Y;
+
+  CopyTags(PublicData.Tokens);
+  CopyRanges(PublicData.FoldRanges);
+  CopyRangesSublexer(PublicData.SublexRanges);
+  PublicData.TokenIndexer := TokenIndexer;
+  PublicData.LineTo := NLastParsedLine;
+  PublicData.Finished := False; //!
 end;
 
 procedure TecClientSyntAnalyzer.UpdatePublicData(AParseFinished: boolean);
@@ -3083,13 +3108,8 @@ end;
 
 procedure TecClientSyntAnalyzer.ChangedAtPos(APos: integer);
 var
-  //Alexey
-  // lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
-  NDeltaRanges: integer;
-var
-  i, N: integer;
-  Sub: TecSubLexerRange;
-
+  N: integer;
+ //
  procedure CleanRangeList(List: TSortedList; IsClosed: Boolean);
  var i: integer;
  begin
@@ -3099,7 +3119,13 @@ var
         ((FEndCondIndex >= N) or (EndIdx >= N)) then
       List.Delete(i);
  end;
-
+ //
+var
+  //Alexey
+  // lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
+  NDeltaRanges: integer;
+  Sub: TecSubLexerRange;
+  i: integer;
 begin
   FFinished := False;
 
@@ -3176,6 +3202,7 @@ begin
    // Restore parser state
    RestoreState;
 
+  UpdatePublicDataOnChange;
   ParseViaTimer;
 end;
 
@@ -4259,8 +4286,7 @@ begin
     for i := 0 to FClientList.Count - 1 do
      with TecClientSyntAnalyzer(FClientList[i]) do
       begin
-        Clear;
-        ParseViaTimer;
+        Clear; //it starts parsing again
       end;
     for i := 0 to FMasters.Count - 1 do
       TecSyntAnalyzer(FMasters[i]).ClearClientContents;
