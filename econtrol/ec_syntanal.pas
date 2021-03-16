@@ -2882,7 +2882,6 @@ var
   NCount, NLastParsedLine: integer;
 begin
   if PublicData.Finished then Exit;
-  if PublicData.LineTo >= PublicDataNeedTo then Exit;
 
   NCount := FTagList.Count;
   if NCount=0 then
@@ -2901,6 +2900,7 @@ begin
   end
   else
   begin
+    if PublicData.LineTo >= PublicDataNeedTo then Exit;
     NeedUpdate := NLastParsedLine >= PublicDataNeedTo;
   end;
 
