@@ -537,7 +537,7 @@ type
     destructor Destroy; override;
     procedure Clear; virtual;
 
-    function AnalyzerAtPos(APos: integer): TecSyntAnalyzer;
+    function AnalyzerAtPos(APos: integer; ABlocks: TecSubLexerRanges): TecSyntAnalyzer;
     function ParserStateAtPos(ATokenIndex: integer): integer;
 
     property Owner: TecSyntAnalyzer read FOwner;
@@ -2546,22 +2546,22 @@ begin
    FLastAnalPos := FPos;
 end;
 
-function TecParserResults.AnalyzerAtPos(APos: integer): TecSyntAnalyzer;
+function TecParserResults.AnalyzerAtPos(APos: integer; ABlocks: TecSubLexerRanges): TecSyntAnalyzer;
 var
   N: integer;
   Rng: TecSubLexerRange;
 begin
   Result := FOwner;
   if APos < 0 then Exit;
-  N := FSubLexerBlocks.PriorAt(APos);
+  N := ABlocks.PriorAt(APos);
   if N < 0 then Exit;
-  Rng := FSubLexerBlocks.Items[N];
+  Rng := ABlocks.Items[N];
   if (Rng.Range.StartPos<=APos) and
      ((Rng.Range.EndPos<0){Rng is not closed} or (APos<Rng.Range.EndPos)) then
     Result := Rng.Rule.SyntAnalyzer;
  {
- for i := 0 to FSubLexerBlocks.Count - 1 do
-  with FSubLexerBlocks[i] do
+ for i := 0 to ABlocks.Count - 1 do
+  with ABlocks[i] do
    if APos < Range.StartPos then Break else
     if (Range.EndPos = -1) or (APos < Range.EndPos) then
       Result := Rule.SyntAnalyzer;
