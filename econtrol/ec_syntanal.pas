@@ -482,6 +482,7 @@ type
     Tokens: TecTokenList;
     FoldRanges: TSortedList;
     SublexRanges: TecSubLexerRanges;
+    TokenIndexer: array of integer;
     LineTo: integer;
     Finished: boolean;
   end;
@@ -2869,6 +2870,7 @@ begin
   PublicData.Tokens.Clear;
   PublicData.FoldRanges.Clear;
   PublicData.SublexRanges.Clear;
+  SetLength(PublicData.TokenIndexer, 0);
   PublicData.LineTo := 0;
   PublicData.Finished := False;
 end;
@@ -2907,6 +2909,7 @@ begin
     CopyTags(PublicData.Tokens);
     CopyRanges(PublicData.FoldRanges);
     CopyRangesSublexer(PublicData.SublexRanges);
+    PublicData.TokenIndexer := TokenIndexer;
     PublicData.LineTo := NLastParsedLine;
   end;
 end;
