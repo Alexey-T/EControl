@@ -584,8 +584,9 @@ type
     function DoStopTimer(AndWait: boolean): boolean;
     procedure InitDummyRules(AOwner: TecSyntAnalyzer); //Alexey
     procedure ClearPublicData;
+    procedure UpdatePublicDataCore;
     procedure UpdatePublicData(AParseFinished: boolean);
-    procedure UpdatePublicDataOnChange;
+    procedure UpdatePublicDataOnTextChange;
   protected
     procedure AddRange(Range: TecTextRange);
     procedure AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
@@ -2877,7 +2878,7 @@ begin
   PublicData.Finished := False;
 end;
 
-procedure TecClientSyntAnalyzer.UpdatePublicDataOnChange;
+procedure TecClientSyntAnalyzer.UpdatePublicDataCore;
 var
   TagPtr: PecSyntToken;
   NCount, NLastParsedLine: integer;
@@ -2897,7 +2898,12 @@ begin
   CopyRangesSublexer(PublicData.SublexRanges);
   PublicData.TokenIndexer := TokenIndexer;
   PublicData.LineTo := NLastParsedLine;
-  PublicData.Finished := False; //!
+end;
+
+procedure TecClientSyntAnalyzer.UpdatePublicDataOnTextChange;
+begin
+  UpdatePublicDataCore;
+  PublicData.Finished := False;
 end;
 
 procedure TecClientSyntAnalyzer.UpdatePublicData(AParseFinished: boolean);
@@ -2915,9 +2921,6 @@ begin
     Exit;
   end;
 
-  TagPtr := FTagList._GetItemPtr(NCount-1);
-  NLastParsedLine := TagPtr^.Range.PointStart.Y;
-
   if AParseFinished then
   begin
     NeedUpdate := True;
@@ -2926,17 +2929,13 @@ begin
   else
   begin
     if PublicData.LineTo >= PublicDataNeedTo then Exit;
+    TagPtr := FTagList._GetItemPtr(NCount-1);
+    NLastParsedLine := TagPtr^.Range.PointStart.Y;
     NeedUpdate := NLastParsedLine >= PublicDataNeedTo;
   end;
 
   if NeedUpdate then
-  begin
-    CopyTags(PublicData.Tokens);
-    CopyRanges(PublicData.FoldRanges);
-    CopyRangesSublexer(PublicData.SublexRanges);
-    PublicData.TokenIndexer := TokenIndexer;
-    PublicData.LineTo := NLastParsedLine;
-  end;
+    UpdatePublicDataCore;
 end;
 
 function TecClientSyntAnalyzer.GetDisabledFolding: boolean; //Alexey
@@ -3202,7 +3201,7 @@ begin
    // Restore parser state
    RestoreState;
 
-  UpdatePublicDataOnChange;
+  UpdatePublicDataOnTextChange;
   ParseViaTimer;
 end;
 
