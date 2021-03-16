@@ -553,9 +553,6 @@ type
     property SubLexerRanges[Index: integer]: TecSubLexerRange read GetSubLexerRange;
     property ParserState: integer read FCurState write FCurState;
     property OnAddRangeSimple: TecOnAddRangeSimple read FOnAddRangeSimple write FOnAddRangeSimple; // Alexey
-
-    procedure CopyTags(L: TecTokenList);
-    procedure CopyRangesSublexer(L: TecSubLexerRanges);
   end;
 
   { TecClientSyntAnalyzer }
@@ -631,7 +628,7 @@ type
     property Ranges[Index: integer]: TecTextRange read GetRanges;
     property TimerIdleIsBusy: Boolean read FTimerIdleIsBusy;
 
-    procedure CopyRanges(L: TSortedList);
+    procedure CopyRangesFold(L: TSortedList);
   end;
 
 // *******************************************************************
@@ -2629,16 +2626,6 @@ begin
    Result := 0;
 end;
 
-procedure TecParserResults.CopyTags(L: TecTokenList);
-begin
-  L.Assign(FTagList);
-end;
-
-procedure TecParserResults.CopyRangesSublexer(L: TecSubLexerRanges);
-begin
-  L.Assign(FSubLexerBlocks);
-end;
-
 { TecClientSyntAnalyzer }
 
 constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer; SrcProc: TATStringBuffer;
@@ -2893,9 +2880,9 @@ begin
   TagPtr := FTagList._GetItemPtr(NCount-1);
   NLastParsedLine := TagPtr^.Range.PointStart.Y;
 
-  CopyTags(PublicData.Tokens);
-  CopyRanges(PublicData.FoldRanges);
-  CopyRangesSublexer(PublicData.SublexRanges);
+  PublicData.Tokens.Assign(FTagList);
+  CopyRangesFold(PublicData.FoldRanges);
+  PublicData.SublexRanges.Assign(FSubLexerBlocks);
   PublicData.TokenIndexer := TokenIndexer;
   PublicData.LineTo := NLastParsedLine;
 end;
@@ -3749,7 +3736,7 @@ begin
   Result := True;
 end;
 
-procedure TecClientSyntAnalyzer.CopyRanges(L: TSortedList);
+procedure TecClientSyntAnalyzer.CopyRangesFold(L: TSortedList);
 var
   R, RR: TecTextRange;
   i: integer;
