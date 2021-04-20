@@ -1002,9 +1002,10 @@ begin
     An.EventParseIdle.ResetEvent;
     try
       {$ifdef ParseTime}
-      DebugMsg:= 'parse-begin';
+      DebugMsg := 'parse-begin';
+      DebugTicks := 0;
       Synchronize(ShowDebugMsg);
-      tick:= GetTickCount64;
+      tick := GetTickCount64;
       {$endif}
 
       An.ParseSome;
@@ -1015,8 +1016,8 @@ begin
           begin
             Synchronize(DoParseDone);
             {$ifdef ParseTime}
-            DebugMsg:= 'parse-done';
-            DebugTicks:= GetTickCount64-tick;
+            DebugMsg := 'parse-done';
+            DebugTicks := GetTickCount64-tick;
             Synchronize(ShowDebugMsg);
             {$endif}
           end;
