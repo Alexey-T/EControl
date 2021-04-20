@@ -992,8 +992,10 @@ begin
       An.ParseSome;
     finally
       An.EventParseIdle.SetEvent;
-      if not Terminated and not Application.Terminated then
-        Synchronize(DoParseDone);
+      if An.IsFinished then
+        if not Terminated then
+          if not Application.Terminated then
+            Synchronize(DoParseDone);
     end;
   until False;
 end;
