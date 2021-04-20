@@ -612,7 +612,7 @@ type
       const AClient: IecSyntClient; AUseTimer: boolean); override;
     destructor Destroy; override;
     procedure Clear; override;
-    procedure ChangedAtPos(APos: integer);
+    procedure TextChangedOnPos(APos: integer);
     function PriorTokenAt(Pos: integer): integer;
     function FindTokenAt(Pos: integer): integer;
 
@@ -3119,7 +3119,7 @@ begin
    end;
 end;
 
-procedure TecClientSyntAnalyzer.ChangedAtPos(APos: integer);
+procedure TecClientSyntAnalyzer.TextChangedOnPos(APos: integer);
 begin
   if FPrevChangePos < 0 then
     FPrevChangePos := APos
@@ -3737,7 +3737,7 @@ begin
     NPos:= 0
   else
     NPos:= FBuffer.CaretToStr(Point(0, ALine));
-  ChangedAtPos(NPos);
+  TextChangedOnPos(NPos);
 end;
 
 function TecClientSyntAnalyzer.GetOpened(Index: integer): TecTextRange;
