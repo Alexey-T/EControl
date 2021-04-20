@@ -577,6 +577,7 @@ type
     FRepeateAnalysis: Boolean;
 
     function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
+    procedure ClearDataOnChange;
     function GetDisabledFolding: boolean; //Alexey
     function GetRangeCount: integer;
     function GetRanges(Index: integer): TecTextRange;
@@ -2713,6 +2714,7 @@ begin
   if EventParseIdle.WaitFor(1)<>wrSignaled then
     EventParseStop.SetEvent;
   FPrevChangePos := -1;
+  Result := True;
 end;
 
 procedure TecClientSyntAnalyzer.Clear;
@@ -2985,6 +2987,8 @@ const
   ProcessMsgStep1 = 1000; //stage1: finding tokens
   ProcessMsgStep2 = 1000; //stage2: finding ranges
 begin
+  ClearDataOnChange;
+
   FPos := 0;
   BufLen := FBuffer.TextLength;
   bSeparateBlocks := FOwner.SeparateBlockAnalysis;
@@ -3093,6 +3097,21 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.ChangedAtPos(APos: integer);
+begin
+  if FPrevChangePos < 0 then
+    FPrevChangePos := APos
+  else
+    FPrevChangePos := Min(FPrevChangePos, APos);
+
+  if FBuffer.TextLength <= Owner.FullRefreshSize then
+    FPrevChangePos := 0;
+
+  if EventParseIdle.WaitFor(1)<>wrSignaled then
+    EventParseStop.SetEvent;
+  EventParseNeeded.SetEvent;
+end;
+
+procedure TecClientSyntAnalyzer.ClearDataOnChange;
 var
   NTagCount: integer;
  //
@@ -3111,26 +3130,11 @@ var
   // lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
   NDeltaRanges: integer;
   Sub: TecSubLexerRange;
+  APos: integer;
   i: integer;
 begin
-  FFinished := False;
-
-  if FPrevChangePos<0 then
-    FPrevChangePos:= APos
-  else
-  begin
-    FPrevChangePos := Min(FPrevChangePos, APos);
-    APos:= FPrevChangePos;
-  end;
-
-  if FBuffer.TextLength <= Owner.FullRefreshSize then
-  begin
-    Clear;
-    Exit;
-  end;
-
-  EventParseStop.SetEvent;
-  EventParseNeeded.SetEvent;
+  if FPrevChangePos < 0 then Exit;
+  APos := FPrevChangePos;
 
   //Alexey
   // delta>0 was added for Python: editing below block end must enlarge previous block to editing pos
@@ -3692,11 +3696,14 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.TextChangedOnLine(ALine: integer);
+var
+  NPos: integer;
 begin
-  if ALine = -1 then
-    Clear
+  if ALine<0 then
+    NPos:= 0
   else
-    ChangedAtPos(FBuffer.CaretToStr(Point(0, ALine)));
+    NPos:= FBuffer.CaretToStr(Point(0, ALine));
+  ChangedAtPos(NPos);
 end;
 
 function TecClientSyntAnalyzer.GetOpened(Index: integer): TecTextRange;
