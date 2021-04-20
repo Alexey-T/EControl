@@ -561,6 +561,7 @@ type
   TecParserThread = class(TThread)
   public
     An: TecClientSyntAnalyzer;
+    procedure DoParseDone;
     procedure Execute; override;
   end;
 
@@ -575,6 +576,7 @@ type
 
     FStartSepRangeAnal: integer;
     FRepeateAnalysis: Boolean;
+    FOnParseDone: TNotifyEvent;
 
     function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
     procedure ClearDataOnChange;
@@ -612,6 +614,9 @@ type
     procedure ChangedAtPos(APos: integer);
     function PriorTokenAt(Pos: integer): integer;
     function FindTokenAt(Pos: integer): integer;
+
+    property OnParseDone: TNotifyEvent read FOnParseDone write FOnParseDone;
+    procedure DoParseDone;
 
     function RangeFormat(const FmtStr: ecString; Range: TecTextRange): ecString;
     function GetRangeName(Range: TecTextRange; ATags: TecTokenList): ecString;
@@ -968,6 +973,11 @@ end;
 
 { TecParserThread }
 
+procedure TecParserThread.DoParseDone;
+begin
+  An.DoParseDone;
+end;
+
 procedure TecParserThread.Execute;
 begin
   repeat
@@ -981,6 +991,7 @@ begin
       An.ParseSome;
     finally
       An.EventParseIdle.SetEvent;
+      Synchronize(DoParseDone);
     end;
   until False;
 end;
@@ -3214,6 +3225,12 @@ end;
 function TecClientSyntAnalyzer.FindTokenAt(Pos: integer): integer;
 begin
   Result := FTagList.FindAt(Pos);
+end;
+
+procedure TecClientSyntAnalyzer.DoParseDone;
+begin
+  if Assigned(FOnParseDone) then
+    FOnParseDone(Self);
 end;
 
 function TecClientSyntAnalyzer.GetRangeCount: integer;
