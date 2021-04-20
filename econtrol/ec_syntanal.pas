@@ -2953,7 +2953,7 @@ end;
 
 procedure TecClientSyntAnalyzer.UpdatePublicData(AParseFinished: boolean);
 var
-  NeedUpdate: boolean;
+  bNeedUpdate: boolean;
   TagPtr: PecSyntToken;
   NCount, NLastParsedLine: integer;
 begin
@@ -2968,7 +2968,7 @@ begin
 
   if AParseFinished then
   begin
-    NeedUpdate := True;
+    bNeedUpdate := True;
     PublicData.Finished := True;
   end
   else
@@ -2976,10 +2976,10 @@ begin
     if PublicData.LineTo >= PublicDataNeedTo then Exit;
     TagPtr := FTagList._GetItemPtr(NCount-1);
     NLastParsedLine := TagPtr^.Range.PointStart.Y;
-    NeedUpdate := NLastParsedLine >= PublicDataNeedTo;
+    bNeedUpdate := NLastParsedLine >= PublicDataNeedTo;
   end;
 
-  if NeedUpdate then
+  if bNeedUpdate then
     UpdatePublicDataCore;
 end;
 
