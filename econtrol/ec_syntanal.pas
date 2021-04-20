@@ -1028,8 +1028,12 @@ end;
 
 procedure TecParserThread.ShowDebugMsg;
 begin
-  Application.MainForm.Caption:= DebugMsg+' ('+IntToStr(DebugTicks)+'ms)'+
-    ', rng: '+IntToStr(An.PublicData.FoldRanges.Count);
+  Application.MainForm.Caption:= Format('%s, %dms, %d tokens, %d ranges', [
+    DebugMsg,
+    DebugTicks,
+    An.PublicData.Tokens.Count,
+    An.PublicData.FoldRanges.Count
+    ]);
 end;
 
 { TecSubLexerRange }
