@@ -2926,12 +2926,17 @@ end;
 
 procedure TecClientSyntAnalyzer.ClearPublicData;
 begin
-  PublicData.Tokens.Clear;
-  PublicData.FoldRanges.Clear;
-  PublicData.SublexRanges.Clear;
-  SetLength(PublicData.TokenIndexer, 0);
-  PublicData.LineTo := 0;
-  PublicData.Finished := False;
+  CriSecForData.Enter;
+  try
+    PublicData.Tokens.Clear;
+    PublicData.FoldRanges.Clear;
+    PublicData.SublexRanges.Clear;
+    SetLength(PublicData.TokenIndexer, 0);
+    PublicData.LineTo := 0;
+    PublicData.Finished := False;
+  finally
+    CriSecForData.Leave;
+  end;
 end;
 
 procedure TecClientSyntAnalyzer.UpdatePublicDataCore;
@@ -2939,15 +2944,15 @@ var
   TagPtr: PecSyntToken;
   NCount, NLastParsedLine: integer;
 begin
+  NCount := FTagList.Count;
+  if NCount=0 then
+  begin
+    ClearPublicData;
+    Exit;
+  end;
+
   CriSecForData.Enter;
   try
-    NCount := FTagList.Count;
-    if NCount=0 then
-    begin
-      ClearPublicData;
-      Exit;
-    end;
-
     TagPtr := FTagList._GetItemPtr(NCount-1);
     NLastParsedLine := TagPtr^.Range.PointStart.Y;
 
