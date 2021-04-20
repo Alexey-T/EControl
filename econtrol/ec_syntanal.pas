@@ -617,7 +617,7 @@ type
     EventParseStop: TEvent;
     CriSecForData: TCriticalSection;
 
-    constructor Create(AOwner: TecSyntAnalyzer; SrcProc: TATStringBuffer;
+    constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer;
       const AClient: IecSyntClient; AUseTimer: boolean); override;
     destructor Destroy; override;
     procedure Clear; override;
@@ -2089,6 +2089,7 @@ end;
 
 constructor TecParserResults.Create(AOwner: TecSyntAnalyzer;
   ABuffer: TATStringBuffer; const AClient: IecSyntClient; AUseTimer: boolean);
+//TODO: del AUseTimer
 begin
   inherited Create;
   if ABuffer = nil then
@@ -2709,10 +2710,10 @@ end;
 
 { TecClientSyntAnalyzer }
 
-constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer; SrcProc: TATStringBuffer;
+constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer;
   const AClient: IecSyntClient; AUseTimer: boolean);
 begin
-  inherited Create( AOwner, SrcProc, AClient, AUseTimer);
+  inherited Create( AOwner, ABuffer, AClient, AUseTimer);
 
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
