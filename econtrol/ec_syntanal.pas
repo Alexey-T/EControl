@@ -977,12 +977,7 @@ begin
 
     An.EventParseIdle.ResetEvent;
     try
-      while not eof do
-      begin
-        if An.EventParseStop.WaitFor(1)=wrSignaled then
-          Break;
-        An.ParseSome();
-      end;
+      An.ParseSome;
     finally
       An.EventParseIdle.SetEvent;
     end;
@@ -2715,7 +2710,8 @@ end;
 function TecClientSyntAnalyzer.Stop: boolean;
 begin
   FFinished := True;
-  EventParseStop.SetEvent;
+  if EventParseIdle.WaitFor(1)<>wrSignaled then
+    EventParseStop.SetEvent;
   FPrevChangePos := -1;
 end;
 
@@ -2729,8 +2725,11 @@ begin
   SetLength(TokenIndexer, 0);
   SetLength(CmtIndexer, 0);
 
-  EventParseStop.SetEvent;
-  EventParseIdle.WaitFor(INFINITE);
+  if EventParseIdle.WaitFor(1)<>wrSignaled then
+  begin
+    EventParseStop.SetEvent;
+    EventParseIdle.WaitFor(2000);
+  end;
 
   FFinished := False;
   FLastAnalPos := 0;
@@ -3056,10 +3055,11 @@ begin
         begin
           //if bSeparateBlocks, it's progress for 1st half of parsing, 0..50
           //otherwise, it's progress for entire parsing, 0..100
-          if FPos < ProgressMinPos then
-            Progress := 0
-          else
-            Progress := FPos * NMaxPercents div BufLen;
+          if BufLen>0 then
+            if FPos < ProgressMinPos then
+              Progress := 0
+            else
+              Progress := FPos * NMaxPercents div BufLen;
           if Progress <> ProgressPrev then
           begin
             ProgressPrev := Progress;
