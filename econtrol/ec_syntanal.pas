@@ -606,6 +606,7 @@ type
     EventParseNeeded: TEvent;
     EventParseIdle: TEvent;
     EventParseStop: TEvent;
+    CriSecForData: TCriticalSection;
 
     constructor Create(AOwner: TecSyntAnalyzer; SrcProc: TATStringBuffer;
       const AClient: IecSyntClient; AUseTimer: boolean); override;
@@ -2691,6 +2692,7 @@ begin
   EventParseNeeded := TEvent.Create(nil, False, False, 'ev_needed');
   EventParseIdle := TEvent.Create(nil, False, True{Signaled}, 'ev_idle');
   EventParseStop := TEvent.Create(nil, False, False, 'ev_stop');
+  CriSecForData:= TCriticalSection.Create;
 
   ParserThread := TecParserThread.Create(True);
   ParserThread.An := Self;
@@ -2709,6 +2711,7 @@ begin
   FreeAndNil(EventParseStop);
   FreeAndNil(EventParseIdle);
   FreeAndNil(EventParseNeeded);
+  FreeAndNil(CriSecForData);
 
   FreeAndNil(PublicData.Tokens);
   FreeAndNil(PublicData.FoldRanges);
@@ -2928,21 +2931,26 @@ var
   TagPtr: PecSyntToken;
   NCount, NLastParsedLine: integer;
 begin
-  NCount := FTagList.Count;
-  if NCount=0 then
-  begin
-    ClearPublicData;
-    Exit;
+  CriSecForData.Enter;
+  try
+    NCount := FTagList.Count;
+    if NCount=0 then
+    begin
+      ClearPublicData;
+      Exit;
+    end;
+
+    TagPtr := FTagList._GetItemPtr(NCount-1);
+    NLastParsedLine := TagPtr^.Range.PointStart.Y;
+
+    PublicData.Tokens.Assign(FTagList);
+    CopyRangesFold(PublicData.FoldRanges);
+    PublicData.SublexRanges.Assign(FSubLexerBlocks);
+    PublicData.TokenIndexer := TokenIndexer;
+    PublicData.LineTo := NLastParsedLine;
+  finally
+    CriSecForData.Leave;
   end;
-
-  TagPtr := FTagList._GetItemPtr(NCount-1);
-  NLastParsedLine := TagPtr^.Range.PointStart.Y;
-
-  PublicData.Tokens.Assign(FTagList);
-  CopyRangesFold(PublicData.FoldRanges);
-  PublicData.SublexRanges.Assign(FSubLexerBlocks);
-  PublicData.TokenIndexer := TokenIndexer;
-  PublicData.LineTo := NLastParsedLine;
 end;
 
 procedure TecClientSyntAnalyzer.UpdatePublicDataOnTextChange;
