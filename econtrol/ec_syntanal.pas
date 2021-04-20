@@ -1027,7 +1027,8 @@ end;
 
 procedure TecParserThread.ShowDebugMsg;
 begin
-  Application.MainForm.Caption:= DebugMsg+' ('+IntToStr(DebugTicks)+'ms)';
+  Application.MainForm.Caption:= DebugMsg+' ('+IntToStr(DebugTicks)+'ms)'+
+    ', rng: '+IntToStr(An.PublicData.FoldRanges.Count);
 end;
 
 { TecSubLexerRange }
@@ -3255,22 +3256,18 @@ begin
    if FOpenedBlocks.Count>50 then
      FOpenedBlocks.Clear;
 
-   {
-   //TODO for thread???
-   //
-   //
-
    // Remove text ranges from main storage
    for i := FRanges.Count - 1 downto 0 do
-    with TecTextRange(FRanges[i]) do
-     if (FCondIndex >= NTagCount) or (StartIdx >= NTagCount) then FRanges.Delete(i)  else
-      if (FEndCondIndex >= NTagCount - NDeltaRanges) or (EndIdx >= NTagCount - NDeltaRanges) then // Alexey: delta
+     with TecTextRange(FRanges[i]) do
+       if (FCondIndex >= NTagCount) or (StartIdx >= NTagCount) then
+         FRanges.Delete(i)
+       else
+       if (FEndCondIndex >= NTagCount - NDeltaRanges) or (EndIdx >= NTagCount - NDeltaRanges) then // Alexey: delta
        begin
          EndIdx := -1;
          FEndCondIndex := -1;
          FOpenedBlocks.Add(FRanges[i]);
        end;
-   }
 
    // Restore parser state
    RestoreState;
