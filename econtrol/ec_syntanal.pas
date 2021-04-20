@@ -12,6 +12,7 @@
 
 {$mode delphi}
 {.$define ParseProgress}
+{$define ParseTime}
 
 unit ec_SyntAnal;
 
@@ -562,8 +563,11 @@ type
   TecParserThread = class(TThread)
   public
     An: TecClientSyntAnalyzer;
+    DebugMsg: string;
+    DebugTicks: QWord;
     procedure DoParseDone;
     procedure Execute; override;
+    procedure ShowDebugMsg;
   end;
 
   { TecClientSyntAnalyzer }
@@ -985,6 +989,8 @@ begin
 end;
 
 procedure TecParserThread.Execute;
+var
+  tick: QWord;
 begin
   repeat
     if Terminated then Exit;
@@ -994,15 +1000,33 @@ begin
 
     An.EventParseIdle.ResetEvent;
     try
+      {$ifdef ParseTime}
+      DebugMsg:= 'parse-begin';
+      Synchronize(ShowDebugMsg);
+      tick:= GetTickCount64;
+      {$endif}
+
       An.ParseSome;
     finally
-      An.EventParseIdle.SetEvent;
       if An.IsFinished then
         if not Terminated then
           if not Application.Terminated then
+          begin
             Synchronize(DoParseDone);
+            {$ifdef ParseTime}
+            DebugMsg:= 'parse-done';
+            DebugTicks:= GetTickCount64-tick;
+            Synchronize(ShowDebugMsg);
+            {$endif}
+          end;
+      An.EventParseIdle.SetEvent;
     end;
   until False;
+end;
+
+procedure TecParserThread.ShowDebugMsg;
+begin
+  Application.MainForm.Caption:= DebugMsg+' ('+IntToStr(DebugTicks)+'ms)';
 end;
 
 { TecSubLexerRange }
@@ -3015,6 +3039,7 @@ var FPos, tmp, i: integer;
     BufLen: integer;
     ProgressPrev: integer;
     NMaxPercents, NTagCount: integer;
+    NLoops: integer;
     bSeparateBlocks: boolean;
     bDisableFolding: boolean;
 const
@@ -3025,6 +3050,7 @@ begin
   FFinished := False;
   ClearDataOnChange;
 
+  NLoops := 0;
   FPos := 0;
   BufLen := FBuffer.TextLength;
   bSeparateBlocks := FOwner.SeparateBlockAnalysis;
@@ -3044,7 +3070,10 @@ begin
 
     while True do
     begin
-      if EventParseStop.WaitFor(1)=wrSignaled then Exit;
+      Inc(NLoops);
+      if NLoops mod 100 = 0 then
+        if EventParseStop.WaitFor(0)=wrSignaled then Exit; //this check is slow
+
       if FFinished then Exit;
       if Application.Terminated then Exit;
       if FBuffer=nil then Exit;
