@@ -3119,8 +3119,8 @@ begin
               end;
             end;
         end;
-        UpdatePublicData(True);
         Finished;
+        UpdatePublicData(True); //after Finished, coz it closes Python ranges
       end
       else
       begin
