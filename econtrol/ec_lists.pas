@@ -65,6 +65,7 @@ type
   public
     constructor Create(UnionSiblings: Boolean = True);
     destructor Destroy; override;
+    function IsIndexValid(AIndex: integer): boolean;
     //property Sorted: boolean read FSorted write FSorted;
     function Add(const Range: GRange): integer; virtual;
     function ClearFromPos(APos: integer): integer;
@@ -142,6 +143,11 @@ end;
 destructor GRangeList<GRange>.Destroy;
 begin
   inherited;
+end;
+
+function GRangeList<GRange>.IsIndexValid(AIndex: integer): boolean;
+begin
+  Result := (AIndex>=0) and (AIndex<Count);
 end;
 
 function GRangeList<GRange>.Add(const Range: GRange): integer;
