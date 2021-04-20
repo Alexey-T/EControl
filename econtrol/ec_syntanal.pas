@@ -3046,7 +3046,6 @@ var FPos, tmp, i: integer;
     BufLen: integer;
     ProgressPrev: integer;
     NMaxPercents, NTagCount: integer;
-    NLoops: integer;
     bSeparateBlocks: boolean;
     bDisableFolding: boolean;
 const
@@ -3057,7 +3056,6 @@ begin
   FFinished := False;
   ClearDataOnChange;
 
-  NLoops := 0;
   FPos := 0;
   BufLen := FBuffer.TextLength;
   bSeparateBlocks := FOwner.SeparateBlockAnalysis;
@@ -3077,10 +3075,6 @@ begin
 
     while True do
     begin
-      Inc(NLoops);
-      if NLoops mod 100 = 0 then
-        if EventParseStop.WaitFor(0)=wrSignaled then Exit; //this check is slow
-
       if FFinished then Exit;
       if Application.Terminated then Exit;
       if FBuffer=nil then Exit;
@@ -3106,7 +3100,10 @@ begin
 
               if i mod ProcessMsgStep2 = 0 then
               begin
-                 {$ifdef ParseProgress}
+                //this check is slow
+                if EventParseStop.WaitFor(0)=wrSignaled then Exit;
+
+                {$ifdef ParseProgress}
                 //progress for 2nd half of parsing, range 50..100
                 FProgress := 50 + i * 50 div NTagCount;
                 if FProgress <> ProgressPrev then
