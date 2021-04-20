@@ -2710,9 +2710,12 @@ end;
 
 function TecClientSyntAnalyzer.Stop: boolean;
 begin
-  FFinished := True;
   if EventParseIdle.WaitFor(1)<>wrSignaled then
+  begin
     EventParseStop.SetEvent;
+    EventParseIdle.WaitFor(2000);
+  end;
+  FFinished := True;
   FPrevChangePos := -1;
   Result := True;
 end;
@@ -2987,6 +2990,7 @@ const
   ProcessMsgStep1 = 1000; //stage1: finding tokens
   ProcessMsgStep2 = 1000; //stage2: finding ranges
 begin
+  FFinished := False;
   ClearDataOnChange;
 
   FPos := 0;
@@ -3179,6 +3183,11 @@ begin
    if FOpenedBlocks.Count>50 then
      FOpenedBlocks.Clear;
 
+   {
+   //TODO for thread???
+   //
+   //
+
    // Remove text ranges from main storage
    for i := FRanges.Count - 1 downto 0 do
     with TecTextRange(FRanges[i]) do
@@ -3189,12 +3198,12 @@ begin
          FEndCondIndex := -1;
          FOpenedBlocks.Add(FRanges[i]);
        end;
+   }
 
    // Restore parser state
    RestoreState;
 
   UpdatePublicDataOnTextChange;
-  EventParseNeeded.SetEvent;
 end;
 
 function TecClientSyntAnalyzer.PriorTokenAt(Pos: integer): integer;
