@@ -595,6 +595,7 @@ type
     function GetOpenedCount: integer;
     procedure InitDummyRules(AOwner: TecSyntAnalyzer); //Alexey
     procedure ClearPublicData;
+    procedure StopThreadLoop;
     procedure UpdatePublicDataCore;
     procedure UpdatePublicData(AParseFinished: boolean);
     procedure UpdatePublicDataOnTextChange;
@@ -995,7 +996,7 @@ begin
   repeat
     if Terminated then Exit;
     if Application.Terminated then Exit;
-    if An.EventParseNeeded.WaitFor(1000)<>wrSignaled then
+    if An.EventParseNeeded.WaitFor(500)<>wrSignaled then
       Continue;
 
     An.EventParseIdle.ResetEvent;
@@ -2754,13 +2755,18 @@ begin
   inherited;
 end;
 
-function TecClientSyntAnalyzer.Stop: boolean;
+procedure TecClientSyntAnalyzer.StopThreadLoop;
 begin
-  if EventParseIdle.WaitFor(1)<>wrSignaled then
+  if EventParseIdle.WaitFor(0)<>wrSignaled then
   begin
     EventParseStop.SetEvent;
     EventParseIdle.WaitFor(2000);
   end;
+end;
+
+function TecClientSyntAnalyzer.Stop: boolean;
+begin
+  StopThreadLoop;
   FFinished := True;
   FPrevChangePos := -1;
   Result := True;
@@ -2776,12 +2782,7 @@ begin
   SetLength(TokenIndexer, 0);
   SetLength(CmtIndexer, 0);
 
-  if EventParseIdle.WaitFor(1)<>wrSignaled then
-  begin
-    EventParseStop.SetEvent;
-    EventParseIdle.WaitFor(2000);
-  end;
-
+  StopThreadLoop;
   FFinished := False;
   FLastAnalPos := 0;
   FStartSepRangeAnal := 0;
@@ -3110,7 +3111,7 @@ begin
                 {$endif}
 
                 if Application.Terminated then Exit;
-                if EventParseStop.WaitFor(1)=wrSignaled then Exit;
+                if EventParseStop.WaitFor(0)=wrSignaled then Exit;
               end;
             end;
         end;
@@ -3181,7 +3182,7 @@ begin
   if FBuffer.TextLength <= Owner.FullRefreshSize then
     FPrevChangePos := 0;
 
-  if EventParseIdle.WaitFor(1)<>wrSignaled then
+  if EventParseIdle.WaitFor(0)<>wrSignaled then
     EventParseStop.SetEvent;
   EventParseNeeded.SetEvent;
 end;
