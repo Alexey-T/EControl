@@ -3110,7 +3110,7 @@ begin
                 if FProgress <> ProgressPrev then
                 begin
                   ProgressPrev := FProgress;
-                  ParserThread.Synchronize(DoShowProgress);
+                  DoShowProgress;
                 end;
                 {$endif}
 
@@ -3139,7 +3139,7 @@ begin
           if FProgress <> ProgressPrev then
           begin
             ProgressPrev := FProgress;
-            ParserThread.Synchronize(DoShowProgress);
+            DoShowProgress;
           end;
         end;
         {$endif}
