@@ -18,7 +18,7 @@ interface
 
 uses
   Classes, Graphics, Controls, ExtCtrls,
-  Contnrs,
+  Contnrs, syncobjs,
   ec_RegExpr,
   ec_StrUtils,
   ec_Lists,
@@ -556,6 +556,14 @@ type
     property OnAddRangeSimple: TecOnAddRangeSimple read FOnAddRangeSimple write FOnAddRangeSimple; // Alexey
   end;
 
+  { TecParserThread }
+
+  TecParserThread = class(TThread)
+  public
+    An: TecClientSyntAnalyzer;
+    procedure Execute; override;
+  end;
+
   { TecClientSyntAnalyzer }
 
   TecClientSyntAnalyzer = class(TecParserResults)
@@ -564,11 +572,6 @@ type
     FOpenedBlocks: TSortedList; // Opened ranges (without end)
     FDummyRule: TecTagBlockCondition; //Alexey
     FDummyRule2: TecTagBlockCondition; //Alexey
-
-    FTimerUsed: Boolean;
-    FTimerIdleMustStop: Boolean;
-    FTimerIdleIsBusy: Boolean;
-    FTimerIdle: TTimer;
 
     FStartSepRangeAnal: integer;
     FRepeateAnalysis: Boolean;
@@ -579,7 +582,6 @@ type
     function GetRanges(Index: integer): TecTextRange;
     function GetOpened(Index: integer): TecTextRange;
     function GetOpenedCount: integer;
-    function DoStopTimer(AndWait: boolean): boolean;
     procedure InitDummyRules(AOwner: TecSyntAnalyzer); //Alexey
     procedure ClearPublicData;
     procedure UpdatePublicDataCore;
@@ -591,12 +593,16 @@ type
     function HasOpened(Rule: TRuleCollectionItem; Parent: TecTagBlockCondition; Strict: Boolean): Boolean;
     function IsEnabled(Rule: TRuleCollectionItem; OnlyGlobal: Boolean): Boolean; override;
     procedure Finished; override;
-    procedure TimerIdleTick(Sender: TObject);
     procedure CloseAtEnd(AStartTagIdx: integer); override;
 
   public
     PublicDataNeedTo: integer;
     PublicData: TecPublicData;
+
+    ParserThread: TecParserThread;
+    EventParseNeeded: TEvent;
+    EventParseIdle: TEvent;
+    EventParseStop: TEvent;
 
     constructor Create(AOwner: TecSyntAnalyzer; SrcProc: TATStringBuffer;
       const AClient: IecSyntClient; AUseTimer: boolean); override;
@@ -615,8 +621,7 @@ type
     procedure TextChangedOnLine(ALine: integer);
     procedure ParseAll(AResetContent, AUseTimer: Boolean); // Requires analyzed all text
     procedure ParseToPos(APos: integer; AUseTimer: boolean= True); // Requires parsed data to position
-    procedure ParseViaTimer;                 // Start timer which does parsing
-    procedure ParseSome(var AFlagStopper: boolean); // Make portion of parsing (called from OnTimer)
+    procedure ParseSome;
     //procedure CompleteAnalysis;
 
     function CloseRange(Cond: TecTagBlockCondition; RefTag: integer): Boolean;
@@ -627,7 +632,6 @@ type
 
     property RangeCount: integer read GetRangeCount;
     property Ranges[Index: integer]: TecTextRange read GetRanges;
-    property TimerIdleIsBusy: Boolean read FTimerIdleIsBusy;
 
     procedure CopyRangesFold(L: TSortedList);
   end;
@@ -959,6 +963,30 @@ end;
 function IsCharSurrogateHigh(ch: WideChar): boolean; inline; // Alexey
 begin
   Result := (Ord(ch) >= $D800) and (Ord(ch) <= $DBFF);
+end;
+
+{ TecParserThread }
+
+procedure TecParserThread.Execute;
+begin
+  repeat
+    if Terminated then Exit;
+    if Application.Terminated then Exit;
+    if An.EventParseNeeded.WaitFor(1000)<>wrSignaled then
+      Continue;
+
+    An.EventParseIdle.ResetEvent;
+    try
+      while not eof do
+      begin
+        if An.EventParseStop.WaitFor(1)=wrSignaled then
+          Break;
+        An.ParseSome();
+      end;
+    finally
+      An.EventParseIdle.SetEvent;
+    end;
+  until False;
 end;
 
 { TecSubLexerRange }
@@ -2638,18 +2666,13 @@ constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer; SrcProc: TATSt
   const AClient: IecSyntClient; AUseTimer: boolean);
 begin
   inherited Create( AOwner, SrcProc, AClient, AUseTimer);
+
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
 
   PublicData.Tokens := TecTokenList.Create;
   PublicData.FoldRanges := TSortedList.Create(False);
   PublicData.SublexRanges := TecSubLexerRanges.Create;
-
-  FTimerUsed := AUseTimer;
-  FTimerIdle := TTimer.Create(nil);
-  FTimerIdle.Enabled := False;
-  FTimerIdle.Interval := 100;
-  FTimerIdle.OnTimer := TimerIdleTick;
 
   //Alexey
   if AutoFoldComments>1 then
@@ -2658,14 +2681,27 @@ begin
     inherited OnAddRangeSimple := AddRangeSimple;
   end;
 
-  ParseViaTimer;
+  EventParseNeeded := TEvent.Create(nil, False, False, 'ev_needed');
+  EventParseIdle := TEvent.Create(nil, False, True{Signaled}, 'ev_idle');
+  EventParseStop := TEvent.Create(nil, False, False, 'ev_stop');
+
+  ParserThread := TecParserThread.Create(True);
+  ParserThread.An := Self;
+  ParserThread.Start;
+
+  EventParseNeeded.SetEvent;
 end;
 
 destructor TecClientSyntAnalyzer.Destroy;
 begin
-  DoStopTimer(True);
-  if Assigned(FTimerIdle) then
-    FreeAndNil(FTimerIdle);
+  EventParseStop.SetEvent;
+  ParserThread.Terminate;
+  ParserThread.WaitFor;
+  FreeAndNil(ParserThread);
+
+  FreeAndNil(EventParseStop);
+  FreeAndNil(EventParseIdle);
+  FreeAndNil(EventParseNeeded);
 
   FreeAndNil(PublicData.Tokens);
   FreeAndNil(PublicData.FoldRanges);
@@ -2679,7 +2715,7 @@ end;
 function TecClientSyntAnalyzer.Stop: boolean;
 begin
   FFinished := True;
-  Result := DoStopTimer(True);
+  EventParseStop.SetEvent;
   FPrevChangePos := -1;
 end;
 
@@ -2693,13 +2729,14 @@ begin
   SetLength(TokenIndexer, 0);
   SetLength(CmtIndexer, 0);
 
-  DoStopTimer(False);
+  EventParseStop.SetEvent;
+  EventParseIdle.WaitFor(INFINITE);
+
   FFinished := False;
   FLastAnalPos := 0;
   FStartSepRangeAnal := 0;
 
   ClearPublicData;
-  ParseViaTimer;
 end;
 
 procedure TecClientSyntAnalyzer.AddRange(Range: TecTextRange);
@@ -2936,20 +2973,7 @@ begin
   Result := FBuffer.Count>MaxLinesWhenParserEnablesFolding;
 end;
 
-procedure TecClientSyntAnalyzer.TimerIdleTick(Sender: TObject);
-begin
-  if FTimerIdleIsBusy {or FDisableIdleAppend} then Exit;
-  FTimerIdle.Enabled := False;
-  FTimerIdleMustStop := False;
-  FTimerIdleIsBusy := True;
-  try
-    ParseSome(FTimerIdleMustStop);
-  finally
-    FTimerIdleIsBusy := False;
-  end;
-end;
-
-procedure TecClientSyntAnalyzer.ParseSome(var AFlagStopper: boolean);
+procedure TecClientSyntAnalyzer.ParseSome;
 var FPos, tmp, i: integer;
     own: TecSyntAnalyzer;
     BufLen: integer;
@@ -2981,10 +3005,10 @@ begin
 
     while True do
     begin
-      if AFlagStopper then exit;
-      if FFinished then exit;
-      if Application.Terminated then exit;
-      if FBuffer=nil then exit;
+      if EventParseStop.WaitFor(1)=wrSignaled then Exit;
+      if FFinished then Exit;
+      if Application.Terminated then Exit;
+      if FBuffer=nil then Exit;
 
       tmp := GetLastPos;
       if tmp > FPos then
@@ -3016,10 +3040,8 @@ begin
                     OnLexerParseProgress(Owner, Progress);
                 end;
 
-                if FTimerUsed then
-                  Application.ProcessMessages;
                 if Application.Terminated then Exit;
-                if AFlagStopper then Exit;
+                if EventParseStop.WaitFor(1)=wrSignaled then Exit;
               end;
             end;
         end;
@@ -3044,32 +3066,9 @@ begin
             if Assigned(OnLexerParseProgress) then
               OnLexerParseProgress(Owner, Progress);
           end;
-
-          if FTimerUsed then
-            Application.ProcessMessages;
         end;
       end;
     end;
-end;
-
-procedure TecClientSyntAnalyzer.ParseViaTimer;
-begin
-  //sets FTimerIdle interval and restarts it
-  if not FFinished then
-  begin
-    if not FTimerUsed then
-    begin
-      ParseAll(False, False);
-      Exit
-    end;
-
-    FTimerIdle.Enabled := False;
-    if FRepeateAnalysis then
-      FTimerIdle.Interval := Owner.IdleAppendDelay
-    else
-      FTimerIdle.Interval := Owner.IdleAppendDelayInit;
-    FTimerIdle.Enabled := True;
-  end;
 end;
 
 procedure TecClientSyntAnalyzer.ParseToPos(APos: integer; AUseTimer: boolean=True);
@@ -3085,16 +3084,11 @@ begin
   while FPos - 1 <= APos + 1 do
    begin
      if ExtractTag(FPos, bDisableFolding) then
-      begin
+     begin
        if not FOwner.SeparateBlockAnalysis then
-         Finished else
-       if not FTimerIdleIsBusy then
-         if AUseTimer then
-           ParseViaTimer
-         else
-           TimerIdleTick(nil);
+         Finished;
        Break;
-      end;
+     end;
    end;
 end;
 
@@ -3135,7 +3129,8 @@ begin
     Exit;
   end;
 
-  DoStopTimer(False);
+  EventParseStop.SetEvent;
+  EventParseNeeded.SetEvent;
 
   //Alexey
   // delta>0 was added for Python: editing below block end must enlarge previous block to editing pos
@@ -3195,7 +3190,7 @@ begin
    RestoreState;
 
   UpdatePublicDataOnTextChange;
-  ParseViaTimer;
+  EventParseNeeded.SetEvent;
 end;
 
 function TecClientSyntAnalyzer.PriorTokenAt(Pos: integer): integer;
@@ -3714,21 +3709,6 @@ begin
   Result := FOpenedBlocks.Count;
 end;
 
-function TecClientSyntAnalyzer.DoStopTimer(AndWait: boolean): boolean;
-begin
-  FTimerIdleMustStop := True;
-  FTimerIdle.Enabled := False;
-
-  if FTimerIdleIsBusy then
-  begin
-    //dont call App.ProgressMessages, it causes CudaText bug #1927
-    if AndWait then Sleep(100) else Sleep(20);
-    Result := not FTimerIdleIsBusy;
-  end
-  else
-    Result := True;
-end;
-
 function TecClientSyntAnalyzer.DetectTag(Rule: TecTagBlockCondition;
   RefTag: integer): Boolean;
 var
@@ -4010,7 +3990,7 @@ begin
   end;
   UpdateClients;
   for i := 0 to FClientList.Count - 1 do
-   TecClientSyntAnalyzer(FClientList[i]).ParseViaTimer;
+   TecClientSyntAnalyzer(FClientList[i]).EventParseNeeded.SetEvent;
 end;
 
 procedure TecSyntAnalyzer.HighlightKeywords(Client: TecParserResults;
