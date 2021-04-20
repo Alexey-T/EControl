@@ -11,6 +11,7 @@
 { *************************************************************************** }
 
 {$mode delphi}
+{.$define ParseProgress}
 
 unit ec_SyntAnal;
 
@@ -577,7 +578,9 @@ type
     FStartSepRangeAnal: integer;
     FRepeateAnalysis: Boolean;
     FOnParseDone: TNotifyEvent;
+    {$ifdef ParseProgress}
     FProgress: integer;
+    {$endif}
 
     function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
     procedure ClearDataOnChange;
@@ -3062,6 +3065,7 @@ begin
 
               if i mod ProcessMsgStep2 = 0 then
               begin
+                 {$ifdef ParseProgress}
                 //progress for 2nd half of parsing, range 50..100
                 FProgress := 50 + i * 50 div NTagCount;
                 if FProgress <> ProgressPrev then
@@ -3069,6 +3073,7 @@ begin
                   ProgressPrev := FProgress;
                   ParserThread.Synchronize(DoShowProgress);
                 end;
+                {$endif}
 
                 if Application.Terminated then Exit;
                 if EventParseStop.WaitFor(1)=wrSignaled then Exit;
@@ -3082,6 +3087,7 @@ begin
       begin
         UpdatePublicData(False);
 
+        {$ifdef ParseProgress}
         if TagCount mod ProcessMsgStep1 = 0 then
         begin
           //if bSeparateBlocks, it's progress for 1st half of parsing, 0..50
@@ -3097,14 +3103,17 @@ begin
             ParserThread.Synchronize(DoShowProgress);
           end;
         end;
+        {$endif}
       end;
     end;
 end;
 
 procedure TecClientSyntAnalyzer.DoShowProgress;
 begin
+  {$ifdef ParseProgress}
   if Assigned(OnLexerParseProgress) then
     OnLexerParseProgress(Owner, FProgress);
+  {$endif}
 end;
 
 procedure TecClientSyntAnalyzer.ParseToPos(APos: integer);
