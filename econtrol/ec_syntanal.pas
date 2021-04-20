@@ -577,6 +577,7 @@ type
     FStartSepRangeAnal: integer;
     FRepeateAnalysis: Boolean;
     FOnParseDone: TNotifyEvent;
+    FProgress: integer;
 
     function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
     procedure ClearDataOnChange;
@@ -629,6 +630,7 @@ type
     procedure ParseAll(AResetContent: Boolean);
     procedure ParseToPos(APos: integer);
     procedure ParseSome;
+    procedure DoShowProgress;
     //procedure CompleteAnalysis;
 
     function CloseRange(Cond: TecTagBlockCondition; RefTag: integer): Boolean;
@@ -3003,7 +3005,7 @@ procedure TecClientSyntAnalyzer.ParseSome;
 var FPos, tmp, i: integer;
     own: TecSyntAnalyzer;
     BufLen: integer;
-    Progress, ProgressPrev: integer;
+    ProgressPrev: integer;
     NMaxPercents, NTagCount: integer;
     bSeparateBlocks: boolean;
     bDisableFolding: boolean;
@@ -3061,12 +3063,11 @@ begin
               if i mod ProcessMsgStep2 = 0 then
               begin
                 //progress for 2nd half of parsing, range 50..100
-                Progress := 50 + i * 50 div NTagCount;
-                if Progress <> ProgressPrev then
+                FProgress := 50 + i * 50 div NTagCount;
+                if FProgress <> ProgressPrev then
                 begin
-                  ProgressPrev := Progress;
-                  if Assigned(OnLexerParseProgress) then
-                    OnLexerParseProgress(Owner, Progress);
+                  ProgressPrev := FProgress;
+                  ParserThread.Synchronize(DoShowProgress);
                 end;
 
                 if Application.Terminated then Exit;
@@ -3087,18 +3088,23 @@ begin
           //otherwise, it's progress for entire parsing, 0..100
           if BufLen>0 then
             if FPos < ProgressMinPos then
-              Progress := 0
+              FProgress := 0
             else
-              Progress := FPos * NMaxPercents div BufLen;
-          if Progress <> ProgressPrev then
+              FProgress := FPos * NMaxPercents div BufLen;
+          if FProgress <> ProgressPrev then
           begin
-            ProgressPrev := Progress;
-            if Assigned(OnLexerParseProgress) then
-              OnLexerParseProgress(Owner, Progress);
+            ProgressPrev := FProgress;
+            ParserThread.Synchronize(DoShowProgress);
           end;
         end;
       end;
     end;
+end;
+
+procedure TecClientSyntAnalyzer.DoShowProgress;
+begin
+  if Assigned(OnLexerParseProgress) then
+    OnLexerParseProgress(Owner, FProgress);
 end;
 
 procedure TecClientSyntAnalyzer.ParseToPos(APos: integer);
