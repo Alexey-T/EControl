@@ -626,8 +626,8 @@ type
     function Stop: boolean;
 
     procedure TextChangedOnLine(ALine: integer);
-    procedure ParseAll(AResetContent, AUseTimer: Boolean); // Requires analyzed all text
-    procedure ParseToPos(APos: integer; AUseTimer: boolean= True); // Requires parsed data to position
+    procedure ParseAll(AResetContent: Boolean);
+    procedure ParseToPos(APos: integer);
     procedure ParseSome;
     //procedure CompleteAnalysis;
 
@@ -3098,7 +3098,7 @@ begin
     end;
 end;
 
-procedure TecClientSyntAnalyzer.ParseToPos(APos: integer; AUseTimer: boolean=True);
+procedure TecClientSyntAnalyzer.ParseToPos(APos: integer);
 var
   FPos: integer;
   bDisableFolding: boolean;
@@ -3251,7 +3251,7 @@ begin
   Result := TecTextRange(FRanges[Index]);
 end;
 
-procedure TecClientSyntAnalyzer.ParseAll(AResetContent, AUseTimer: Boolean);
+procedure TecClientSyntAnalyzer.ParseAll(AResetContent: Boolean);
 var OldSep: TecSeparateBlocksMode;
 begin
   if IsFinished then Exit;
@@ -3260,11 +3260,11 @@ begin
       OldSep := FOwner.FSeparateBlocks;
       FOwner.FSeparateBlocks := sbmDisabled;
       Clear;
-      ParseToPos(FBuffer.TextLength, AUseTimer);
+      ParseToPos(FBuffer.TextLength);
       FOwner.FSeparateBlocks := OldSep;
     end else
     begin
-      ParseToPos(FBuffer.TextLength, AUseTimer);
+      ParseToPos(FBuffer.TextLength);
     end;
 end;
 
