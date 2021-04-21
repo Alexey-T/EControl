@@ -12,7 +12,7 @@
 
 {$mode delphi}
 {.$define ParseProgress}
-{$define ParseTime}
+{.$define ParseTime}
 
 unit ec_SyntAnal;
 
@@ -568,6 +568,7 @@ type
     procedure DoParseDone;
     procedure Execute; override;
     procedure ShowDebugMsg;
+    procedure DummyProc;
   end;
 
   { TecClientSyntAnalyzer }
@@ -998,8 +999,10 @@ begin
 end;
 
 procedure TecParserThread.Execute;
+{$ifdef ParseTime}
 var
   tick: QWord;
+{$endif}
 begin
   repeat
     if Terminated then Exit;
@@ -1014,6 +1017,8 @@ begin
       DebugTicks := 0;
       Synchronize(ShowDebugMsg);
       tick := GetTickCount64;
+      {$else}
+      Synchronize(DummyProc); //otherwise editor is not highlighted
       {$endif}
 
       An.ParseInThread;
@@ -1022,12 +1027,12 @@ begin
         if not Terminated then
           if not Application.Terminated then
           begin
-            Synchronize(DoParseDone);
             {$ifdef ParseTime}
             DebugMsg := 'parse-done';
             DebugTicks := GetTickCount64-tick;
             Synchronize(ShowDebugMsg);
             {$endif}
+            Synchronize(DoParseDone);
           end;
       An.EventParseIdle.SetEvent;
     end;
@@ -1045,6 +1050,11 @@ begin
       An.PublicData.Tokens.Count,
       An.PublicData.FoldRanges.Count
       ]);
+end;
+
+procedure TecParserThread.DummyProc;
+begin
+  //empty
 end;
 
 { TecSubLexerRange }
