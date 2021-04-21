@@ -3101,9 +3101,6 @@ begin
 
               if i mod ProcessMsgStep2 = 0 then
               begin
-                //this check is slow
-                if EventParseStop.WaitFor(0)=wrSignaled then Exit;
-
                 {$ifdef ParseProgress}
                 //progress for 2nd half of parsing, range 50..100
                 FProgress := 50 + i * 50 div NTagCount;
@@ -3115,7 +3112,7 @@ begin
                 {$endif}
 
                 if Application.Terminated then Exit;
-                if EventParseStop.WaitFor(0)=wrSignaled then Exit;
+                if EventParseStop.WaitFor(0)=wrSignaled then Break;
               end;
             end;
         end;
