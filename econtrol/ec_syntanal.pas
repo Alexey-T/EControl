@@ -607,6 +607,13 @@ type
     procedure Finished; override;
     procedure CloseAtEnd(AStartTagIdx: integer); override;
 
+  public type
+    TecParseInThreadResult = (
+      eprNormal,
+      eprInterrupted,
+      eprAppTerminated,
+      eprBufferInvalidated
+      );
   public
     PublicDataNeedTo: integer;
     PublicData: TecPublicData;
@@ -637,7 +644,7 @@ type
     procedure TextChangedOnLine(ALine: integer);
     procedure ParseAll(AResetContent: Boolean);
     procedure ParseToPos(APos: integer);
-    procedure ParseSome;
+    function ParseInThread: TecParseInThreadResult;
     procedure DoShowProgress;
     //procedure CompleteAnalysis;
 
@@ -1008,7 +1015,7 @@ begin
       tick := GetTickCount64;
       {$endif}
 
-      An.ParseSome;
+      An.ParseInThread;
     finally
       if An.IsFinished then
         if not Terminated then
@@ -3044,23 +3051,22 @@ begin
   Result := FBuffer.Count>MaxLinesWhenParserEnablesFolding;
 end;
 
-procedure TecClientSyntAnalyzer.ParseSome;
-var FPos, tmp, i: integer;
-    own: TecSyntAnalyzer;
-    BufLen: integer;
-    BufVersion: integer;
-    ProgressPrev: integer;
-    NMaxPercents, NTagCount: integer;
-    bSeparateBlocks: boolean;
-    bDisableFolding: boolean;
+function TecClientSyntAnalyzer.ParseInThread: TecParseInThreadResult; //Alexey
+var
+  FPos, tmp, i: integer;
+  own: TecSyntAnalyzer;
+  BufLen: integer;
+  BufVersion: integer;
+  ProgressPrev: integer;
+  NMaxPercents, NTagCount: integer;
+  bSeparateBlocks: boolean;
+  bDisableFolding: boolean;
 const
   ProgressMinPos = 2000;
   ProcessMsgStep1 = 1000; //stage1: finding tokens
   ProcessMsgStep2 = 1000; //stage2: finding ranges
-label
-  LabelStart;
 begin
-  LabelStart:
+  Result := eprNormal;
   BufVersion := FBuffer.Version;
   BufLen := FBuffer.TextLength;
   FFinished := False;
@@ -3084,14 +3090,14 @@ begin
 
     while True do
     begin
-      if FFinished then Exit;
-      if Application.Terminated then Exit;
-      if FBuffer=nil then Exit;
+      if FFinished then
+        Exit;
+      if Application.Terminated then
+        Exit(eprAppTerminated);
+      if FBuffer=nil then
+        Exit(eprBufferInvalidated);
       if BufVersion<>FBuffer.Version then
-      begin
-        //if Application.Terminated then Exit;
-        Goto LabelStart;
-      end;
+        Exit(eprBufferInvalidated);
 
       tmp := GetLastPos;
       if tmp > FPos then
@@ -3124,8 +3130,14 @@ begin
                 end;
                 {$endif}
 
-                if Application.Terminated then Exit;
-                if EventParseStop.WaitFor(0)=wrSignaled then Break;
+                if Application.Terminated then
+                  Exit(eprAppTerminated);
+
+                if EventParseStop.WaitFor(0)=wrSignaled then
+                begin
+                  Result:= eprInterrupted;
+                  Break;
+                end;
               end;
             end;
         end;
