@@ -582,6 +582,7 @@ type
     FStartSepRangeAnal: integer;
     FRepeateAnalysis: Boolean;
     FOnParseDone: TNotifyEvent;
+    FBufferVersion: integer;
     {$ifdef ParseProgress}
     FProgress: integer;
     {$endif}
@@ -2961,6 +2962,12 @@ begin
      end;
   end;
 
+  if FBufferVersion <> Buffer.Version then
+  begin
+    FOpenedBlocks.Clear;
+    Exit;
+  end;
+
   // Close blocks at the end of text
   CloseAtEnd(0);
 
@@ -3059,7 +3066,6 @@ var
   FPos, tmp, i: integer;
   own: TecSyntAnalyzer;
   BufLen: integer;
-  BufVersion: integer;
   ProgressPrev: integer;
   NMaxPercents, NTagCount: integer;
   bSeparateBlocks: boolean;
@@ -3070,7 +3076,7 @@ const
   ProcessMsgStep2 = 1000; //stage2: finding ranges
 begin
   Result := eprNormal;
-  BufVersion := FBuffer.Version;
+  FBufferVersion := FBuffer.Version;
   BufLen := FBuffer.TextLength;
   FFinished := False;
   ClearDataOnChange;
@@ -3099,7 +3105,7 @@ begin
         Exit(eprAppTerminated);
       if FBuffer=nil then
         Exit(eprBufferInvalidated);
-      if BufVersion<>FBuffer.Version then
+      if FBufferVersion<>FBuffer.Version then
         Exit(eprBufferInvalidated);
 
       tmp := GetLastPos;
@@ -3940,6 +3946,13 @@ begin
 
   for i := FOpenedBlocks.Count - 1 downto 0 do
   begin
+    if FBufferVersion <> Buffer.Version then
+    begin
+      FOpenedBlocks.Clear;
+      FRanges.Clear;
+      Exit
+    end;
+
     Range := TecTextRange(FOpenedBlocks[i]);
     if Range.Rule.EndOfTextClose and
        ((AStartTagIdx = 0) or (Range.StartIdx >= AStartTagIdx)) then
