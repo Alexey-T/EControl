@@ -1028,12 +1028,15 @@ end;
 
 procedure TecParserThread.ShowDebugMsg;
 begin
-  Application.MainForm.Caption:= Format('%s, %dms, %d tokens, %d ranges', [
-    DebugMsg,
-    DebugTicks,
-    An.PublicData.Tokens.Count,
-    An.PublicData.FoldRanges.Count
-    ]);
+  if DebugTicks=0 then
+    Application.MainForm.Caption:= DebugMsg
+  else
+    Application.MainForm.Caption:= Format('%s, %dms, %d tokens, %d ranges', [
+      DebugMsg,
+      DebugTicks,
+      An.PublicData.Tokens.Count,
+      An.PublicData.FoldRanges.Count
+      ]);
 end;
 
 { TecSubLexerRange }
@@ -2732,7 +2735,7 @@ begin
   EventParseNeeded := TEvent.Create(nil, False, False, 'ev_needed');
   EventParseIdle := TEvent.Create(nil, False, True{Signaled}, 'ev_idle');
   EventParseStop := TEvent.Create(nil, False, False, 'ev_stop');
-  CriSecForData:= TCriticalSection.Create;
+  CriSecForData := TCriticalSection.Create;
 
   ParserThread := TecParserThread.Create(True);
   ParserThread.An := Self;
