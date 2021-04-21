@@ -3048,6 +3048,7 @@ procedure TecClientSyntAnalyzer.ParseSome;
 var FPos, tmp, i: integer;
     own: TecSyntAnalyzer;
     BufLen: integer;
+    BufVersion: integer;
     ProgressPrev: integer;
     NMaxPercents, NTagCount: integer;
     bSeparateBlocks: boolean;
@@ -3056,12 +3057,16 @@ const
   ProgressMinPos = 2000;
   ProcessMsgStep1 = 1000; //stage1: finding tokens
   ProcessMsgStep2 = 1000; //stage2: finding ranges
+label
+  LabelStart;
 begin
+  LabelStart:
+  BufVersion := FBuffer.Version;
+  BufLen := FBuffer.TextLength;
   FFinished := False;
   ClearDataOnChange;
 
   FPos := 0;
-  BufLen := FBuffer.TextLength;
   bSeparateBlocks := FOwner.SeparateBlockAnalysis;
   if bSeparateBlocks then
     NMaxPercents := 50
@@ -3082,6 +3087,11 @@ begin
       if FFinished then Exit;
       if Application.Terminated then Exit;
       if FBuffer=nil then Exit;
+      if BufVersion<>FBuffer.Version then
+      begin
+        //if Application.Terminated then Exit;
+        Goto LabelStart;
+      end;
 
       tmp := GetLastPos;
       if tmp > FPos then
