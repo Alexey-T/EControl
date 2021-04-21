@@ -938,7 +938,7 @@ var
 
 var
   MaxLinesWhenParserEnablesFolding: integer = 10*1000;
-  AutoFoldComments: integer = 5;
+  AutoFoldComments: integer = 0;
 
 implementation
 
