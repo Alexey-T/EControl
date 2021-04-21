@@ -1068,7 +1068,7 @@ begin
   St := Range.StartPos+1;
   Len := Range.EndPos - Range.StartPos;
   if ATrimLeft then
-    while (Len>0) and IsSpaceChar(Source[St]) do
+    while (Len>0) and (St>0) and (St<=Length(Source)) and IsSpaceChar(Source[St]) do
     begin
       Inc(St);
       Dec(Len);
