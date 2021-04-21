@@ -2785,10 +2785,11 @@ end;
 
 procedure TecClientSyntAnalyzer.StopThreadLoop;
 begin
+  if IsFinished then Exit;
   if EventParseIdle.WaitFor(0)<>wrSignaled then
   begin
     EventParseStop.SetEvent;
-    EventParseIdle.WaitFor(2000);
+    //EventParseIdle.WaitFor(200);
   end;
 end;
 
