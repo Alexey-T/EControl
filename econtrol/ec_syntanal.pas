@@ -938,7 +938,7 @@ var
 
 var
   MaxLinesWhenParserEnablesFolding: integer = 10*1000;
-  AutoFoldComments: integer = 0;
+  AutoFoldComments: integer = 5;
 
 implementation
 
@@ -2821,6 +2821,9 @@ procedure TecClientSyntAnalyzer.InitDummyRules(AOwner: TecSyntAnalyzer);
 begin
   if FDummyRule=nil then
   begin
+    //fixes AV in BlockRules.OnChange, on loading Python file, with thread-parser
+    AOwner.BlockRules.OnChange := nil;
+
     FDummyRule := AOwner.BlockRules.Add;
     FDummyRule.Enabled := false;
     FDummyRule.BlockType := btRangeStart;
