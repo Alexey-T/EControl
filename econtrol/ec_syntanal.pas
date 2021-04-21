@@ -3116,11 +3116,14 @@ begin
               end;
             end;
         end;
+
         Finished;
-        UpdatePublicData(True); //after Finished, coz it closes Python ranges
+        UpdatePublicData(True); //after Finished, coz Finished must close Python ranges
       end
       else
       begin
+        //this works when parsing has reached the ed's LineBottom,
+        //it updates not-complete PublicData
         UpdatePublicData(False);
 
         {$ifdef ParseProgress}
