@@ -2973,7 +2973,7 @@ begin
      end;
   end;
 
-  if FBufferVersion <> Buffer.Version then
+  if FBuffer.Version <> FBufferVersion then
   begin
     FOpenedBlocks.Clear;
     Exit;
@@ -3916,7 +3916,7 @@ begin
 
   for iToken := ATokenIndexFrom to ATokenIndexTo do
   begin
-     if Buffer.Version <> FBufferVersion then
+     if FBuffer.Version <> FBufferVersion then
        Exit(True);
 
      Token := Tags[iToken];
@@ -3960,7 +3960,7 @@ begin
 
   for i := FOpenedBlocks.Count - 1 downto 0 do
   begin
-    if FBufferVersion <> Buffer.Version then
+    if FBuffer.Version <> FBufferVersion then
     begin
       FOpenedBlocks.Clear;
       FRanges.Clear;
