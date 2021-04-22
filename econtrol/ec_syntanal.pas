@@ -1011,31 +1011,31 @@ begin
       Continue;
 
     An.EventParseIdle.ResetEvent;
-
-    {$ifdef ParseTime}
-    DebugMsg := 'parse-begin';
-    DebugTicks := 0;
-    Synchronize(ShowDebugMsg);
-    tick := GetTickCount64;
-    {$else}
-    Synchronize(DummyProc); //otherwise editor is not highlighted
-    {$endif}
-
-    An.ParseInThread;
-    if Terminated then Exit;
-    if Application.Terminated then Exit;
-
-    if An.IsFinished then
-    begin
+    try
       {$ifdef ParseTime}
-      DebugMsg := 'parse-done';
-      DebugTicks := GetTickCount64-tick;
+      DebugMsg := 'parse-begin';
+      DebugTicks := 0;
       Synchronize(ShowDebugMsg);
+      tick := GetTickCount64;
+      {$else}
+      Synchronize(DummyProc); //otherwise editor is not highlighted
       {$endif}
-      Synchronize(DoParseDone);
-    end;
 
-    An.EventParseIdle.SetEvent;
+      An.ParseInThread;
+    finally
+      if An.IsFinished then
+        if not Terminated then
+          if not Application.Terminated then
+          begin
+            {$ifdef ParseTime}
+            DebugMsg := 'parse-done';
+            DebugTicks := GetTickCount64-tick;
+            Synchronize(ShowDebugMsg);
+            {$endif}
+            Synchronize(DoParseDone);
+          end;
+      An.EventParseIdle.SetEvent;
+    end;
   until False;
 end;
 
