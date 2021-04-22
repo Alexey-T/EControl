@@ -808,7 +808,7 @@ type
     procedure HighlightKeywords(Client: TecParserResults; const Source: ecString;
                        OnlyGlobal: Boolean); virtual;
     procedure SelectTokenFormat(Client: TecParserResults; const Source: ecString;
-                       DisableFolding, OnlyGlobal: Boolean; N: integer = -1); virtual;
+                       DisableFolding, OnlyGlobal: Boolean; ATokenIndex: integer = -1); virtual;
     procedure Loaded; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Change; dynamic;
@@ -4178,7 +4178,7 @@ end;
 
 procedure TecSyntAnalyzer.SelectTokenFormat(Client: TecParserResults;
             const Source: ecString;
-            DisableFolding, OnlyGlobal: Boolean; N: integer);
+            DisableFolding, OnlyGlobal: Boolean; ATokenIndex: integer);
 var i, li, ki, strt, RefIdx: integer;
     Range: TecTextRange;
     Accept: Boolean;
@@ -4187,15 +4187,15 @@ var i, li, ki, strt, RefIdx: integer;
 
   function CheckIndex(Idx: integer): Boolean; inline;
   begin
-   Result := (Idx >= 0) and (Idx < N);
+   Result := (Idx >= 0) and (Idx < ATokenIndex);
   end;
 
 begin
-  if N = -1 then
-    N := Client.TagCount;
+  if ATokenIndex = -1 then
+    ATokenIndex := Client.TagCount;
   if not (Client is TecClientSyntAnalyzer)  then Exit;
   RClient := TecClientSyntAnalyzer(Client);
-  RClient.FStartSepRangeAnal := N + 1;
+  RClient.FStartSepRangeAnal := ATokenIndex + 1;
   //try //Alexey: why try/except here?
     for i := 0 to FBlockRules.Count - 1 do
     begin
@@ -4210,10 +4210,10 @@ begin
           RefIdx := 0;
           if FGrammaRule <> nil then
            begin
-             RefIdx := FGrammaParser.TestRule(N - 1, FGrammaRule, Client);
+             RefIdx := FGrammaParser.TestRule(ATokenIndex - 1, FGrammaRule, Client);
              Accept := RefIdx <> -1;
            end else
-             Accept := Check(Source, RClient, N, RefIdx);
+             Accept := Check(Source, RClient, ATokenIndex, RefIdx);
 
           if Assigned(OnBlockCheck) then
             OnBlockCheck(Rule, RClient, Source, RefIdx, Accept);
@@ -4222,8 +4222,8 @@ begin
           begin
            Client.ApplyStates(Rule);
            if FRefToCondEnd then strt := RefIdx
-             else strt := N - 1 - CheckOffset;
-      //    strt := N - 1 - CheckOffset;
+             else strt := ATokenIndex - 1 - CheckOffset;
+      //    strt := ATokenIndex - 1 - CheckOffset;
            ki := strt - IdentIndex;
            if CheckIndex(ki) then
             case BlockType of
@@ -4240,11 +4240,11 @@ begin
                     Range := TecTextRange.Create(li, RClient.Tags[li].Range.StartPos);
                     Range.IdentIdx := ki;
                     Range.Rule := Rule;
-                    Range.FCondIndex := N - 1;
+                    Range.FCondIndex := ATokenIndex - 1;
                     if NoEndRule then
                      begin
-                      Range.EndIdx := N - 1 - CheckOffset;
-                      Range.FEndCondIndex := N - 1;
+                      Range.EndIdx := ATokenIndex - 1 - CheckOffset;
+                      Range.FEndCondIndex := ATokenIndex - 1;
                       Range.StartIdx := RefIdx - BlockOffset;
                      end;
                     RClient.AddRange(Range);
