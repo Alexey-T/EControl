@@ -2787,10 +2787,7 @@ procedure TecClientSyntAnalyzer.StopThreadLoop;
 begin
   if IsFinished then Exit;
   if EventParseIdle.WaitFor(0)<>wrSignaled then
-  begin
     EventParseStop.SetEvent;
-    //EventParseIdle.WaitFor(200);
-  end;
 end;
 
 function TecClientSyntAnalyzer.Stop: boolean;
@@ -3153,6 +3150,7 @@ begin
                 if Application.Terminated then
                   Exit(eprAppTerminated);
 
+                //this is slow check, do it each N steps
                 if EventParseStop.WaitFor(0)=wrSignaled then
                 begin
                   Result:= eprInterrupted;
