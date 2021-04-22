@@ -3916,6 +3916,9 @@ begin
 
   for iToken := ATokenIndexFrom to ATokenIndexTo do
   begin
+     if Buffer.Version <> FBufferVersion then
+       Exit(True);
+
      Token := Tags[iToken];
      // count only tokens of length=1
      NPosStart := Token.Range.StartPos;
