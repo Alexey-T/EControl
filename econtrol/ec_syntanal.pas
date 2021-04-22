@@ -3570,7 +3570,7 @@ end;
 begin
   idx := 0;
   Result := FmtStr;
-  try
+  //try //Alexey: why try/except here?
 
    // HAW: obsolete -> to_idx := Length(Result);
    //      the variable "j" is now always pointing to the next character to process.
@@ -3796,10 +3796,9 @@ begin
       // HAW: I am currently not sure how to handle the "stylename" property here
       //      ... will be added, when available
     end;
-   Exit;
-  except
-    Result := '';
-  end;
+  //except
+  //  Result := '';
+  //end;
 end;
 
 function TecClientSyntAnalyzer.GetRangeName(Range: TecTextRange; ATags: TecTokenList): ecString;
@@ -4197,7 +4196,7 @@ begin
   if not (Client is TecClientSyntAnalyzer)  then Exit;
   RClient := TecClientSyntAnalyzer(Client);
   RClient.FStartSepRangeAnal := N + 1;
-  try
+  //try //Alexey: why try/except here?
     for i := 0 to FBlockRules.Count - 1 do
     begin
       Rule := FBlockRules[i];
@@ -4263,9 +4262,9 @@ begin
           end;
         end;
     end;
-  except
-    Application.HandleException(Self);
-  end;
+  //except
+  //  Application.HandleException(Self);
+  //end;
 end;
 
 procedure TecSyntAnalyzer.SetSampleText(const Value: TStrings);
