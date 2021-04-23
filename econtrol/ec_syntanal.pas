@@ -3838,6 +3838,9 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.TextChangedOnLine(ALine: integer);
+//this calls TextChangeOnPos, which sets EventParseStop.
+//so this must called as less as possible
+//(unneeded setting of EventParseStop breaks syntax coloring)
 var
   NPos: integer;
 begin
