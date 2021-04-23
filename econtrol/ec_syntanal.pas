@@ -3268,6 +3268,7 @@ begin
     FRanges.Clear;
     FLastAnalPos := 0;
     FStartSepRangeAnal := 0;
+    RestoreState;
     UpdatePublicDataOnTextChange;
     Exit
   end;
