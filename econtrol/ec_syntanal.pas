@@ -3828,7 +3828,7 @@ procedure TecClientSyntAnalyzer.TextChangedOnLine(ALine: integer);
 var
   NPos: integer;
 begin
-  if ALine<0 then
+  if ALine<=0 then
     NPos:= 0
   else
     NPos:= FBuffer.CaretToStr(Point(0, ALine));
