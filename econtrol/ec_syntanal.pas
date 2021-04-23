@@ -3249,8 +3249,7 @@ var
  end;
  //
 var
-  //Alexey
-  // lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
+  //lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
   NDeltaRanges: integer;
   Sub: TecSubLexerRange;
   APos: integer;
@@ -3259,7 +3258,20 @@ begin
   if FPrevChangePos < 0 then Exit;
   APos := FPrevChangePos;
 
-  //Alexey
+  if APos = 0 then
+  begin
+    //total clear
+    FSubLexerBlocks.Clear;
+    FTagList.Clear;
+    ClearTokenIndexer;
+    FOpenedBlocks.Clear;
+    FRanges.Clear;
+    FLastAnalPos := 0;
+    FStartSepRangeAnal := 0;
+    UpdatePublicDataOnTextChange;
+    Exit
+  end;
+
   // delta>0 was added for Python: editing below block end must enlarge previous block to editing pos
   // delta>0 breaks HTML lexer: on editing in any place,
   // text in <p>text text</p> changes styles to "misspelled tag property"
