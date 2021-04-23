@@ -630,7 +630,6 @@ type
       const AClient: IecSyntClient; AUseTimer: boolean); override;
     destructor Destroy; override;
     procedure Clear; override;
-    procedure TextChangedOnPos(APos: integer);
     function PriorTokenAt(Pos: integer): integer;
     function FindTokenAt(Pos: integer): integer;
 
@@ -644,6 +643,7 @@ type
     function Stop: boolean;
 
     procedure TextChangedOnLine(ALine: integer);
+    procedure TextChangedOnPos(APos: integer);
     procedure ParseAll(AResetContent: Boolean);
     procedure ParseToPos(APos: integer);
     function ParseInThread: TecParseInThreadResult;
@@ -3219,21 +3219,6 @@ begin
    end;
 end;
 
-procedure TecClientSyntAnalyzer.TextChangedOnPos(APos: integer);
-begin
-  if FPrevChangePos < 0 then
-    FPrevChangePos := APos
-  else
-    FPrevChangePos := Min(FPrevChangePos, APos);
-
-  if FBuffer.TextLength <= Owner.FullRefreshSize then
-    FPrevChangePos := 0;
-
-  if EventParseIdle.WaitFor(0)<>wrSignaled then
-    EventParseStop.SetEvent;
-  EventParseNeeded.SetEvent;
-end;
-
 procedure TecClientSyntAnalyzer.ClearDataOnChange;
 var
   NTagCount: integer;
@@ -3849,6 +3834,21 @@ begin
   else
     NPos:= FBuffer.CaretToStr(Point(0, ALine));
   TextChangedOnPos(NPos);
+end;
+
+procedure TecClientSyntAnalyzer.TextChangedOnPos(APos: integer);
+begin
+  if FPrevChangePos < 0 then
+    FPrevChangePos := APos
+  else
+    FPrevChangePos := Min(FPrevChangePos, APos);
+
+  if FBuffer.TextLength <= Owner.FullRefreshSize then
+    FPrevChangePos := 0;
+
+  if EventParseIdle.WaitFor(0)<>wrSignaled then
+    EventParseStop.SetEvent;
+  EventParseNeeded.SetEvent;
 end;
 
 function TecClientSyntAnalyzer.GetOpened(Index: integer): TecTextRange;
