@@ -2751,7 +2751,7 @@ begin
   end;
 
   EventParseNeeded := TEvent.Create(nil, False, False, 'ev_needed');
-  EventParseIdle := TEvent.Create(nil, False, True{Signaled}, 'ev_idle');
+  EventParseIdle := TEvent.Create(nil, True{ManualReset}, True{Signaled}, 'ev_idle');
   EventParseStop := TEvent.Create(nil, False, False, 'ev_stop');
   CriSecForData := TCriticalSection.Create;
 
