@@ -571,6 +571,54 @@ type
     procedure DummyProc;
   end;
 
+  (* Alexey: the entire logic of thread is:
+
+  //main thread, OnChange
+  //---------------------
+  EventParseStop.SetEvent
+  EventParseIdle.WaitFor(inf)
+  Buffer_Setup
+  Parser_Setup(Buffer)
+  EventParseNeeded.SetEvent
+
+  //main thread, renderer
+  //---------------------
+  CriSec.Enter
+  Render(PublicData)
+  CriSec.Leave
+
+  //parser thread
+  //-------------
+  repeat
+    EventParseNeeded.WaitFor(inf)
+    EventParseIdle.ResetEvent
+    try
+      //this 'repeat' block is ParseInThread()
+      repeat
+        if ExtractTag() then //text ended?
+        begin
+          Finished
+          Break
+        end
+        else
+          Show_some_progress
+
+        Inc(cnt)
+        if cnt mod 1000=0 then
+          if EventParseStop.WaitFor(0)=Signaled then
+            Break
+      until false
+
+      FlushData(PublicData)
+      CriSec.Enter
+      CopyDataTo(PublicData)
+      CriSec.Leave
+    finally
+      EventParseIdle.SetEvent
+    end
+  until false
+  *)
+
   { TecClientSyntAnalyzer }
 
   TecClientSyntAnalyzer = class(TecParserResults)
