@@ -3163,91 +3163,90 @@ begin
     FOpenedBlocks.Clear;
   end;
 
-    while True do
+  repeat
+    if FFinished then
+      Exit;
+    if Application.Terminated then
+      Exit(eprAppTerminated);
+    if FBuffer = nil then
+      Exit(eprBufferInvalidated);
+    if FBufferVersion <> FBuffer.Version then
+      Exit(eprBufferInvalidated);
+
+    tmp := GetLastPos;
+    if tmp > FPos then
+      FPos := tmp;
+
+    if ExtractTag(FPos, bDisableFolding) then
     begin
-      if FFinished then
-        Exit;
-      if Application.Terminated then
-        Exit(eprAppTerminated);
-      if FBuffer = nil then
-        Exit(eprBufferInvalidated);
-      if FBufferVersion <> FBuffer.Version then
-        Exit(eprBufferInvalidated);
-
-      tmp := GetLastPos;
-      if tmp > FPos then
-        FPos := tmp;
-
-      if ExtractTag(FPos, bDisableFolding) then
+      //all tokens found, now find blocks (if bSeparateBlocks)
+      if bSeparateBlocks then
       begin
-        //all tokens found, now find blocks (if bSeparateBlocks)
-        if bSeparateBlocks then
-        begin
-          {$ifdef ParseProgress}
-          ProgressPrev := 50;
-          {$endif}
-          NTagCount := TagCount;
+        {$ifdef ParseProgress}
+        ProgressPrev := 50;
+        {$endif}
+        NTagCount := TagCount;
 
-          for i := FStartSepRangeAnal + 1 to NTagCount do
+        for i := FStartSepRangeAnal + 1 to NTagCount do
+          begin
+            own := Tags[i - 1].Rule.SyntOwner;
+            FOwner.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, own <> FOwner, i);
+            if own <> FOwner then
+              own.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, False, i);
+
+            if i mod ProcessMsgStep2 = 0 then
             begin
-              own := Tags[i - 1].Rule.SyntOwner;
-              FOwner.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, own <> FOwner, i);
-              if own <> FOwner then
-                own.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, False, i);
-
-              if i mod ProcessMsgStep2 = 0 then
+              {$ifdef ParseProgress}
+              //progress for 2nd half of parsing, range 50..100
+              FProgress := 50 + i * 50 div NTagCount;
+              if FProgress <> ProgressPrev then
               begin
-                {$ifdef ParseProgress}
-                //progress for 2nd half of parsing, range 50..100
-                FProgress := 50 + i * 50 div NTagCount;
-                if FProgress <> ProgressPrev then
-                begin
-                  ProgressPrev := FProgress;
-                  DoShowProgress;
-                end;
-                {$endif}
+                ProgressPrev := FProgress;
+                DoShowProgress;
+              end;
+              {$endif}
 
-                if Application.Terminated then
-                  Exit(eprAppTerminated);
+              if Application.Terminated then
+                Exit(eprAppTerminated);
 
-                //this is slow check, do it each N steps
-                if EventParseStop.WaitFor(0) = wrSignaled then
-                begin
-                  Result := eprInterrupted;
-                  Break;
-                end;
+              //this is slow check, do it each N steps
+              if EventParseStop.WaitFor(0) = wrSignaled then
+              begin
+                Result := eprInterrupted;
+                Break;
               end;
             end;
-        end;
-
-        Finished;
-        UpdatePublicData(True); //after Finished, coz Finished must close Python ranges
-      end
-      else
-      begin
-        //this works when parsing has reached the ed's LineBottom,
-        //it updates not-complete PublicData
-        UpdatePublicData(False);
-
-        {$ifdef ParseProgress}
-        if TagCount mod ProcessMsgStep1 = 0 then
-        begin
-          //if bSeparateBlocks, it's progress for 1st half of parsing, 0..50
-          //otherwise, it's progress for entire parsing, 0..100
-          if BufLen>0 then
-            if FPos < ProgressMinPos then
-              FProgress := 0
-            else
-              FProgress := FPos * NMaxPercents div BufLen;
-          if FProgress <> ProgressPrev then
-          begin
-            ProgressPrev := FProgress;
-            DoShowProgress;
           end;
-        end;
-        {$endif}
       end;
+
+      Finished;
+      UpdatePublicData(True); //after Finished, coz Finished must close Python ranges
+    end
+    else
+    begin
+      //this works when parsing has reached the ed's LineBottom,
+      //it updates not-complete PublicData
+      UpdatePublicData(False);
+
+      {$ifdef ParseProgress}
+      if TagCount mod ProcessMsgStep1 = 0 then
+      begin
+        //if bSeparateBlocks, it's progress for 1st half of parsing, 0..50
+        //otherwise, it's progress for entire parsing, 0..100
+        if BufLen>0 then
+          if FPos < ProgressMinPos then
+            FProgress := 0
+          else
+            FProgress := FPos * NMaxPercents div BufLen;
+        if FProgress <> ProgressPrev then
+        begin
+          ProgressPrev := FProgress;
+          DoShowProgress;
+        end;
+      end;
+      {$endif}
     end;
+  until False;
 end;
 
 procedure TecClientSyntAnalyzer.DoShowProgress;
