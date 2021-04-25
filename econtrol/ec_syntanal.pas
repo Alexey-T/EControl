@@ -536,7 +536,7 @@ type
     CmtIndexer: packed array of boolean; //Alexey
 
     constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer;
-      const AClient: IecSyntClient; AUseTimer: boolean); virtual;
+      const AClient: IecSyntClient);
     destructor Destroy; override;
     procedure Clear; virtual;
 
@@ -675,8 +675,7 @@ type
     EventParseStop: TEvent;
     CriSecForData: TCriticalSection;
 
-    constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer;
-      const AClient: IecSyntClient; AUseTimer: boolean); override;
+    constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
     destructor Destroy; override;
     procedure Clear; override;
     function PriorTokenAt(Pos: integer): integer;
@@ -2156,7 +2155,7 @@ end;
 { TecParserResults }
 
 constructor TecParserResults.Create(AOwner: TecSyntAnalyzer;
-  ABuffer: TATStringBuffer; const AClient: IecSyntClient; AUseTimer: boolean);
+  ABuffer: TATStringBuffer; const AClient: IecSyntClient);
 //TODO: del AUseTimer
 begin
   inherited Create;
@@ -2778,10 +2777,10 @@ end;
 
 { TecClientSyntAnalyzer }
 
-constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer;
-  const AClient: IecSyntClient; AUseTimer: boolean);
+constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer;
+  ABuffer: TATStringBuffer);
 begin
-  inherited Create( AOwner, ABuffer, AClient, AUseTimer);
+  inherited Create(AOwner, ABuffer, nil);
 
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
@@ -2790,7 +2789,6 @@ begin
   PublicData.FoldRanges := TSortedList.Create(False);
   PublicData.SublexRanges := TecSubLexerRanges.Create;
 
-  //Alexey
   if AutoFoldComments>1 then
   begin
     InitDummyRules(AOwner);
