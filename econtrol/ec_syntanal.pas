@@ -3126,8 +3126,11 @@ var
   FPos, tmp, i: integer;
   own: TecSyntAnalyzer;
   BufLen: integer;
+  {$ifdef ParseProgress}
   ProgressPrev: integer;
-  NMaxPercents, NTagCount: integer;
+  NMaxPercents: integer;
+  {$endif}
+  NTagCount: integer;
   bSeparateBlocks: boolean;
   bDisableFolding: boolean;
 const
@@ -3143,11 +3146,14 @@ begin
 
   FPos := 0;
   bSeparateBlocks := FOwner.SeparateBlockAnalysis;
+
+  {$ifdef ParseProgress}
   if bSeparateBlocks then
     NMaxPercents := 50
   else
     NMaxPercents := 100;
   ProgressPrev := 0;
+  {$endif}
 
   //Alexey
   bDisableFolding := GetDisabledFolding;
@@ -3163,9 +3169,9 @@ begin
         Exit;
       if Application.Terminated then
         Exit(eprAppTerminated);
-      if FBuffer=nil then
+      if FBuffer = nil then
         Exit(eprBufferInvalidated);
-      if FBufferVersion<>FBuffer.Version then
+      if FBufferVersion <> FBuffer.Version then
         Exit(eprBufferInvalidated);
 
       tmp := GetLastPos;
@@ -3177,7 +3183,9 @@ begin
         //all tokens found, now find blocks (if bSeparateBlocks)
         if bSeparateBlocks then
         begin
+          {$ifdef ParseProgress}
           ProgressPrev := 50;
+          {$endif}
           NTagCount := TagCount;
 
           for i := FStartSepRangeAnal + 1 to NTagCount do
@@ -3203,9 +3211,9 @@ begin
                   Exit(eprAppTerminated);
 
                 //this is slow check, do it each N steps
-                if EventParseStop.WaitFor(0)=wrSignaled then
+                if EventParseStop.WaitFor(0) = wrSignaled then
                 begin
-                  Result:= eprInterrupted;
+                  Result := eprInterrupted;
                   Break;
                 end;
               end;
