@@ -3123,10 +3123,10 @@ end;
 
 function TecClientSyntAnalyzer.ParseInThread: TecParseInThreadResult; //Alexey
 var
-  FPos, tmp, iToken: integer;
+  NPos, NTemp, iToken: integer;
   own: TecSyntAnalyzer;
-  BufLen: integer;
   {$ifdef ParseProgress}
+  BufLen: integer;
   ProgressPrev: integer;
   NMaxPercents: integer;
   {$endif}
@@ -3140,14 +3140,14 @@ const
 begin
   Result := eprNormal;
   FBufferVersion := FBuffer.Version;
-  BufLen := FBuffer.TextLength;
   FFinished := False;
   ClearDataOnChange;
 
-  FPos := 0;
+  NPos := 0;
   bSeparateBlocks := FOwner.SeparateBlockAnalysis;
 
   {$ifdef ParseProgress}
+  BufLen := FBuffer.TextLength;
   if bSeparateBlocks then
     NMaxPercents := 50
   else
@@ -3173,11 +3173,11 @@ begin
     if FBufferVersion <> FBuffer.Version then
       Exit(eprBufferInvalidated);
 
-    tmp := GetLastPos;
-    if tmp > FPos then
-      FPos := tmp;
+    NTemp := GetLastPos;
+    if NTemp > NPos then
+      NPos := NTemp;
 
-    if ExtractTag(FPos, bDisableFolding) then
+    if ExtractTag(NPos, bDisableFolding) then
     begin
       //all tokens found, now find blocks (if bSeparateBlocks)
       if bSeparateBlocks then
