@@ -57,6 +57,13 @@ type
 
   TBoundDefEvent = procedure(Sender: TecClientSyntAnalyzer; Range: TecTextRange; var sIdx, eIdx: integer) of object;
 
+  TecParseInThreadResult = (
+    eprNormal,
+    eprInterrupted,
+    eprAppTerminated,
+    eprBufferInvalidated
+    );
+
   TRuleCollectionItem = class(TSyntCollectionItem)
   private
     FStyleName: string;
@@ -656,14 +663,6 @@ type
     function IsEnabled(Rule: TRuleCollectionItem; OnlyGlobal: Boolean): Boolean; override;
     procedure Finished; override;
     procedure CloseAtEnd(AStartTagIdx: integer); override;
-
-  public type
-    TecParseInThreadResult = (
-      eprNormal,
-      eprInterrupted,
-      eprAppTerminated,
-      eprBufferInvalidated
-      );
   public
     PublicDataNeedTo: integer;
     PublicData: TecPublicData;
@@ -1047,6 +1046,9 @@ begin
 end;
 
 procedure TecParserThread.Execute;
+var
+  Res: TecParseInThreadResult;
+  SavedChangePos: integer;
 {$ifdef ParseTime}
 var
   tick: QWord;
@@ -1069,7 +1071,14 @@ begin
       Synchronize(DummyProc); //otherwise editor is not highlighted
       {$endif}
 
-      An.ParseInThread;
+      //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
+      SavedChangePos := An.FPrevChangePos;
+      repeat
+        Res := An.ParseInThread;
+        if Res <> eprInterrupted then Break;
+        An.FPrevChangePos := SavedChangePos;
+      until False;
+
     finally
       if An.IsFinished then
         if not Terminated then
