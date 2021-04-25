@@ -4194,11 +4194,6 @@ begin
     ClearClientContents;
   end;
   UpdateClients;
-  {
-  //Alexey: removed
-  for i := 0 to FClientList.Count - 1 do
-    TecClientSyntAnalyzer(FClientList[i]).EventParseNeeded.SetEvent;
-    }
 end;
 
 procedure TecSyntAnalyzer.HighlightKeywords(Client: TecParserResults;
