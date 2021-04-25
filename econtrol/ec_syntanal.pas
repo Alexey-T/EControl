@@ -3123,7 +3123,7 @@ end;
 
 function TecClientSyntAnalyzer.ParseInThread: TecParseInThreadResult; //Alexey
 var
-  FPos, tmp, i: integer;
+  FPos, tmp, iToken: integer;
   own: TecSyntAnalyzer;
   BufLen: integer;
   {$ifdef ParseProgress}
@@ -3187,18 +3187,18 @@ begin
         {$endif}
         NTagCount := TagCount;
 
-        for i := FStartSepRangeAnal + 1 to NTagCount do
+        for iToken := FStartSepRangeAnal + 1 to NTagCount do
         begin
-          own := Tags[i - 1].Rule.SyntOwner;
-          FOwner.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, own <> FOwner, i);
+          own := Tags[iToken - 1].Rule.SyntOwner;
+          FOwner.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, own <> FOwner, iToken);
           if own <> FOwner then
-            own.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, False, i);
+            own.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, False, iToken);
 
-          if i mod ProcessMsgStep2 = 0 then
+          if iToken mod ProcessMsgStep2 = 0 then
           begin
             {$ifdef ParseProgress}
             //progress for 2nd half of parsing, range 50..100
-            FProgress := 50 + i * 50 div NTagCount;
+            FProgress := 50 + iToken * 50 div NTagCount;
             if FProgress <> ProgressPrev then
             begin
               ProgressPrev := FProgress;
