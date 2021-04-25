@@ -12,7 +12,7 @@
 
 {$mode delphi}
 {.$define ParseProgress}
-{.$define ParseTime}
+{$define ParseTime}
 
 unit ec_SyntAnal;
 
@@ -668,6 +668,7 @@ type
     PublicDataNeedTo: integer;
     PublicData: TecPublicData;
 
+    FileName: string;
     ParserThread: TecParserThread;
     EventParseNeeded: TEvent;
     EventParseIdle: TEvent;
@@ -1089,11 +1090,9 @@ end;
 
 procedure TecParserThread.ShowDebugMsg;
 begin
-  if DebugTicks=0 then
-    Application.MainForm.Caption:= DebugMsg
-  else
-    Application.MainForm.Caption:= Format('%s, %dms, %d tokens, %d ranges', [
+  Application.MainForm.Caption:= Format('%s, file %s, %dms, %d tokens, %d ranges', [
       DebugMsg,
+      An.FileName,
       DebugTicks,
       An.PublicData.Tokens.Count,
       An.PublicData.FoldRanges.Count
