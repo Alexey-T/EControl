@@ -2795,9 +2795,9 @@ begin
     inherited OnAddRangeSimple := AddRangeSimple;
   end;
 
-  EventParseNeeded := TEvent.Create(nil, False, False, 'ev_needed');
-  EventParseIdle := TEvent.Create(nil, True{ManualReset}, True{Signaled}, 'ev_idle');
-  EventParseStop := TEvent.Create(nil, False, False, 'ev_stop');
+  EventParseNeeded := TEvent.Create(nil, False, False, '');
+  EventParseIdle := TEvent.Create(nil, True{ManualReset}, True{Signaled}, '');
+  EventParseStop := TEvent.Create(nil, False, False, '');
   CriSecForData := TCriticalSection.Create;
 
   ParserThread := TecParserThread.Create(True);
