@@ -2805,8 +2805,6 @@ begin
   ParserThread := TecParserThread.Create(True);
   ParserThread.An := Self;
   ParserThread.Start;
-
-  EventParseNeeded.SetEvent;
 end;
 
 destructor TecClientSyntAnalyzer.Destroy;
