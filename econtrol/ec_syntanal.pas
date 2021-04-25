@@ -12,7 +12,7 @@
 
 {$mode delphi}
 {.$define ParseProgress}
-{$define ParseTime}
+{.$define ParseTime}
 
 unit ec_SyntAnal;
 
