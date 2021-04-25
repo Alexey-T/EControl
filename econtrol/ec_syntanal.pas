@@ -3123,16 +3123,15 @@ end;
 
 function TecClientSyntAnalyzer.ParseInThread: TecParseInThreadResult; //Alexey
 var
-  NPos, NTemp, iToken: integer;
-  own: TecSyntAnalyzer;
   {$ifdef ParseProgress}
   BufLen: integer;
   ProgressPrev: integer;
   NMaxPercents: integer;
   {$endif}
-  NTagCount: integer;
+  own: TecSyntAnalyzer;
   bSeparateBlocks: boolean;
   bDisableFolding: boolean;
+  NPos, NTemp, NTagCount, iToken: integer;
 const
   ProgressMinPos = 2000;
   ProcessMsgStep1 = 1000; //stage1: finding tokens
@@ -3155,7 +3154,6 @@ begin
   ProgressPrev := 0;
   {$endif}
 
-  //Alexey
   bDisableFolding := GetDisabledFolding;
   if bDisableFolding then
   begin
