@@ -3188,35 +3188,35 @@ begin
         NTagCount := TagCount;
 
         for i := FStartSepRangeAnal + 1 to NTagCount do
+        begin
+          own := Tags[i - 1].Rule.SyntOwner;
+          FOwner.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, own <> FOwner, i);
+          if own <> FOwner then
+            own.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, False, i);
+
+          if i mod ProcessMsgStep2 = 0 then
           begin
-            own := Tags[i - 1].Rule.SyntOwner;
-            FOwner.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, own <> FOwner, i);
-            if own <> FOwner then
-              own.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, False, i);
-
-            if i mod ProcessMsgStep2 = 0 then
+            {$ifdef ParseProgress}
+            //progress for 2nd half of parsing, range 50..100
+            FProgress := 50 + i * 50 div NTagCount;
+            if FProgress <> ProgressPrev then
             begin
-              {$ifdef ParseProgress}
-              //progress for 2nd half of parsing, range 50..100
-              FProgress := 50 + i * 50 div NTagCount;
-              if FProgress <> ProgressPrev then
-              begin
-                ProgressPrev := FProgress;
-                DoShowProgress;
-              end;
-              {$endif}
+              ProgressPrev := FProgress;
+              DoShowProgress;
+            end;
+            {$endif}
 
-              if Application.Terminated then
-                Exit(eprAppTerminated);
+            if Application.Terminated then
+              Exit(eprAppTerminated);
 
-              //this is slow check, do it each N steps
-              if EventParseStop.WaitFor(0) = wrSignaled then
-              begin
-                Result := eprInterrupted;
-                Break;
-              end;
+            //this is slow check, do it each N steps
+            if EventParseStop.WaitFor(0) = wrSignaled then
+            begin
+              Result := eprInterrupted;
+              Break;
             end;
           end;
+        end;
       end;
 
       Finished;
