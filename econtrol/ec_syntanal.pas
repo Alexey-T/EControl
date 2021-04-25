@@ -3233,11 +3233,11 @@ begin
       begin
         //if bSeparateBlocks, it's progress for 1st half of parsing, 0..50
         //otherwise, it's progress for entire parsing, 0..100
-        if BufLen>0 then
+        if BufLen > 0 then
           if FPos < ProgressMinPos then
             FProgress := 0
           else
-            FProgress := FPos * NMaxPercents div BufLen;
+            FProgress := NPos * NMaxPercents div BufLen;
         if FProgress <> ProgressPrev then
         begin
           ProgressPrev := FProgress;
