@@ -20,7 +20,7 @@
     </CompilerOptions>
     <Description Value="Core of EControl Syntax Editor SDK. Contains parser (syntax analyzer) of source codes."/>
     <License Value="Licensed for open-source only. See readme.txt."/>
-    <Version Major="1" Minor="2"/>
+    <Version Major="1" Minor="4"/>
     <Files Count="12">
       <Item1>
         <Filename Value="ec_gramma.pas"/>
