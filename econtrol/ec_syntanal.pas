@@ -1934,13 +1934,16 @@ end;
 
 function TecTokenRule.Match(const Source: ecString; Pos: integer): integer;
 begin
- try
-  FCriSec.Enter; //solve CudaText issue #3352
-  Result := FRegExpr.MatchLength(Source, Pos);
-  FCriSec.Leave;
- except
-  Result := 0;
- end;
+  try
+    FCriSec.Enter; //solve CudaText issue #3352
+    try
+      Result := FRegExpr.MatchLength(Source, Pos);
+    finally
+      FCriSec.Leave;
+    end;
+  except
+    Result := 0;
+  end;
 end;
 
 procedure TecTokenRule.SetColumnFrom(const Value: integer);
