@@ -370,6 +370,7 @@ type
     FOnMatchToken: TOnMatchToken;
     FColumnTo: integer;
     FColumnFrom: integer;
+    FCriSec: TCriticalSection;
     function GetExpression: ecString;
     procedure SetExpression(const Value: ecString);
     procedure SetTokenType(const Value: integer);
@@ -1904,6 +1905,7 @@ begin
   inherited;
   FBlock := nil;
   FFormat := nil;
+  FCriSec := TCriticalSection.Create;
   FRegExpr := TecRegExpr.Create;
   SetDefaultModifiers(FRegExpr);
 end;
@@ -1911,6 +1913,7 @@ end;
 destructor TecTokenRule.Destroy;
 begin
   FreeAndNil(FRegExpr);
+  FreeAndNil(FCriSec);
   inherited;
 end;
 
@@ -1932,7 +1935,9 @@ end;
 function TecTokenRule.Match(const Source: ecString; Pos: integer): integer;
 begin
  try
+  FCriSec.Enter; //solve CudaText issue #3352
   Result := FRegExpr.MatchLength(Source, Pos);
+  FCriSec.Leave;
  except
   Result := 0;
  end;
