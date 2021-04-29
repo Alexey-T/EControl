@@ -11,6 +11,8 @@
 { *************************************************************************** }
 
 {$mode delphi}
+{.$define ParseProgress}
+{.$define ParseTime}
 
 unit ec_SyntAnal;
 
@@ -18,7 +20,7 @@ interface
 
 uses
   Classes, Graphics, Controls, ExtCtrls,
-  Contnrs,
+  Contnrs, syncobjs,
   ec_RegExpr,
   ec_StrUtils,
   ec_Lists,
@@ -54,6 +56,13 @@ type
       const Text: ecString; var RefIdx: integer; var Accept: Boolean) of object;
 
   TBoundDefEvent = procedure(Sender: TecClientSyntAnalyzer; Range: TecTextRange; var sIdx, eIdx: integer) of object;
+
+  TecParseInThreadResult = (
+    eprNormal,
+    eprInterrupted,
+    eprAppTerminated,
+    eprBufferInvalidated
+    );
 
   TRuleCollectionItem = class(TSyntCollectionItem)
   private
@@ -361,6 +370,7 @@ type
     FOnMatchToken: TOnMatchToken;
     FColumnTo: integer;
     FColumnFrom: integer;
+    FCriSec: TCriticalSection;
     function GetExpression: ecString;
     procedure SetExpression(const Value: ecString);
     procedure SetTokenType(const Value: integer);
@@ -478,6 +488,15 @@ type
 
   TecOnAddRangeSimple = procedure(AStartIdx, AEndIdx: integer) of object;
 
+  TecPublicData = record
+    Tokens: TecTokenList;
+    FoldRanges: TSortedList;
+    SublexRanges: TecSubLexerRanges;
+    TokenIndexer: array of integer;
+    LineTo: integer;
+    Finished: boolean;
+  end;
+
   { TecParserResults }
 
   TecParserResults = class(TTokenHolder)
@@ -501,6 +520,7 @@ type
   protected
     function GetTokenCount: integer; override;
     function GetTokenStr(Index: integer): ecString; override;
+    function GetTokenStrEx(Index: integer; ATags: TecTokenList): ecString;
     function GetTokenType(Index: integer): integer; override;
     procedure CloseAtEnd(StartTagIdx: integer); virtual; abstract;
   protected
@@ -524,11 +544,11 @@ type
     CmtIndexer: packed array of boolean; //Alexey
 
     constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer;
-      const AClient: IecSyntClient; AUseTimer: boolean); virtual;
+      const AClient: IecSyntClient);
     destructor Destroy; override;
     procedure Clear; virtual;
 
-    function AnalyzerAtPos(APos: integer): TecSyntAnalyzer;
+    function AnalyzerAtPos(APos: integer; ABlocks: TecSubLexerRanges): TecSyntAnalyzer;
     function ParserStateAtPos(ATokenIndex: integer): integer;
 
     property Owner: TecSyntAnalyzer read FOwner;
@@ -544,10 +564,68 @@ type
     property SubLexerRanges[Index: integer]: TecSubLexerRange read GetSubLexerRange;
     property ParserState: integer read FCurState write FCurState;
     property OnAddRangeSimple: TecOnAddRangeSimple read FOnAddRangeSimple write FOnAddRangeSimple; // Alexey
-
-    procedure CopyTags(L: TecTokenList);
-    procedure CopyRangesSublexer(L: TecSubLexerRanges);
   end;
+
+  { TecParserThread }
+
+  TecParserThread = class(TThread)
+  public
+    An: TecClientSyntAnalyzer;
+    DebugMsg: string;
+    DebugTicks: QWord;
+    procedure DoParseDone;
+    procedure Execute; override;
+    procedure ShowDebugMsg;
+    procedure DummyProc;
+  end;
+
+  (* Alexey: the entire logic of thread is:
+
+  //main thread, OnChange
+  //---------------------
+  EventParseStop.SetEvent
+  EventParseIdle.WaitFor(inf)
+  Buffer_Setup
+  Parser_Setup(Buffer)
+  EventParseNeeded.SetEvent
+
+  //main thread, renderer
+  //---------------------
+  CriSec.Enter
+  Render(PublicData)
+  CriSec.Leave
+
+  //parser thread
+  //-------------
+  repeat
+    EventParseNeeded.WaitFor(inf)
+    EventParseIdle.ResetEvent
+    try
+      //this 'repeat' block is ParseInThread()
+      repeat
+        if ExtractTag() then //text ended?
+        begin
+          Finished
+          Break
+        end
+        else
+          Show_some_progress
+
+        Inc(cnt)
+        if cnt mod 1000=0 then
+          if EventParseStop.WaitFor(0)=Signaled then
+            Break
+      until false
+
+      FlushData(PublicData)
+      CriSec.Enter
+      CopyDataTo(PublicData)
+      CriSec.Leave
+    finally
+      EventParseIdle.SetEvent
+    end
+  until false
+  *)
 
   { TecClientSyntAnalyzer }
 
@@ -558,51 +636,66 @@ type
     FDummyRule: TecTagBlockCondition; //Alexey
     FDummyRule2: TecTagBlockCondition; //Alexey
 
-    FTimerUsed: Boolean;
-    FTimerIdleMustStop: Boolean;
-    FTimerIdleIsBusy: Boolean;
-    FTimerIdle: TTimer;
-
     FStartSepRangeAnal: integer;
     FRepeateAnalysis: Boolean;
+    FOnParseDone: TNotifyEvent;
+    FBufferVersion: integer;
+    {$ifdef ParseProgress}
+    FProgress: integer;
+    {$endif}
 
     function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
+    procedure ClearDataOnChange;
     function GetDisabledFolding: boolean; //Alexey
     function GetRangeCount: integer;
     function GetRanges(Index: integer): TecTextRange;
     function GetOpened(Index: integer): TecTextRange;
     function GetOpenedCount: integer;
-    function DoStopTimer(AndWait: boolean): boolean;
     procedure InitDummyRules(AOwner: TecSyntAnalyzer); //Alexey
+    procedure ClearPublicData;
+    procedure StopThreadLoop;
+    procedure UpdatePublicDataCore;
+    procedure UpdatePublicData(AParseFinished: boolean);
+    procedure UpdatePublicDataOnTextChange;
   protected
     procedure AddRange(Range: TecTextRange);
     procedure AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
     function HasOpened(Rule: TRuleCollectionItem; Parent: TecTagBlockCondition; Strict: Boolean): Boolean;
     function IsEnabled(Rule: TRuleCollectionItem; OnlyGlobal: Boolean): Boolean; override;
     procedure Finished; override;
-    procedure TimerIdleTick(Sender: TObject);
     procedure CloseAtEnd(AStartTagIdx: integer); override;
-
   public
-    constructor Create(AOwner: TecSyntAnalyzer; SrcProc: TATStringBuffer;
-      const AClient: IecSyntClient; AUseTimer: boolean); override;
+    PublicDataNeedTo: integer;
+    PublicData: TecPublicData;
+
+    FileName: string;
+    ParserThread: TecParserThread;
+    EventParseNeeded: TEvent;
+    EventParseIdle: TEvent;
+    EventParseStop: TEvent;
+    CriSecForData: TCriticalSection;
+
+    constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
     destructor Destroy; override;
     procedure Clear; override;
-    procedure ChangedAtPos(APos: integer);
     function PriorTokenAt(Pos: integer): integer;
     function FindTokenAt(Pos: integer): integer;
 
+    property OnParseDone: TNotifyEvent read FOnParseDone write FOnParseDone;
+    procedure DoParseDone;
+
     function RangeFormat(const FmtStr: ecString; Range: TecTextRange): ecString;
-    function GetRangeName(Range: TecTextRange): ecString;
+    function GetRangeName(Range: TecTextRange; ATags: TecTokenList): ecString;
     function GetRangeGroup(Range: TecTextRange): ecString;
     function GetCollapsedText(Range: TecTextRange): ecString;
     function Stop: boolean;
 
     procedure TextChangedOnLine(ALine: integer);
-    procedure ParseAll(AResetContent, AUseTimer: Boolean); // Requires analyzed all text
-    procedure ParseToPos(APos: integer; AUseTimer: boolean= True); // Requires parsed data to position
-    procedure ParseViaTimer;                 // Start timer which does parsing
-    procedure ParseSome(var AFlagStopper: boolean); // Make portion of parsing (called from OnTimer)
+    procedure TextChangedOnPos(APos: integer);
+    procedure ParseAll(AResetContent: Boolean);
+    procedure ParseToPos(APos: integer);
+    function ParseInThread: TecParseInThreadResult;
+    procedure DoShowProgress;
     //procedure CompleteAnalysis;
 
     function CloseRange(Cond: TecTagBlockCondition; RefTag: integer): Boolean;
@@ -613,9 +706,8 @@ type
 
     property RangeCount: integer read GetRangeCount;
     property Ranges[Index: integer]: TecTextRange read GetRanges;
-    property TimerIdleIsBusy: Boolean read FTimerIdleIsBusy;
 
-    procedure CopyRanges(L: TSortedList);
+    procedure CopyRangesFold(L: TSortedList);
   end;
 
 // *******************************************************************
@@ -764,7 +856,7 @@ type
     procedure HighlightKeywords(Client: TecParserResults; const Source: ecString;
                        OnlyGlobal: Boolean); virtual;
     procedure SelectTokenFormat(Client: TecParserResults; const Source: ecString;
-                       DisableFolding, OnlyGlobal: Boolean; N: integer = -1); virtual;
+                       DisableFolding, OnlyGlobal: Boolean; ATokenIndex: integer = -1); virtual;
     procedure Loaded; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Change; dynamic;
@@ -947,6 +1039,80 @@ begin
   Result := (Ord(ch) >= $D800) and (Ord(ch) <= $DBFF);
 end;
 
+{ TecParserThread }
+
+procedure TecParserThread.DoParseDone;
+begin
+  An.DoParseDone;
+end;
+
+procedure TecParserThread.Execute;
+var
+  Res: TecParseInThreadResult;
+  SavedChangePos: integer;
+{$ifdef ParseTime}
+var
+  tick: QWord;
+{$endif}
+begin
+  repeat
+    if Terminated then Exit;
+    if Application.Terminated then Exit;
+    if An.EventParseNeeded.WaitFor(500)<>wrSignaled then
+      Continue;
+
+    An.EventParseIdle.ResetEvent;
+    try
+      {$ifdef ParseTime}
+      DebugMsg := 'parse-begin';
+      DebugTicks := 0;
+      Synchronize(ShowDebugMsg);
+      tick := GetTickCount64;
+      {$else}
+      Synchronize(DummyProc); //otherwise editor is not highlighted
+      {$endif}
+
+      //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
+      SavedChangePos := An.FPrevChangePos;
+      repeat
+        Res := An.ParseInThread;
+        if Res <> eprInterrupted then Break;
+        An.FPrevChangePos := SavedChangePos;
+      until False;
+
+    finally
+      if An.IsFinished then
+        if not Terminated then
+          if not Application.Terminated then
+          begin
+            {$ifdef ParseTime}
+            DebugMsg := 'parse-done';
+            DebugTicks := GetTickCount64-tick;
+            Synchronize(ShowDebugMsg);
+            {$endif}
+            Synchronize(DoParseDone);
+          end;
+      An.EventParseIdle.SetEvent;
+    end;
+  until False;
+end;
+
+procedure TecParserThread.ShowDebugMsg;
+begin
+  Application.MainForm.Caption:= Format('%s, file %s, %dms, %d tokens, %d ranges', [
+      DebugMsg,
+      An.FileName,
+      DebugTicks,
+      An.PublicData.Tokens.Count,
+      An.PublicData.FoldRanges.Count
+      ]);
+end;
+
+procedure TecParserThread.DummyProc;
+begin
+  //empty
+end;
+
 { TecSubLexerRange }
 
 class operator TecSubLexerRange.=(const a, b: TecSubLexerRange): boolean;
@@ -979,7 +1145,7 @@ begin
   St := Range.StartPos+1;
   Len := Range.EndPos - Range.StartPos;
   if ATrimLeft then
-    while (Len>0) and IsSpaceChar(Source[St]) do
+    while (Len>0) and (St>0) and (St<=Length(Source)) and IsSpaceChar(Source[St]) do
     begin
       Inc(St);
       Dec(Len);
@@ -1739,6 +1905,7 @@ begin
   inherited;
   FBlock := nil;
   FFormat := nil;
+  FCriSec := TCriticalSection.Create;
   FRegExpr := TecRegExpr.Create;
   SetDefaultModifiers(FRegExpr);
 end;
@@ -1746,6 +1913,7 @@ end;
 destructor TecTokenRule.Destroy;
 begin
   FreeAndNil(FRegExpr);
+  FreeAndNil(FCriSec);
   inherited;
 end;
 
@@ -1766,11 +1934,16 @@ end;
 
 function TecTokenRule.Match(const Source: ecString; Pos: integer): integer;
 begin
- try
-  Result := FRegExpr.MatchLength(Source, Pos);
- except
-  Result := 0;
- end;
+  try
+    FCriSec.Enter; //solve CudaText issue #3352
+    try
+      Result := FRegExpr.MatchLength(Source, Pos);
+    finally
+      FCriSec.Leave;
+    end;
+  except
+    Result := 0;
+  end;
 end;
 
 procedure TecTokenRule.SetColumnFrom(const Value: integer);
@@ -1999,7 +2172,8 @@ end;
 { TecParserResults }
 
 constructor TecParserResults.Create(AOwner: TecSyntAnalyzer;
-  ABuffer: TATStringBuffer; const AClient: IecSyntClient; AUseTimer: boolean);
+  ABuffer: TATStringBuffer; const AClient: IecSyntClient);
+//TODO: del AUseTimer
 begin
   inherited Create;
   if ABuffer = nil then
@@ -2063,17 +2237,22 @@ begin
   Result := FTagList.InternalGet(Index);
 end;
 
-function TecParserResults.GetTokenStr(Index: integer): ecString;
+function TecParserResults.GetTokenStrEx(Index: integer; ATags: TecTokenList): ecString;
 var
   Ptr: PecSyntToken;
 begin
   if Index >= 0 then
   begin
-    Ptr := Tags[Index];
+    Ptr := ATags._GetItemPtr(Index);
     Result := FBuffer.SubString(Ptr.Range.StartPos + 1, Ptr.Range.EndPos - Ptr.Range.StartPos)
   end
   else
     Result := '';
+end;
+
+function TecParserResults.GetTokenStr(Index: integer): ecString;
+begin
+  Result := GetTokenStrEx(Index, FTagList);
 end;
 
 function TecParserResults.TokenIndent(Token: PecSyntToken): integer; //Alexey
@@ -2533,22 +2712,22 @@ begin
    FLastAnalPos := FPos;
 end;
 
-function TecParserResults.AnalyzerAtPos(APos: integer): TecSyntAnalyzer;
+function TecParserResults.AnalyzerAtPos(APos: integer; ABlocks: TecSubLexerRanges): TecSyntAnalyzer;
 var
   N: integer;
   Rng: TecSubLexerRange;
 begin
   Result := FOwner;
   if APos < 0 then Exit;
-  N := FSubLexerBlocks.PriorAt(APos);
+  N := ABlocks.PriorAt(APos);
   if N < 0 then Exit;
-  Rng := FSubLexerBlocks.Items[N];
+  Rng := ABlocks.Items[N];
   if (Rng.Range.StartPos<=APos) and
      ((Rng.Range.EndPos<0){Rng is not closed} or (APos<Rng.Range.EndPos)) then
     Result := Rng.Rule.SyntAnalyzer;
  {
- for i := 0 to FSubLexerBlocks.Count - 1 do
-  with FSubLexerBlocks[i] do
+ for i := 0 to ABlocks.Count - 1 do
+  with ABlocks[i] do
    if APos < Range.StartPos then Break else
     if (Range.EndPos = -1) or (APos < Range.EndPos) then
       Result := Rule.SyntAnalyzer;
@@ -2613,57 +2792,70 @@ begin
    Result := 0;
 end;
 
-procedure TecParserResults.CopyTags(L: TecTokenList);
-begin
-  L.Assign(FTagList);
-end;
-
-procedure TecParserResults.CopyRangesSublexer(L: TecSubLexerRanges);
-begin
-  L.Assign(FSubLexerBlocks);
-end;
-
 { TecClientSyntAnalyzer }
 
-constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer; SrcProc: TATStringBuffer;
-  const AClient: IecSyntClient; AUseTimer: boolean);
+constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer;
+  ABuffer: TATStringBuffer);
 begin
-  inherited Create( AOwner, SrcProc, AClient, AUseTimer);
+  inherited Create(AOwner, ABuffer, nil);
+
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
 
-  FTimerUsed := AUseTimer;
-  FTimerIdle := TTimer.Create(nil);
-  FTimerIdle.Enabled := False;
-  FTimerIdle.Interval := 100;
-  FTimerIdle.OnTimer := TimerIdleTick;
+  PublicData.Tokens := TecTokenList.Create;
+  PublicData.FoldRanges := TSortedList.Create(False);
+  PublicData.SublexRanges := TecSubLexerRanges.Create;
 
-  //Alexey
   if AutoFoldComments>1 then
   begin
     InitDummyRules(AOwner);
     inherited OnAddRangeSimple := AddRangeSimple;
   end;
 
-  ParseViaTimer;
+  EventParseNeeded := TEvent.Create(nil, False, False, '');
+  EventParseIdle := TEvent.Create(nil, True{ManualReset}, True{Signaled}, '');
+  EventParseStop := TEvent.Create(nil, False, False, '');
+  CriSecForData := TCriticalSection.Create;
+
+  ParserThread := TecParserThread.Create(True);
+  ParserThread.An := Self;
+  ParserThread.Start;
 end;
 
 destructor TecClientSyntAnalyzer.Destroy;
 begin
-  DoStopTimer(True);
-  if Assigned(FTimerIdle) then
-    FreeAndNil(FTimerIdle);
+  EventParseStop.SetEvent;
+  ParserThread.Terminate;
+  ParserThread.WaitFor;
+  FreeAndNil(ParserThread);
+
+  FreeAndNil(EventParseStop);
+  FreeAndNil(EventParseIdle);
+  FreeAndNil(EventParseNeeded);
+  FreeAndNil(CriSecForData);
+
+  FreeAndNil(PublicData.Tokens);
+  FreeAndNil(PublicData.FoldRanges);
+  FreeAndNil(PublicData.SublexRanges);
 
   FreeAndNil(FRanges);
   FreeAndNil(FOpenedBlocks);
   inherited;
 end;
 
+procedure TecClientSyntAnalyzer.StopThreadLoop;
+begin
+  if IsFinished then Exit;
+  if EventParseIdle.WaitFor(0)<>wrSignaled then
+    EventParseStop.SetEvent;
+end;
+
 function TecClientSyntAnalyzer.Stop: boolean;
 begin
+  StopThreadLoop;
   FFinished := True;
-  Result := DoStopTimer(True);
   FPrevChangePos := -1;
+  Result := True;
 end;
 
 procedure TecClientSyntAnalyzer.Clear;
@@ -2676,12 +2868,12 @@ begin
   SetLength(TokenIndexer, 0);
   SetLength(CmtIndexer, 0);
 
-  DoStopTimer(False);
+  StopThreadLoop;
   FFinished := False;
   FLastAnalPos := 0;
   FStartSepRangeAnal := 0;
 
-  ParseViaTimer;
+  ClearPublicData;
 end;
 
 procedure TecClientSyntAnalyzer.AddRange(Range: TecTextRange);
@@ -2698,6 +2890,9 @@ procedure TecClientSyntAnalyzer.InitDummyRules(AOwner: TecSyntAnalyzer);
 begin
   if FDummyRule=nil then
   begin
+    //fixes AV in BlockRules.OnChange, on loading Python file, with thread-parser
+    AOwner.BlockRules.OnChange := nil;
+
     FDummyRule := AOwner.BlockRules.Add;
     FDummyRule.Enabled := false;
     FDummyRule.BlockType := btRangeStart;
@@ -2835,6 +3030,12 @@ begin
      end;
   end;
 
+  if FBuffer.Version <> FBufferVersion then
+  begin
+    FOpenedBlocks.Clear;
+    Exit;
+  end;
+
   // Close blocks at the end of text
   CloseAtEnd(0);
 
@@ -2843,47 +3044,124 @@ begin
   FRepeateAnalysis := True;
 end;
 
+procedure TecClientSyntAnalyzer.ClearPublicData;
+begin
+  CriSecForData.Enter;
+  try
+    PublicData.Tokens.Clear;
+    PublicData.FoldRanges.Clear;
+    PublicData.SublexRanges.Clear;
+    SetLength(PublicData.TokenIndexer, 0);
+    PublicData.LineTo := 0;
+    PublicData.Finished := False;
+  finally
+    CriSecForData.Leave;
+  end;
+end;
+
+procedure TecClientSyntAnalyzer.UpdatePublicDataCore;
+var
+  TagPtr: PecSyntToken;
+  NCount, NLastParsedLine: integer;
+begin
+  NCount := FTagList.Count;
+  if NCount=0 then
+  begin
+    ClearPublicData;
+    Exit;
+  end;
+
+  CriSecForData.Enter;
+  try
+    TagPtr := FTagList._GetItemPtr(NCount-1);
+    NLastParsedLine := TagPtr^.Range.PointStart.Y;
+
+    PublicData.Tokens.Assign(FTagList);
+    CopyRangesFold(PublicData.FoldRanges);
+    PublicData.SublexRanges.Assign(FSubLexerBlocks);
+    PublicData.TokenIndexer := TokenIndexer;
+    PublicData.LineTo := NLastParsedLine;
+  finally
+    CriSecForData.Leave;
+  end;
+end;
+
+procedure TecClientSyntAnalyzer.UpdatePublicDataOnTextChange;
+begin
+  UpdatePublicDataCore;
+  PublicData.Finished := False;
+end;
+
+procedure TecClientSyntAnalyzer.UpdatePublicData(AParseFinished: boolean);
+var
+  bNeedUpdate: boolean;
+  TagPtr: PecSyntToken;
+  NCount, NLastParsedLine: integer;
+begin
+  if PublicData.Finished then Exit;
+
+  NCount := FTagList.Count;
+  if NCount=0 then
+  begin
+    ClearPublicData;
+    Exit;
+  end;
+
+  if AParseFinished then
+  begin
+    bNeedUpdate := True;
+    PublicData.Finished := True;
+  end
+  else
+  begin
+    if PublicData.LineTo >= PublicDataNeedTo then Exit;
+    TagPtr := FTagList._GetItemPtr(NCount-1);
+    NLastParsedLine := TagPtr^.Range.PointStart.Y;
+    bNeedUpdate := NLastParsedLine >= PublicDataNeedTo;
+  end;
+
+  if bNeedUpdate then
+    UpdatePublicDataCore;
+end;
+
 function TecClientSyntAnalyzer.GetDisabledFolding: boolean; //Alexey
 begin
   Result := FBuffer.Count>MaxLinesWhenParserEnablesFolding;
 end;
 
-procedure TecClientSyntAnalyzer.TimerIdleTick(Sender: TObject);
-begin
-  if FTimerIdleIsBusy {or FDisableIdleAppend} then Exit;
-  FTimerIdle.Enabled := False;
-  FTimerIdleMustStop := False;
-  FTimerIdleIsBusy := True;
-  try
-    ParseSome(FTimerIdleMustStop);
-  finally
-    FTimerIdleIsBusy := False;
-  end;
-end;
-
-procedure TecClientSyntAnalyzer.ParseSome(var AFlagStopper: boolean);
-var FPos, tmp, i: integer;
-    own: TecSyntAnalyzer;
-    BufLen: integer;
-    Progress, ProgressPrev: integer;
-    NMaxPercents, NTagCount: integer;
-    bSeparateBlocks: boolean;
-    bDisableFolding: boolean;
+function TecClientSyntAnalyzer.ParseInThread: TecParseInThreadResult; //Alexey
+var
+  {$ifdef ParseProgress}
+  BufLen: integer;
+  ProgressPrev: integer;
+  NMaxPercents: integer;
+  {$endif}
+  own: TecSyntAnalyzer;
+  bSeparateBlocks: boolean;
+  bDisableFolding: boolean;
+  NPos, NTemp, NTagCount, iToken: integer;
 const
   ProgressMinPos = 2000;
   ProcessMsgStep1 = 1000; //stage1: finding tokens
   ProcessMsgStep2 = 1000; //stage2: finding ranges
 begin
-  FPos := 0;
-  BufLen := FBuffer.TextLength;
+  Result := eprNormal;
+  FBufferVersion := FBuffer.Version;
+  FFinished := False;
+  ClearDataOnChange;
+
+  NPos := 0;
   bSeparateBlocks := FOwner.SeparateBlockAnalysis;
+
+  {$ifdef ParseProgress}
+  BufLen := FBuffer.TextLength;
   if bSeparateBlocks then
     NMaxPercents := 50
   else
     NMaxPercents := 100;
   ProgressPrev := 0;
+  {$endif}
 
-  //Alexey
   bDisableFolding := GetDisabledFolding;
   if bDisableFolding then
   begin
@@ -2891,97 +3169,101 @@ begin
     FOpenedBlocks.Clear;
   end;
 
-    while True do
+  repeat
+    if FFinished then
+      Exit;
+    if Application.Terminated then
+      Exit(eprAppTerminated);
+    if FBuffer = nil then
+      Exit(eprBufferInvalidated);
+    if FBufferVersion <> FBuffer.Version then
+      Exit(eprBufferInvalidated);
+
+    NTemp := GetLastPos;
+    if NTemp > NPos then
+      NPos := NTemp;
+
+    if ExtractTag(NPos, bDisableFolding) then
     begin
-      if AFlagStopper then exit;
-      if FFinished then exit;
-      if Application.Terminated then exit;
-      if FBuffer=nil then exit;
-
-      tmp := GetLastPos;
-      if tmp > FPos then
-        FPos := tmp;
-
-      if ExtractTag(FPos, bDisableFolding) then
+      //all tokens found, now find blocks (if bSeparateBlocks)
+      if bSeparateBlocks then
       begin
-        //all tokens found, now find blocks (if bSeparateBlocks)
-        if bSeparateBlocks then
+        {$ifdef ParseProgress}
+        ProgressPrev := 50;
+        {$endif}
+        NTagCount := TagCount;
+
+        for iToken := FStartSepRangeAnal + 1 to NTagCount do
         begin
-          ProgressPrev := 50;
-          NTagCount := TagCount;
+          own := Tags[iToken - 1].Rule.SyntOwner;
+          FOwner.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, own <> FOwner, iToken);
+          if own <> FOwner then
+            own.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, False, iToken);
 
-          for i := FStartSepRangeAnal + 1 to NTagCount do
-            begin
-              own := Tags[i - 1].Rule.SyntOwner;
-              FOwner.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, own <> FOwner, i);
-              if own <> FOwner then
-                own.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, False, i);
-
-              if i mod ProcessMsgStep2 = 0 then
-              begin
-                //progress for 2nd half of parsing, range 50..100
-                Progress := 50 + i * 50 div NTagCount;
-                if Progress <> ProgressPrev then
-                begin
-                  ProgressPrev := Progress;
-                  if Assigned(OnLexerParseProgress) then
-                    OnLexerParseProgress(Owner, Progress);
-                end;
-
-                if FTimerUsed then
-                  Application.ProcessMessages;
-                if Application.Terminated then Exit;
-                if AFlagStopper then Exit;
-              end;
-            end;
-        end;
-        Finished;
-      end
-      else
-      begin
-        if TagCount mod ProcessMsgStep1 = 0 then
-        begin
-          //if bSeparateBlocks, it's progress for 1st half of parsing, 0..50
-          //otherwise, it's progress for entire parsing, 0..100
-          if FPos < ProgressMinPos then
-            Progress := 0
-          else
-            Progress := FPos * NMaxPercents div BufLen;
-          if Progress <> ProgressPrev then
+          if iToken mod ProcessMsgStep2 = 0 then
           begin
-            ProgressPrev := Progress;
-            if Assigned(OnLexerParseProgress) then
-              OnLexerParseProgress(Owner, Progress);
-          end;
+            {$ifdef ParseProgress}
+            //progress for 2nd half of parsing, range 50..100
+            FProgress := 50 + iToken * 50 div NTagCount;
+            if FProgress <> ProgressPrev then
+            begin
+              ProgressPrev := FProgress;
+              DoShowProgress;
+            end;
+            {$endif}
 
-          if FTimerUsed then
-            Application.ProcessMessages;
+            if Application.Terminated then
+              Exit(eprAppTerminated);
+
+            //this is slow check, do it each N steps
+            if EventParseStop.WaitFor(0) = wrSignaled then
+            begin
+              Result := eprInterrupted;
+              Break;
+            end;
+          end;
         end;
       end;
-    end;
-end;
 
-procedure TecClientSyntAnalyzer.ParseViaTimer;
-begin
-  //sets FTimerIdle interval and restarts it
-  if not FFinished then
-  begin
-    if not FTimerUsed then
-    begin
-      ParseAll(False, False);
-      Exit
-    end;
-
-    FTimerIdle.Enabled := False;
-    if FRepeateAnalysis then
-      FTimerIdle.Interval := Owner.IdleAppendDelay
+      Finished;
+      UpdatePublicData(True); //after Finished, coz Finished must close Python ranges
+    end
     else
-      FTimerIdle.Interval := Owner.IdleAppendDelayInit;
-    FTimerIdle.Enabled := True;
-  end;
+    begin
+      //this works when parsing has reached the ed's LineBottom,
+      //it updates not-complete PublicData
+      UpdatePublicData(False);
+
+      {$ifdef ParseProgress}
+      if TagCount mod ProcessMsgStep1 = 0 then
+      begin
+        //if bSeparateBlocks, it's progress for 1st half of parsing, 0..50
+        //otherwise, it's progress for entire parsing, 0..100
+        if BufLen > 0 then
+          if FPos < ProgressMinPos then
+            FProgress := 0
+          else
+            FProgress := NPos * NMaxPercents div BufLen;
+        if FProgress <> ProgressPrev then
+        begin
+          ProgressPrev := FProgress;
+          DoShowProgress;
+        end;
+      end;
+      {$endif}
+    end;
+  until False;
 end;
 
-procedure TecClientSyntAnalyzer.ParseToPos(APos: integer; AUseTimer: boolean=True);
+procedure TecClientSyntAnalyzer.DoShowProgress;
+begin
+  {$ifdef ParseProgress}
+  if Assigned(OnLexerParseProgress) then
+    OnLexerParseProgress(Owner, FProgress);
+  {$endif}
+end;
+
+procedure TecClientSyntAnalyzer.ParseToPos(APos: integer);
 var
   FPos: integer;
   bDisableFolding: boolean;
@@ -2994,58 +3276,53 @@ begin
   while FPos - 1 <= APos + 1 do
    begin
      if ExtractTag(FPos, bDisableFolding) then
-      begin
+     begin
        if not FOwner.SeparateBlockAnalysis then
-         Finished else
-       if not FTimerIdleIsBusy then
-         if AUseTimer then
-           ParseViaTimer
-         else
-           TimerIdleTick(nil);
+         Finished;
        Break;
-      end;
+     end;
    end;
 end;
 
-procedure TecClientSyntAnalyzer.ChangedAtPos(APos: integer);
+procedure TecClientSyntAnalyzer.ClearDataOnChange;
 var
-  //Alexey
-  // lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
-  NDeltaRanges: integer;
-var
-  i, N: integer;
-  Sub: TecSubLexerRange;
-
+  NTagCount: integer;
+ //
  procedure CleanRangeList(List: TSortedList; IsClosed: Boolean);
  var i: integer;
  begin
    for i := List.Count - 1 downto 0 do
     with TecTextRange(List[i]) do
-     if (FCondIndex >= N) or (StartIdx >= N) or IsClosed and
-        ((FEndCondIndex >= N) or (EndIdx >= N)) then
+     if (FCondIndex >= NTagCount) or (StartIdx >= NTagCount) or IsClosed and
+        ((FEndCondIndex >= NTagCount) or (EndIdx >= NTagCount)) then
       List.Delete(i);
  end;
-
+ //
+var
+  //lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
+  NDeltaRanges: integer;
+  Sub: TecSubLexerRange;
+  APos: integer;
+  i: integer;
 begin
-  FFinished := False;
+  if FPrevChangePos < 0 then Exit;
+  APos := FPrevChangePos;
 
-  if FPrevChangePos<0 then
-    FPrevChangePos:= APos
-  else
+  if APos = 0 then
   begin
-    FPrevChangePos := Min(FPrevChangePos, APos);
-    APos:= FPrevChangePos;
+    //total clear
+    FSubLexerBlocks.Clear;
+    FTagList.Clear;
+    ClearTokenIndexer;
+    FOpenedBlocks.Clear;
+    FRanges.Clear;
+    FLastAnalPos := 0;
+    FStartSepRangeAnal := 0;
+    RestoreState;
+    UpdatePublicDataOnTextChange;
+    Exit
   end;
 
-  if FBuffer.TextLength <= Owner.FullRefreshSize then
-  begin
-    Clear;
-    Exit;
-  end;
-
-  DoStopTimer(False);
-
-  //Alexey
   // delta>0 was added for Python: editing below block end must enlarge previous block to editing pos
   // delta>0 breaks HTML lexer: on editing in any place,
   // text in <p>text text</p> changes styles to "misspelled tag property"
@@ -3077,8 +3354,8 @@ begin
    ClearTokenIndexer;
 
    FLastAnalPos := 0;   // Reset current position
-   N := FTagList.Count;
-   FStartSepRangeAnal := N;
+   NTagCount := FTagList.Count;
+   FStartSepRangeAnal := NTagCount;
 
    // Remove text ranges from service containers
    CleanRangeList(FOpenedBlocks, False);
@@ -3090,9 +3367,11 @@ begin
 
    // Remove text ranges from main storage
    for i := FRanges.Count - 1 downto 0 do
-    with TecTextRange(FRanges[i]) do
-     if (FCondIndex >= N) or (StartIdx >= N) then FRanges.Delete(i)  else
-      if (FEndCondIndex >= N - NDeltaRanges) or (EndIdx >= N - NDeltaRanges) then // Alexey: delta
+     with TecTextRange(FRanges[i]) do
+       if (FCondIndex >= NTagCount) or (StartIdx >= NTagCount) then
+         FRanges.Delete(i)
+       else
+       if (FEndCondIndex >= NTagCount - NDeltaRanges) or (EndIdx >= NTagCount - NDeltaRanges) then // Alexey: delta
        begin
          EndIdx := -1;
          FEndCondIndex := -1;
@@ -3102,7 +3381,7 @@ begin
    // Restore parser state
    RestoreState;
 
-  ParseViaTimer;
+  UpdatePublicDataOnTextChange;
 end;
 
 function TecClientSyntAnalyzer.PriorTokenAt(Pos: integer): integer;
@@ -3115,6 +3394,12 @@ begin
   Result := FTagList.FindAt(Pos);
 end;
 
+procedure TecClientSyntAnalyzer.DoParseDone;
+begin
+  if Assigned(FOnParseDone) then
+    FOnParseDone(Self);
+end;
+
 function TecClientSyntAnalyzer.GetRangeCount: integer;
 begin
   Result := FRanges.Count;
@@ -3125,7 +3410,7 @@ begin
   Result := TecTextRange(FRanges[Index]);
 end;
 
-procedure TecClientSyntAnalyzer.ParseAll(AResetContent, AUseTimer: Boolean);
+procedure TecClientSyntAnalyzer.ParseAll(AResetContent: Boolean);
 var OldSep: TecSeparateBlocksMode;
 begin
   if IsFinished then Exit;
@@ -3134,11 +3419,11 @@ begin
       OldSep := FOwner.FSeparateBlocks;
       FOwner.FSeparateBlocks := sbmDisabled;
       Clear;
-      ParseToPos(FBuffer.TextLength, AUseTimer);
+      ParseToPos(FBuffer.TextLength);
       FOwner.FSeparateBlocks := OldSep;
     end else
     begin
-      ParseToPos(FBuffer.TextLength, AUseTimer);
+      ParseToPos(FBuffer.TextLength);
     end;
 end;
 
@@ -3346,7 +3631,7 @@ end;
 begin
   idx := 0;
   Result := FmtStr;
-  try
+  //try //Alexey: why try/except here?
 
    // HAW: obsolete -> to_idx := Length(Result);
    //      the variable "j" is now always pointing to the next character to process.
@@ -3572,19 +3857,18 @@ begin
       // HAW: I am currently not sure how to handle the "stylename" property here
       //      ... will be added, when available
     end;
-   Exit;
-  except
-    Result := '';
-  end;
+  //except
+  //  Result := '';
+  //end;
 end;
 
-function TecClientSyntAnalyzer.GetRangeName(Range: TecTextRange): ecString;
+function TecClientSyntAnalyzer.GetRangeName(Range: TecTextRange; ATags: TecTokenList): ecString;
 begin
   Result := '';
   if Assigned(Range.Rule) and (Range.Rule.NameFmt <> '') then
-     Result := RangeFormat(Range.Rule.NameFmt, Range);
+    Result := RangeFormat(Range.Rule.NameFmt, Range);
   if Result = '' then
-   Result := TagStr[Range.IdentIdx];
+    Result := GetTokenStrEx(Range.IdentIdx, ATags);
 end;
 
 function TecClientSyntAnalyzer.GetRangeGroup(Range: TecTextRange): ecString;
@@ -3604,11 +3888,32 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.TextChangedOnLine(ALine: integer);
+//this calls TextChangeOnPos, which sets EventParseStop.
+//so this must called as less as possible
+//(unneeded setting of EventParseStop breaks syntax coloring)
+var
+  NPos: integer;
 begin
-  if ALine = -1 then
-    Clear
+  if ALine<=0 then
+    NPos:= 0
   else
-    ChangedAtPos(FBuffer.CaretToStr(Point(0, ALine)));
+    NPos:= FBuffer.CaretToStr(Point(0, ALine));
+  TextChangedOnPos(NPos);
+end;
+
+procedure TecClientSyntAnalyzer.TextChangedOnPos(APos: integer);
+begin
+  if FPrevChangePos < 0 then
+    FPrevChangePos := APos
+  else
+    FPrevChangePos := Min(FPrevChangePos, APos);
+
+  if FBuffer.TextLength <= Owner.FullRefreshSize then
+    FPrevChangePos := 0;
+
+  if EventParseIdle.WaitFor(0)<>wrSignaled then
+    EventParseStop.SetEvent;
+  EventParseNeeded.SetEvent;
 end;
 
 function TecClientSyntAnalyzer.GetOpened(Index: integer): TecTextRange;
@@ -3619,21 +3924,6 @@ end;
 function TecClientSyntAnalyzer.GetOpenedCount: integer;
 begin
   Result := FOpenedBlocks.Count;
-end;
-
-function TecClientSyntAnalyzer.DoStopTimer(AndWait: boolean): boolean;
-begin
-  FTimerIdleMustStop := True;
-  FTimerIdle.Enabled := False;
-
-  if FTimerIdleIsBusy then
-  begin
-    //dont call App.ProgressMessages, it causes CudaText bug #1927
-    if AndWait then Sleep(100) else Sleep(20);
-    Result := not FTimerIdleIsBusy;
-  end
-  else
-    Result := True;
 end;
 
 function TecClientSyntAnalyzer.DetectTag(Rule: TecTagBlockCondition;
@@ -3649,7 +3939,7 @@ begin
   Result := True;
 end;
 
-procedure TecClientSyntAnalyzer.CopyRanges(L: TSortedList);
+procedure TecClientSyntAnalyzer.CopyRangesFold(L: TSortedList);
 var
   R, RR: TecTextRange;
   i: integer;
@@ -3704,6 +3994,9 @@ begin
 
   for iToken := ATokenIndexFrom to ATokenIndexTo do
   begin
+     if FBuffer.Version <> FBufferVersion then
+       Exit(True);
+
      Token := Tags[iToken];
      // count only tokens of length=1
      NPosStart := Token.Range.StartPos;
@@ -3745,6 +4038,13 @@ begin
 
   for i := FOpenedBlocks.Count - 1 downto 0 do
   begin
+    if FBuffer.Version <> FBufferVersion then
+    begin
+      FOpenedBlocks.Clear;
+      FRanges.Clear;
+      Exit
+    end;
+
     Range := TecTextRange(FOpenedBlocks[i]);
     if Range.Rule.EndOfTextClose and
        ((AStartTagIdx = 0) or (Range.StartIdx >= AStartTagIdx)) then
@@ -3916,8 +4216,6 @@ begin
     ClearClientContents;
   end;
   UpdateClients;
-  for i := 0 to FClientList.Count - 1 do
-   TecClientSyntAnalyzer(FClientList[i]).ParseViaTimer;
 end;
 
 procedure TecSyntAnalyzer.HighlightKeywords(Client: TecParserResults;
@@ -3957,7 +4255,7 @@ end;
 
 procedure TecSyntAnalyzer.SelectTokenFormat(Client: TecParserResults;
             const Source: ecString;
-            DisableFolding, OnlyGlobal: Boolean; N: integer);
+            DisableFolding, OnlyGlobal: Boolean; ATokenIndex: integer);
 var i, li, ki, strt, RefIdx: integer;
     Range: TecTextRange;
     Accept: Boolean;
@@ -3966,16 +4264,16 @@ var i, li, ki, strt, RefIdx: integer;
 
   function CheckIndex(Idx: integer): Boolean; inline;
   begin
-   Result := (Idx >= 0) and (Idx < N);
+   Result := (Idx >= 0) and (Idx < ATokenIndex);
   end;
 
 begin
-  if N = -1 then
-    N := Client.TagCount;
+  if ATokenIndex = -1 then
+    ATokenIndex := Client.TagCount;
   if not (Client is TecClientSyntAnalyzer)  then Exit;
   RClient := TecClientSyntAnalyzer(Client);
-  RClient.FStartSepRangeAnal := N + 1;
-  try
+  RClient.FStartSepRangeAnal := ATokenIndex + 1;
+  //try //Alexey: why try/except here?
     for i := 0 to FBlockRules.Count - 1 do
     begin
       Rule := FBlockRules[i];
@@ -3989,10 +4287,10 @@ begin
           RefIdx := 0;
           if FGrammaRule <> nil then
            begin
-             RefIdx := FGrammaParser.TestRule(N - 1, FGrammaRule, Client);
+             RefIdx := FGrammaParser.TestRule(ATokenIndex - 1, FGrammaRule, Client);
              Accept := RefIdx <> -1;
            end else
-             Accept := Check(Source, RClient, N, RefIdx);
+             Accept := Check(Source, RClient, ATokenIndex, RefIdx);
 
           if Assigned(OnBlockCheck) then
             OnBlockCheck(Rule, RClient, Source, RefIdx, Accept);
@@ -4001,8 +4299,8 @@ begin
           begin
            Client.ApplyStates(Rule);
            if FRefToCondEnd then strt := RefIdx
-             else strt := N - 1 - CheckOffset;
-      //    strt := N - 1 - CheckOffset;
+             else strt := ATokenIndex - 1 - CheckOffset;
+      //    strt := ATokenIndex - 1 - CheckOffset;
            ki := strt - IdentIndex;
            if CheckIndex(ki) then
             case BlockType of
@@ -4019,11 +4317,11 @@ begin
                     Range := TecTextRange.Create(li, RClient.Tags[li].Range.StartPos);
                     Range.IdentIdx := ki;
                     Range.Rule := Rule;
-                    Range.FCondIndex := N - 1;
+                    Range.FCondIndex := ATokenIndex - 1;
                     if NoEndRule then
                      begin
-                      Range.EndIdx := N - 1 - CheckOffset;
-                      Range.FEndCondIndex := N - 1;
+                      Range.EndIdx := ATokenIndex - 1 - CheckOffset;
+                      Range.FEndCondIndex := ATokenIndex - 1;
                       Range.StartIdx := RefIdx - BlockOffset;
                      end;
                     RClient.AddRange(Range);
@@ -4041,9 +4339,9 @@ begin
           end;
         end;
     end;
-  except
-    Application.HandleException(Self);
-  end;
+  //except
+  //  Application.HandleException(Self);
+  //end;
 end;
 
 procedure TecSyntAnalyzer.SetSampleText(const Value: TStrings);
@@ -4185,8 +4483,7 @@ begin
     for i := 0 to FClientList.Count - 1 do
      with TecClientSyntAnalyzer(FClientList[i]) do
       begin
-        Clear;
-        ParseViaTimer;
+        Clear; //it starts parsing again
       end;
     for i := 0 to FMasters.Count - 1 do
       TecSyntAnalyzer(FMasters[i]).ClearClientContents;

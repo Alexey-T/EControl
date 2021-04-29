@@ -265,6 +265,8 @@ end;
 
 procedure TGrammaAnalyzer.SetGramma(const Value: ecString);
 begin
+  Exit; //Alexey: disable gramma code yet
+
   FGrammaDefs.SetupSlow(Value);
   Changed;
 end;
@@ -463,6 +465,10 @@ var Lex: TecSyntAnalyzer;
 
 begin
   Result := True;
+  Exit;
+    //Alexey: disabled CompileGrammar, it gave ~1 sec per each lexer with grammar (C#, T-SQL, PL-SQL)
+    //if threaded-parser is used
+
   FGrammaRules.Clear;
   FRoot := nil;
   FSkipRule := nil;
@@ -473,7 +479,7 @@ begin
       try
         //Res := Lex.AddClient(nil, GetGrammaLines);
         //AUseTimer=False for grammar
-        Res := TecClientSyntAnalyzer.Create(Lex, GetGrammaLines, nil, False);
+        Res := TecClientSyntAnalyzer.Create(Lex, GetGrammaLines);
         if Res <> nil then
           try
             // Prepare Lexer
@@ -490,7 +496,7 @@ begin
             AddTokenRule(9, '[\(]');                 // Open sub-rule
             AddTokenRule(10,'[\)]');                 // Close sub-rule
             // Extract all tokens
-            Res.ParseAll(True, False);
+            Res.ParseAll(True);
             // extract rules
             Cur := 0;
             while ValidCur do
