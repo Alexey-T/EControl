@@ -265,6 +265,8 @@ end;
 
 procedure TGrammaAnalyzer.SetGramma(const Value: ecString);
 begin
+  Exit; //Alexey: disable gramma code yet
+
   FGrammaDefs.SetupSlow(Value);
   Changed;
 end;
