@@ -666,6 +666,7 @@ type
     procedure CloseAtEnd(AStartTagIdx: integer); override;
   public
     PublicDataNeedTo: integer;
+    PublicDataNeedTo2: integer;
     PublicData: TecPublicData;
 
     FileName: string;
@@ -3094,7 +3095,7 @@ end;
 
 procedure TecClientSyntAnalyzer.UpdatePublicData(AParseFinished: boolean);
 var
-  bNeedUpdate: boolean;
+  bNeedUpdate, bNeedUpdate2: boolean;
   TagPtr: PecSyntToken;
   NCount, NLastParsedLine: integer;
 begin
@@ -3110,17 +3111,33 @@ begin
   if AParseFinished then
   begin
     bNeedUpdate := True;
+    bNeedUpdate2 := True;
     PublicData.Finished := True;
   end
   else
   begin
-    if PublicData.LineTo >= PublicDataNeedTo then Exit;
+    bNeedUpdate := True;
+    bNeedUpdate2 := True;
+
+    if PublicData.LineTo >= PublicDataNeedTo then
+      bNeedUpdate := False;
+
+    if PublicDataNeedTo2 > 0 then
+    begin
+      if PublicData.LineTo >= PublicDataNeedTo2 then
+        bNeedUpdate2 := False;
+    end
+    else
+      bNeedUpdate2 := False;
+
     TagPtr := FTagList._GetItemPtr(NCount-1);
     NLastParsedLine := TagPtr^.Range.PointStart.Y;
-    bNeedUpdate := NLastParsedLine >= PublicDataNeedTo;
+    bNeedUpdate := (NLastParsedLine >= PublicDataNeedTo);
+    bNeedUpdate2 := (PublicDataNeedTo2 > 0) and
+                    (NLastParsedLine >= PublicDataNeedTo2);
   end;
 
-  if bNeedUpdate then
+  if bNeedUpdate or bNeedUpdate2 then
     UpdatePublicDataCore;
 end;
 
