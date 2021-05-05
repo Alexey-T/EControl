@@ -573,7 +573,10 @@ type
     An: TecClientSyntAnalyzer;
     DebugMsg: string;
     DebugTicks: QWord;
-    procedure DoParseDone;
+    procedure ThreadParseDone;
+    procedure ThreadProgressFirst;
+    procedure ThreadProgressSecond;
+    procedure ThreadProgressBoth;
     procedure Execute; override;
     procedure ShowDebugMsg;
     procedure DummyProc;
@@ -639,6 +642,9 @@ type
     FStartSepRangeAnal: integer;
     FRepeateAnalysis: Boolean;
     FOnParseDone: TNotifyEvent;
+    FOnProgressFirst: TNotifyEvent;
+    FOnProgressSecond: TNotifyEvent;
+    FOnProgressBoth: TNotifyEvent;
     FBufferVersion: integer;
     {$ifdef ParseProgress}
     FProgress: integer;
@@ -683,7 +689,14 @@ type
     function FindTokenAt(Pos: integer): integer;
 
     property OnParseDone: TNotifyEvent read FOnParseDone write FOnParseDone;
+    property OnProgressFirst: TNotifyEvent read FOnProgressFirst write FOnProgressFirst;
+    property OnProgressSecond: TNotifyEvent read FOnProgressSecond write FOnProgressSecond;
+    property OnProgressBoth: TNotifyEvent read FOnProgressBoth write FOnProgressBoth;
+
     procedure DoParseDone;
+    procedure DoProgressFirst;
+    procedure DoProgressSecond;
+    procedure DoProgressBoth;
 
     function RangeFormat(const FmtStr: ecString; Range: TecTextRange): ecString;
     function GetRangeName(Range: TecTextRange; ATags: TecTokenList): ecString;
@@ -1042,9 +1055,24 @@ end;
 
 { TecParserThread }
 
-procedure TecParserThread.DoParseDone;
+procedure TecParserThread.ThreadParseDone;
 begin
   An.DoParseDone;
+end;
+
+procedure TecParserThread.ThreadProgressFirst;
+begin
+  An.DoProgressFirst;
+end;
+
+procedure TecParserThread.ThreadProgressSecond;
+begin
+  An.DoProgressSecond;
+end;
+
+procedure TecParserThread.ThreadProgressBoth;
+begin
+  An.DoProgressBoth;
 end;
 
 procedure TecParserThread.Execute;
@@ -1091,7 +1119,7 @@ begin
             DebugTicks := GetTickCount64-tick;
             Synchronize(ShowDebugMsg);
             {$endif}
-            Synchronize(DoParseDone);
+            Synchronize(ThreadParseDone);
           end;
       An.EventParseIdle.SetEvent;
     end;
@@ -3132,13 +3160,27 @@ begin
 
     TagPtr := FTagList._GetItemPtr(NCount-1);
     NLastParsedLine := TagPtr^.Range.PointStart.Y;
-    bNeedUpdate := (NLastParsedLine >= PublicDataNeedTo);
-    bNeedUpdate2 := (PublicDataNeedTo2 > 0) and
-                    (NLastParsedLine >= PublicDataNeedTo2);
+    if bNeedUpdate then
+      bNeedUpdate := (NLastParsedLine >= PublicDataNeedTo);
+    if bNeedUpdate2 then
+      bNeedUpdate2 := (PublicDataNeedTo2 > 0) and
+                      (NLastParsedLine >= PublicDataNeedTo2);
   end;
 
   if bNeedUpdate or bNeedUpdate2 then
     UpdatePublicDataCore;
+
+  if Assigned(ParserThread) and not ParserThread.Terminated then
+  begin
+    if bNeedUpdate and bNeedUpdate2 then
+      TThread.Queue(ParserThread, ParserThread.ThreadProgressBoth)
+    else
+    if bNeedUpdate then
+      TThread.Queue(ParserThread, ParserThread.ThreadProgressFirst)
+    else
+    if bNeedUpdate2 then
+      TThread.Queue(ParserThread, ParserThread.ThreadProgressSecond);
+  end;
 end;
 
 function TecClientSyntAnalyzer.GetDisabledFolding: boolean; //Alexey
@@ -3415,6 +3457,24 @@ procedure TecClientSyntAnalyzer.DoParseDone;
 begin
   if Assigned(FOnParseDone) then
     FOnParseDone(Self);
+end;
+
+procedure TecClientSyntAnalyzer.DoProgressFirst;
+begin
+  if Assigned(FOnProgressFirst) then
+    FOnProgressFirst(Self);
+end;
+
+procedure TecClientSyntAnalyzer.DoProgressSecond;
+begin
+  if Assigned(FOnProgressSecond) then
+    FOnProgressSecond(Self);
+end;
+
+procedure TecClientSyntAnalyzer.DoProgressBoth;
+begin
+  if Assigned(FOnProgressBoth) then
+    FOnProgressBoth(Self);
 end;
 
 function TecClientSyntAnalyzer.GetRangeCount: integer;
