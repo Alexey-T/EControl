@@ -510,6 +510,7 @@ type
     FTagList: TecTokenList;
     FCurState: integer;
     FStateChanges: TecStateChanges;
+    FLastAnalPos: integer;
     FOnAddRangeSimple: TecOnAddRangeSimple; //Alexey
 
     function GetLastPos: integer;
@@ -532,8 +533,6 @@ type
     function GetTokenType(Index: integer): integer; override;
     procedure CloseAtEnd(StartTagIdx: integer); virtual; abstract;
   protected
-    FLastAnalPos: integer;
-
     procedure Finished; virtual;
     function IsEnabled(Rule: TRuleCollectionItem; OnlyGlobal: Boolean): Boolean; virtual;
     procedure ApplyStates(Rule: TRuleCollectionItem);
@@ -551,11 +550,10 @@ type
     //holds booleans: first token of i-th line is a 'comment'
     CmtIndexer: packed array of boolean; //Alexey
 
-    constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer;
-      const AClient: IecSyntClient);
+    constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer; const AClient: IecSyntClient);
     destructor Destroy; override;
-    procedure Clear; virtual;
 
+    procedure Clear; virtual;
     function AnalyzerAtPos(APos: integer; ABlocks: TecSubLexerRanges): TecSyntAnalyzer;
     function ParserStateAtPos(ATokenIndex: integer): integer;
 
