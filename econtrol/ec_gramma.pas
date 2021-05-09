@@ -278,6 +278,10 @@ end;
 
 // Compiling Gramma rules
 function TGrammaAnalyzer.CompileGramma(TokenNames: TStrings): Boolean;
+begin
+  Result := True;
+end;
+(* //removed by Alexey, not needed in CudaText
 var Lex: TecSyntAnalyzer;
     Res: TecClientSyntAnalyzer;
     Cur, i: integer;
@@ -523,6 +527,7 @@ begin
       FSkipRule := ParserRuleByName('Skip');
     end;
 end;
+*)
 
 function TGrammaAnalyzer.TestRule(FromIndex: integer; Rule: TParserRule; Tags: TTokenHolder): integer;
 var FRootProgNode: TParserNode; // Results of Gramma analisys

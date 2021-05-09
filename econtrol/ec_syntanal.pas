@@ -517,6 +517,14 @@ type
     function GetTags(Index: integer): PecSyntToken;
     function GetSubLexerRangeCount: integer;
     function GetSubLexerRange(Index: integer): TecSubLexerRange;
+
+    //moved to 'private' by Alexey, not needed in CudaText
+    property TagCount: integer read GetTokenCount;
+    property Tags[Index: integer]: PecSyntToken read GetTags; default;
+    property TagStr[Index: integer]: ecString read GetTokenStr;
+    property SubLexerRangeCount: integer read GetSubLexerRangeCount;
+    property SubLexerRanges[Index: integer]: TecSubLexerRange read GetSubLexerRange;
+
   protected
     function GetTokenCount: integer; override;
     function GetTokenStr(Index: integer): ecString; override;
@@ -554,14 +562,9 @@ type
     property Owner: TecSyntAnalyzer read FOwner;
     property Buffer: TATStringBuffer read FBuffer;
     property IsFinished: Boolean read FFinished;
-    property TagCount: integer read GetTokenCount;
-    property Tags[Index: integer]: PecSyntToken read GetTags; default;
-    property TagStr[Index: integer]: ecString read GetTokenStr;
     function TokenIndent(Token: PecSyntToken): integer; // Alexey
     function TagsSame(Index1, Index2: integer): boolean; // Alexey
     function TagSameAs(Index: integer; const Str: ecString): boolean; // Alexey
-    property SubLexerRangeCount: integer read GetSubLexerRangeCount;
-    property SubLexerRanges[Index: integer]: TecSubLexerRange read GetSubLexerRange;
     property ParserState: integer read FCurState write FCurState;
     property OnAddRangeSimple: TecOnAddRangeSimple read FOnAddRangeSimple write FOnAddRangeSimple; // Alexey
   end;
