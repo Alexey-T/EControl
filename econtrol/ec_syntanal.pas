@@ -1089,7 +1089,9 @@ begin
   repeat
     if Terminated then Exit;
     if Application.Terminated then Exit;
-    if An.EventParseNeeded.WaitFor(500)<>wrSignaled then
+
+    //constant in WaitFor() affects how fast 'Close all tabs' will run
+    if An.EventParseNeeded.WaitFor(100)<>wrSignaled then
       Continue;
 
     An.EventParseIdle.ResetEvent;
