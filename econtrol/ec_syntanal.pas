@@ -219,6 +219,7 @@ type
 
   TecTagBlockCondition = class(TRuleCollectionItem)
   private
+    FCriSec: TCriticalSection;
     FConditions: TecConditionCollection;
     FIdentIndex: integer;
     FLinePos: TecLineBreakPos;
@@ -1435,6 +1436,7 @@ begin
   FTreeGroupImage := -1;
   FPen := TPen.Create;
   FPen.OnChange := ConditionsChanged;
+  FCriSec := TCriticalSection.Create;
 end;
 
 procedure TecTagBlockCondition.AssignTo(Dest: TPersistent);
@@ -1487,6 +1489,8 @@ function TecTagBlockCondition.Check(const Source: ecString;
   Tags: TecClientSyntAnalyzer; N: integer; var RefIdx: integer): Boolean;
 var i, offs, idx, skipped, skip_cond: integer;
 begin
+ FCriSec.Enter;
+ try
   Result := False;
   offs := CheckOffset;
   skipped := 0;
@@ -1519,10 +1523,14 @@ begin
   RefIdx := N - ConditionList.Count - offs - skipped + skip_cond;
 //  else
 //    RefIdx := N - 1 - offs;
+ finally
+  FCriSec.Leave;
+ end;
 end;
 
 destructor TecTagBlockCondition.Destroy;
 begin
+  FreeAndNil(FCriSec);
   FreeAndNil(FConditions);
   FreeAndNil(FPen);
   inherited;
