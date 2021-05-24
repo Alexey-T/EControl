@@ -683,6 +683,7 @@ type
     EventParseIdle: TEvent;
     EventParseStop: TEvent;
     CriSecForData: TCriticalSection;
+    CriSecForBuffer: TCriticalSection;
 
     constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
     destructor Destroy; override;
@@ -1004,7 +1005,13 @@ var
 
 var
   MaxLinesWhenParserEnablesFolding: integer = 10*1000;
+
+  //if N>1, N consecutive 'comment' lines will make folding-range
   AutoFoldComments: integer = 5;
+
+  //allow to use TCriticalSection for StringBuffer integrity, it's slower
+  OptCriticalSectionForBuffer: boolean = false;
+
 
 implementation
 
@@ -1107,11 +1114,18 @@ begin
 
       //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
       SavedChangePos := An.FPrevChangePos;
-      repeat
-        Res := An.ParseInThread;
-        if Res <> eprInterrupted then Break;
-        An.FPrevChangePos := SavedChangePos;
-      until False;
+      if OptCriticalSectionForBuffer then
+        An.CriSecForBuffer.Enter;
+      try
+        repeat
+          Res := An.ParseInThread;
+          if Res <> eprInterrupted then Break;
+          An.FPrevChangePos := SavedChangePos;
+        until False;
+      finally
+        if OptCriticalSectionForBuffer then
+          An.CriSecForBuffer.Leave;
+      end;
 
     finally
       if An.IsFinished then
@@ -2856,6 +2870,7 @@ begin
   EventParseIdle := TEvent.Create(nil, True{ManualReset}, True{Signaled}, '');
   EventParseStop := TEvent.Create(nil, False, False, '');
   CriSecForData := TCriticalSection.Create;
+  CriSecForBuffer := TCriticalSection.Create;
 
   ParserThread := TecParserThread.Create(True);
   ParserThread.An := Self;
@@ -2873,6 +2888,7 @@ begin
   FreeAndNil(EventParseIdle);
   FreeAndNil(EventParseNeeded);
   FreeAndNil(CriSecForData);
+  FreeAndNil(CriSecForBuffer);
 
   FreeAndNil(PublicData.Tokens);
   FreeAndNil(PublicData.FoldRanges);
