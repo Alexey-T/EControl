@@ -657,6 +657,7 @@ type
 
     function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
     procedure ClearDataOnChange;
+    procedure ClearSublexerRangesFromLine(ALine: integer);
     function GetDisabledFolding: boolean; //Alexey
     function GetRangeCount: integer;
     function GetRanges(Index: integer): TecTextRange;
@@ -3363,6 +3364,37 @@ begin
    end;
 end;
 
+procedure TecClientSyntAnalyzer.ClearSublexerRangesFromLine(ALine: integer);
+var
+  Sub: PecSubLexerRange;
+  Pnt: TPoint;
+  i: integer;
+begin
+  for i := FSubLexerBlocks.Count - 1 downto 0 do
+  begin
+    Sub := PecSubLexerRange(FSubLexerBlocks.InternalGet(i));
+    if ALine <= Sub.Range.PointStart.Y then
+    begin
+      Pnt := Buffer.StrToCaret(Sub.CondStartPos);
+      if ALine > Pnt.Y then
+         ALine := Pnt.Y;
+      FSubLexerBlocks.Delete(i); // remove sublexer block
+    end
+    else
+    begin
+      Pnt := Buffer.StrToCaret(Sub.CondEndPos);
+      if ALine < Pnt.Y then
+      begin
+        if ALine > Sub.Range.PointEnd.Y then
+          ALine := Sub.Range.PointEnd.Y;
+        Sub.Range.EndPos := -1; // open sublexer block
+        Sub.CondEndPos := -1;
+        //FSubLexerBlocks[i] := Sub; // no need to write back, we use pointer
+      end;
+    end;
+  end;
+end;
+
 procedure TecClientSyntAnalyzer.ClearDataOnChange;
 var
   NTagCount: integer;
@@ -3380,9 +3412,7 @@ var
 var
   //lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
   NDeltaRanges: integer;
-  Sub: PecSubLexerRange;
   NLine, i: integer;
-  NPoint: TPoint;
 begin
   if FPrevChangeLine < 0 then Exit;
   NLine := FPrevChangeLine;
@@ -3410,32 +3440,7 @@ begin
   else
     NDeltaRanges := 0;
 
-   // Check sub lexer ranges
-   for i := FSubLexerBlocks.Count - 1 downto 0 do
-   begin
-     Sub := PecSubLexerRange(FSubLexerBlocks.InternalGet(i));
-     if NLine <= Sub.Range.PointStart.Y then
-     begin
-       NPoint := Buffer.StrToCaret(Sub.CondStartPos);
-       if NLine > NPoint.Y then
-          NLine := NPoint.Y;
-       FSubLexerBlocks.Delete(i); // remove sublexer block
-     end
-     else
-     begin
-       NPoint := Buffer.StrToCaret(Sub.CondEndPos);
-       if NLine < NPoint.Y then
-       begin
-         if NLine > Sub.Range.PointEnd.Y then
-           NLine := Sub.Range.PointEnd.Y;
-         Sub.Range.EndPos := -1; // open sublexer block
-         Sub.CondEndPos := -1;
-         //FSubLexerBlocks[i] := Sub; // no need to write back, we use pointer
-       end;
-     end;
-   end;
-
-   // Remove tokens
+   ClearSublexerRangesFromLine(NLine);
    FTagList.ClearFromLine(NLine);
    ClearTokenIndexer;
 
