@@ -684,7 +684,7 @@ type
     ParserThread: TecParserThread;
     EventParseNeeded: TEvent;
     EventParseIdle: TEvent;
-    EventParseStop: TEvent;
+    EventParseStop: boolean;
     CriSecForData: TCriticalSection;
 
     constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
@@ -2864,7 +2864,6 @@ begin
 
   EventParseNeeded := TEvent.Create(nil, False, False, '');
   EventParseIdle := TEvent.Create(nil, True{ManualReset}, True{Signaled}, '');
-  EventParseStop := TEvent.Create(nil, False, False, '');
   CriSecForData := TCriticalSection.Create;
 
   ParserThread := TecParserThread.Create(True);
@@ -2874,12 +2873,11 @@ end;
 
 destructor TecClientSyntAnalyzer.Destroy;
 begin
-  EventParseStop.SetEvent;
+  EventParseStop := True;
   ParserThread.Terminate;
   ParserThread.WaitFor;
   FreeAndNil(ParserThread);
 
-  FreeAndNil(EventParseStop);
   FreeAndNil(EventParseIdle);
   FreeAndNil(EventParseNeeded);
   FreeAndNil(CriSecForData);
@@ -2896,8 +2894,7 @@ end;
 procedure TecClientSyntAnalyzer.StopThreadLoop;
 begin
   if IsFinished then Exit;
-  if EventParseIdle.WaitFor(0)<>wrSignaled then
-    EventParseStop.SetEvent;
+  EventParseStop := True;
 end;
 
 function TecClientSyntAnalyzer.Stop: boolean;
@@ -3227,6 +3224,7 @@ const
   ProcessMsgStep2 = 1000; //stage2: finding ranges
 begin
   Result := eprNormal;
+  EventParseStop := False;
   BufferVersion := Buffer.Version;
   BufferInvalidated := False;
   FFinished := False;
@@ -3289,9 +3287,12 @@ begin
           if BufferInvalidated then
             Exit(eprBufferInvalidated);
 
+          if EventParseStop then
+            Exit(eprInterrupted);
+
+          {$ifdef ParseProgress}
           if iToken mod ProcessMsgStep2 = 0 then
           begin
-            {$ifdef ParseProgress}
             //progress for 2nd half of parsing, range 50..100
             FProgress := 50 + iToken * 50 div NTagCount;
             if FProgress <> ProgressPrev then
@@ -3299,17 +3300,9 @@ begin
               ProgressPrev := FProgress;
               DoShowProgress;
             end;
-            {$endif}
-
-            //this is slow check, do it each N steps
-            if EventParseStop.WaitFor(0) = wrSignaled then
-              Exit(eprInterrupted);
           end;
+          {$endif}
         end;
-
-        //must check it again, if 'for loop' didn't have much steps
-        if EventParseStop.WaitFor(0) = wrSignaled then
-          Exit(eprInterrupted);
       end;
 
       Finished;
@@ -4016,8 +4009,7 @@ begin
   if FBuffer.TextLength <= Owner.FullRefreshSize then
     FPrevChangePos := 0;
 
-  if EventParseIdle.WaitFor(0)<>wrSignaled then
-    EventParseStop.SetEvent;
+  EventParseStop := True;
   EventParseNeeded.SetEvent;
 end;
 
