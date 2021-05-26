@@ -708,7 +708,7 @@ type
     function GetRangeName(Range: TecTextRange; ATags: TecTokenList): ecString;
     function GetRangeGroup(Range: TecTextRange): ecString;
     function GetCollapsedText(Range: TecTextRange): ecString;
-    function Stop: boolean;
+    procedure Stop;
 
     procedure TextChangedOnLine(ALine: integer);
     procedure ParseAll(AResetContent: Boolean);
@@ -2897,12 +2897,11 @@ begin
   EventParseStop := True;
 end;
 
-function TecClientSyntAnalyzer.Stop: boolean;
+procedure TecClientSyntAnalyzer.Stop;
 begin
   StopThreadLoop;
   FFinished := True;
   FPrevChangeLine := -1;
-  Result := True;
 end;
 
 procedure TecClientSyntAnalyzer.Clear;
