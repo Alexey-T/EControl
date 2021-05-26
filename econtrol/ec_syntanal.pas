@@ -2844,7 +2844,7 @@ begin
   FOpenedBlocks := TSortedList.Create(False);
 
   PublicData.Tokens := TecTokenList.Create;
-  PublicData.FoldRanges := TSortedList.Create(False);
+  PublicData.FoldRanges := TSortedList.Create(True);
   PublicData.SublexRanges := TecSubLexerRanges.Create;
 
   if AutoFoldComments>1 then
