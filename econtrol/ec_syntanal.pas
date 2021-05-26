@@ -3380,7 +3380,7 @@ var
 var
   //lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
   NDeltaRanges: integer;
-  Sub: TecSubLexerRange;
+  Sub: PecSubLexerRange;
   NLine, i: integer;
   NPoint: TPoint;
 begin
@@ -3413,7 +3413,7 @@ begin
    // Check sub lexer ranges
    for i := FSubLexerBlocks.Count - 1 downto 0 do
    begin
-     Sub := FSubLexerBlocks[i];
+     Sub := PecSubLexerRange(FSubLexerBlocks.InternalGet(i));
      if NLine <= Sub.Range.PointStart.Y then
      begin
        NPoint := Buffer.StrToCaret(Sub.CondStartPos);
@@ -3430,7 +3430,7 @@ begin
            NLine := Sub.Range.PointEnd.Y;
          Sub.Range.EndPos := -1; // open sublexer block
          Sub.CondEndPos := -1;
-         FSubLexerBlocks[i] := Sub;
+         //FSubLexerBlocks[i] := Sub; // no need to write back, we use pointer
        end;
      end;
    end;
