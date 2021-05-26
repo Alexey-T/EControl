@@ -315,6 +315,12 @@ begin
 end;
 
 constructor TSortedList.Create(AOwnObjects: Boolean);
+{ old EControl did this:
+  if AOwnObjects then
+    FList := TObjectList.Create
+  else
+    FList := TList.Create;
+}
 begin
   inherited Create;
   FOwnsObjects := AOwnObjects;
