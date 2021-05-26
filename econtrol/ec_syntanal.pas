@@ -1111,7 +1111,7 @@ begin
       SavedChangePos := An.FPrevChangePos;
       repeat
         Res := An.ParseInThread;
-        if Res <> eprInterrupted then Break;
+        if Res in [eprNormal, eprAppTerminated] then Break;
         An.FPrevChangePos := SavedChangePos;
       until False;
     finally
