@@ -3385,7 +3385,7 @@ var
   NPoint: TPoint;
 begin
   if FPrevChangeLine < 0 then Exit;
-  NLine:= FPrevChangeLine;
+  NLine := FPrevChangeLine;
 
   if NLine = 0 then
   begin
@@ -3413,13 +3413,13 @@ begin
    // Check sub lexer ranges
    for i := FSubLexerBlocks.Count - 1 downto 0 do
    begin
-     Sub:= FSubLexerBlocks[i];
-     if NLine < Sub.Range.PointStart.Y then
+     Sub := FSubLexerBlocks[i];
+     if NLine <= Sub.Range.PointStart.Y then
      begin
        NPoint := Buffer.StrToCaret(Sub.CondStartPos);
        if NLine > NPoint.Y then
           NLine := NPoint.Y;
-       FSubLexerBlocks.Delete(i);  // remove sub lexer
+       FSubLexerBlocks.Delete(i); // remove sublexer block
      end
      else
      begin
@@ -3428,7 +3428,7 @@ begin
        begin
          if NLine > Sub.Range.PointEnd.Y then
            NLine := Sub.Range.PointEnd.Y;
-         Sub.Range.EndPos := -1;       // open sub lexer
+         Sub.Range.EndPos := -1; // open sublexer block
          Sub.CondEndPos := -1;
          FSubLexerBlocks[i] := Sub;
        end;
