@@ -546,6 +546,9 @@ type
     procedure ShowTokenIndexer; //Alexey
     procedure ShowCmtIndexer; //Alexey
   public
+    BufferVersion: integer;
+    BufferInvalidated: boolean;
+
     //holds index of first token overlapping that i-th line ("overlapping" is for multi-line tokens)
     TokenIndexer: array of integer; //Alexey
     //holds booleans: first token of i-th line is a 'comment'
@@ -557,6 +560,7 @@ type
     procedure Clear; virtual;
     function AnalyzerAtPos(APos: integer; ABlocks: TecSubLexerRanges): TecSyntAnalyzer;
     function ParserStateAtPos(ATokenIndex: integer): integer;
+    procedure CheckBuffer;
 
     property Owner: TecSyntAnalyzer read FOwner;
     property Buffer: TATStringBuffer read FBuffer;
@@ -647,7 +651,6 @@ type
     FOnProgressFirst: TNotifyEvent;
     FOnProgressSecond: TNotifyEvent;
     FOnProgressBoth: TNotifyEvent;
-    FBufferVersion: integer;
     {$ifdef ParseProgress}
     FProgress: integer;
     {$endif}
@@ -2833,6 +2836,12 @@ begin
    Result := 0;
 end;
 
+procedure TecParserResults.CheckBuffer;
+begin
+  if BufferVersion <> Buffer.Version then
+    BufferInvalidated := True;
+end;
+
 { TecClientSyntAnalyzer }
 
 constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer;
@@ -3071,7 +3080,8 @@ begin
      end;
   end;
 
-  if FBuffer.Version <> FBufferVersion then
+  CheckBuffer;
+  if BufferInvalidated then
   begin
     FOpenedBlocks.Clear;
     Exit;
@@ -3217,7 +3227,8 @@ const
   ProcessMsgStep2 = 1000; //stage2: finding ranges
 begin
   Result := eprNormal;
-  FBufferVersion := FBuffer.Version;
+  BufferVersion := Buffer.Version;
+  BufferInvalidated := False;
   FFinished := False;
   ClearDataOnChange;
 
@@ -3247,7 +3258,8 @@ begin
       Exit(eprAppTerminated);
     if FBuffer = nil then
       Exit(eprBufferInvalidated);
-    if FBufferVersion <> FBuffer.Version then
+    CheckBuffer;
+    if BufferInvalidated then
       Exit(eprBufferInvalidated);
 
     NTemp := GetLastPos;
@@ -3271,6 +3283,12 @@ begin
           if own <> FOwner then
             own.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, False, iToken);
 
+          if Application.Terminated then
+            Exit(eprAppTerminated);
+
+          if BufferInvalidated then
+            Exit(eprBufferInvalidated);
+
           if iToken mod ProcessMsgStep2 = 0 then
           begin
             {$ifdef ParseProgress}
@@ -3283,17 +3301,15 @@ begin
             end;
             {$endif}
 
-            if Application.Terminated then
-              Exit(eprAppTerminated);
-
             //this is slow check, do it each N steps
             if EventParseStop.WaitFor(0) = wrSignaled then
-            begin
-              Result := eprInterrupted;
-              Break;
-            end;
+              Exit(eprInterrupted);
           end;
         end;
+
+        //must check it again, if 'for loop' didn't have much steps
+        if EventParseStop.WaitFor(0) = wrSignaled then
+          Exit(eprInterrupted);
       end;
 
       Finished;
@@ -4083,7 +4099,8 @@ begin
 
   for iToken := ATokenIndexFrom to ATokenIndexTo do
   begin
-     if FBuffer.Version <> FBufferVersion then
+     CheckBuffer;
+     if BufferInvalidated then
        Exit(True);
 
      Token := Tags[iToken];
@@ -4127,7 +4144,8 @@ begin
 
   for i := FOpenedBlocks.Count - 1 downto 0 do
   begin
-    if FBuffer.Version <> FBufferVersion then
+    CheckBuffer;
+    if BufferInvalidated then
     begin
       FOpenedBlocks.Clear;
       FRanges.Clear;
@@ -4317,6 +4335,9 @@ begin
   N := Client.TagCount;
   for iRule := 0 to High(FBlockRules_Detecters) do
   begin
+    Client.CheckBuffer;
+    if Client.BufferInvalidated then Exit;
+
     Rule := FBlockRules_Detecters[iRule];
     with Rule do
       begin
@@ -4362,9 +4383,12 @@ begin
   if not (Client is TecClientSyntAnalyzer)  then Exit;
   RClient := TecClientSyntAnalyzer(Client);
   RClient.FStartSepRangeAnal := ATokenIndex + 1;
-  //try //Alexey: why try/except here?
+
     for i := 0 to FBlockRules.Count - 1 do
     begin
+      Client.CheckBuffer;
+      if Client.BufferInvalidated then Exit;
+
       Rule := FBlockRules[i];
       if DisableFolding then
         if Rule.BlockType in [btRangeStart, btRangeEnd] then Continue;
@@ -4428,9 +4452,6 @@ begin
           end;
         end;
     end;
-  //except
-  //  Application.HandleException(Self);
-  //end;
 end;
 
 procedure TecSyntAnalyzer.SetSampleText(const Value: TStrings);
