@@ -26,13 +26,16 @@ type
     function GetKey: integer; virtual; abstract;
   end;
 
+  { TSortedList }
+
   TSortedList = class
   private
-    FList: TList;
+    FList: TFPList;
+    FOwnsObjects: boolean;
     function GetCount: integer;
     function GetItem(Index: integer): TSortedItem;
   public
-    constructor Create(OwnObjects: Boolean);
+    constructor Create(AOwnObjects: Boolean);
     destructor Destroy; override;
 
     function Add(Item: TSortedItem): integer;
@@ -302,21 +305,26 @@ begin
 end;
 
 procedure TSortedList.Clear;
+var
+  i: integer;
 begin
+  if FOwnsObjects then
+    for i := Count-1 downto 0 do
+      TObject(FList[i]).Free;
   FList.Clear;
 end;
 
-constructor TSortedList.Create(OwnObjects: Boolean);
+constructor TSortedList.Create(AOwnObjects: Boolean);
 begin
   inherited Create;
-  if OwnObjects then
-    FList := TObjectList.Create
-  else
-    FList := TList.Create;
+  FOwnsObjects := AOwnObjects;
+  FList := TFPList.Create;
 end;
 
 procedure TSortedList.Delete(Index: integer);
 begin
+  if FOwnsObjects then
+    TObject(FList[Index]).Free;
   FList.Delete(Index);
 end;
 
