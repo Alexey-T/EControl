@@ -506,7 +506,7 @@ type
     FClient: IecSyntClient;
     FOwner: TecSyntAnalyzer;
     FFinished: Boolean;
-    FPrevChangePos: integer;
+    FPrevChangeLine: integer;
     FSubLexerBlocks: TecSubLexerRanges;
     FTagList: TecTokenList;
     FCurState: integer;
@@ -710,7 +710,6 @@ type
     function Stop: boolean;
 
     procedure TextChangedOnLine(ALine: integer);
-    procedure TextChangedOnPos(APos: integer);
     procedure ParseAll(AResetContent: Boolean);
     procedure ParseToPos(APos: integer);
     function ParseInThread: TecParseInThreadResult;
@@ -1085,7 +1084,7 @@ end;
 procedure TecParserThread.Execute;
 var
   Res: TecParseInThreadResult;
-  SavedChangePos: integer;
+  SavedChangeLine: integer;
 {$ifdef ParseTime}
 var
   tick: QWord;
@@ -1111,11 +1110,11 @@ begin
       {$endif}
 
       //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
-      SavedChangePos := An.FPrevChangePos;
+      SavedChangeLine := An.FPrevChangeLine;
       repeat
         Res := An.ParseInThread;
         if Res in [eprNormal, eprAppTerminated] then Break;
-        An.FPrevChangePos := SavedChangePos;
+        An.FPrevChangeLine := SavedChangeLine;
       until False;
     finally
       if An.IsFinished then
@@ -2230,7 +2229,7 @@ begin
   FOwner.FClientList.Add(Self);
   FCurState := 0;
   FStateChanges := TecStateChanges.Create;
-  FPrevChangePos := -1;
+  FPrevChangeLine := -1;
 end;
 
 destructor TecParserResults.Destroy;
@@ -2250,13 +2249,13 @@ begin
   FCurState := 0;
   SetLength(TokenIndexer, 0);
   SetLength(CmtIndexer, 0);
-  FPrevChangePos := -1;
+  FPrevChangeLine := -1;
 end;
 
 procedure TecParserResults.Finished;
 begin
   FFinished := True;
-  FPrevChangePos := -1;
+  FPrevChangeLine := -1;
 
   // Performs Gramma parsing
   //AnalyzeGramma;
@@ -2901,7 +2900,7 @@ function TecClientSyntAnalyzer.Stop: boolean;
 begin
   StopThreadLoop;
   FFinished := True;
-  FPrevChangePos := -1;
+  FPrevChangeLine := -1;
   Result := True;
 end;
 
@@ -3382,13 +3381,13 @@ var
   //lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
   NDeltaRanges: integer;
   Sub: TecSubLexerRange;
-  APos: integer;
-  i: integer;
+  NLine, i: integer;
+  NPoint: TPoint;
 begin
-  if FPrevChangePos < 0 then Exit;
-  APos := FPrevChangePos;
+  if FPrevChangeLine < 0 then Exit;
+  NLine:= FPrevChangeLine;
 
-  if APos = 0 then
+  if NLine = 0 then
   begin
     //total clear
     FSubLexerBlocks.Clear;
@@ -3415,22 +3414,29 @@ begin
    for i := FSubLexerBlocks.Count - 1 downto 0 do
    begin
      Sub:= FSubLexerBlocks[i];
-     if APos < Sub.Range.StartPos then
-      begin
-        if APos > Sub.CondStartPos then APos := Sub.CondStartPos;
-        FSubLexerBlocks.Delete(i);  // remove sub lexer
-      end else
-     if APos < Sub.CondEndPos then
-      begin
-        if APos > Sub.Range.EndPos then APos := Sub.Range.EndPos;
-        Sub.Range.EndPos := -1;       // open sub lexer
-        Sub.CondEndPos := -1;
-        FSubLexerBlocks[i] := Sub;
-      end;
+     if NLine < Sub.Range.PointStart.Y then
+     begin
+       NPoint := Buffer.StrToCaret(Sub.CondStartPos);
+       if NLine > NPoint.Y then
+          NLine := NPoint.Y;
+       FSubLexerBlocks.Delete(i);  // remove sub lexer
+     end
+     else
+     begin
+       NPoint := Buffer.StrToCaret(Sub.CondEndPos);
+       if NLine < NPoint.Y then
+       begin
+         if NLine > Sub.Range.PointEnd.Y then
+           NLine := Sub.Range.PointEnd.Y;
+         Sub.Range.EndPos := -1;       // open sub lexer
+         Sub.CondEndPos := -1;
+         FSubLexerBlocks[i] := Sub;
+       end;
+     end;
    end;
 
    // Remove tokens
-   FTagList.ClearFromPos(APos);
+   FTagList.ClearFromLine(NLine);
    ClearTokenIndexer;
 
    FLastAnalPos := 0;   // Reset current position
@@ -3986,28 +3992,17 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.TextChangedOnLine(ALine: integer);
-//this calls TextChangeOnPos, which sets EventParseStop.
-//so this must called as less as possible
-//(unneeded setting of EventParseStop breaks syntax coloring)
-var
-  NPos: integer;
 begin
-  if ALine<=0 then
-    NPos:= 0
-  else
-    NPos:= FBuffer.CaretToStr(Point(0, ALine));
-  TextChangedOnPos(NPos);
-end;
+  if ALine < 0 then
+    ALine := 0;
 
-procedure TecClientSyntAnalyzer.TextChangedOnPos(APos: integer);
-begin
-  if FPrevChangePos < 0 then
-    FPrevChangePos := APos
+  if FPrevChangeLine < 0 then
+    FPrevChangeLine := ALine
   else
-    FPrevChangePos := Min(FPrevChangePos, APos);
+    FPrevChangeLine := Min(FPrevChangeLine, ALine);
 
   if FBuffer.TextLength <= Owner.FullRefreshSize then
-    FPrevChangePos := 0;
+    FPrevChangeLine := 0;
 
   EventParseStop := True;
   EventParseNeeded.SetEvent;

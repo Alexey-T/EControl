@@ -65,18 +65,20 @@ type
     type PGRange = ^GRange;
   protected
     function CompProc(const AValue: TRange; AKey: integer): integer;
+    function CompLines(AItemIndex, ALine: integer): integer;
   public
     constructor Create(UnionSiblings: Boolean = True);
     destructor Destroy; override;
     function IsIndexValid(AIndex: integer): boolean;
     //property Sorted: boolean read FSorted write FSorted;
     function Add(const Range: GRange): integer; virtual;
-    function ClearFromPos(APos: integer): integer;
+    procedure ClearFromLine(ALine: integer);
     function InternalGet(AIndex: integer): PGRange; inline;
     // At position or next
     function NextAt(APos: integer): integer;
     // At position or prior
     function PriorAt(APos: integer): integer;
+    function PriorAtLine(ALine: integer): integer;
     // At position exactly, -1 if pos between tokens
     function FindAt(APos: integer): integer;
   end;
@@ -191,19 +193,24 @@ begin
      else Result := -1;
 end;
 
-
 function GRangeList<GRange>.CompProc(const AValue: TRange; AKey: integer): integer;
 begin
   if AValue.StartPos > AKey then
     Result := 1
   else
-   if (AValue.StartPos <= AKey) and (AValue.EndPos > AKey) then
+  if (AValue.StartPos <= AKey) and (AValue.EndPos > AKey) then
     Result := 0
   else
     Result := -1;
 end;
 
-function GRangeList<GRange>.PriorAt(APos: integer): integer; 
+function GRangeList<GRange>.CompLines(AItemIndex, ALine: integer): integer;
+begin
+  Result := TRange(InternalItems[AItemIndex]^).PointStart.Y - ALine;
+end;
+
+
+function GRangeList<GRange>.PriorAt(APos: integer): integer;
 var
   H, I, Diff, NCount: Integer;
 begin
@@ -234,6 +241,42 @@ begin
       Dec(Result);
 end;
 
+function GRangeList<GRange>.PriorAtLine(ALine: integer): integer;
+var
+  H, I, Diff, NCount: Integer;
+begin
+  NCount := Count;
+  if NCount = 0 then
+    Exit(-1);
+
+  Result := 0;
+  H := NCount - 1;
+  while Result <= H do
+  begin
+    I := (Result + H) shr 1;
+    Diff := CompLines(I, ALine);
+    if Diff < 0 then
+      Result := I + 1
+    else
+    begin
+      if Diff = 0 then
+      begin
+        // found some token with needed line, let's move up
+        while (I > 0) and (CompLines(I - 1, ALine) = 0) do
+          Dec(I);
+        Exit(I);
+      end;
+      H := I - 1;
+    end;
+  end;
+
+  if Result >= NCount then
+    Result := NCount - 1;
+  if Result >= 0 then
+    if CompLines(I, ALine) > 0 then
+      Dec(Result);
+end;
+
 function GRangeList<GRange>.FindAt(APos: integer): integer;
 var
   L, H, I, Diff, NCount: Integer;
@@ -260,22 +303,21 @@ begin
   end;
 end;
 
-function GRangeList<GRange>.ClearFromPos(APos: integer): integer;
-var idx, NStart: integer;
+procedure GRangeList<GRange>.ClearFromLine(ALine: integer);
+var idx: integer;
 begin
-  Result := APos;
-  if APos <= 0 then
+  if ALine <= 0 then
   begin
     Clear;
     Exit;
   end;
 
-  idx := NextAt(APos);
+  idx := PriorAtLine(ALine);
   if idx <> -1 then
   begin
-    NStart := TRange(InternalItems[idx]^).StartPos;
-    if NStart < APos then
-      Result := NStart;
+    //NStart := TRange(InternalItems[idx]^).StartPos;
+    //if NStart < APos then
+    //  Result := NStart;
     DeleteRange(idx, Count-1);
   end;
 end;
