@@ -1107,7 +1107,7 @@ begin
       Synchronize(ShowDebugMsg);
       tick := GetTickCount64;
       {$else}
-      Synchronize(DummyProc); //otherwise editor is not highlighted
+      //Synchronize(DummyProc); //otherwise editor is not highlighted
       {$endif}
 
       //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
