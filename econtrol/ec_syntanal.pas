@@ -2901,7 +2901,7 @@ procedure TecClientSyntAnalyzer.Stop;
 begin
   StopThreadLoop;
   FFinished := True;
-  FPrevChangeLine := -1;
+  //FPrevChangeLine := -1; //this causes CudaText issue #3410
 end;
 
 procedure TecClientSyntAnalyzer.Clear;
