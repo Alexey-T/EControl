@@ -68,7 +68,7 @@ type
     function CompLines(AItemIndex, ALine: integer): integer;
   public
     constructor Create(UnionSiblings: Boolean = True);
-    destructor Destroy; override;
+    //destructor Destroy; override;
     function IsIndexValid(AIndex: integer): boolean;
     //property Sorted: boolean read FSorted write FSorted;
     function Add(const Range: GRange): integer; virtual;
@@ -146,25 +146,22 @@ begin
   Capacity := 512; // Usually editor has many tokens
 end;
 
-destructor GRangeList<GRange>.Destroy;
+function GRangeList<GRange>.IsIndexValid(AIndex: integer): boolean; inline;
 begin
-  inherited;
-end;
-
-function GRangeList<GRange>.IsIndexValid(AIndex: integer): boolean;
-begin
-  Result := (AIndex>=0) and (AIndex<Count);
+  Result := (AIndex >= 0) and (AIndex < Count);
 end;
 
 function GRangeList<GRange>.Add(const Range: GRange): integer;
-{
-var
-  _Range: TRange absolute Range;
-  }
 begin
   Result := Count;
   inherited Add(Range);
-  (*
+end;
+
+(*
+function GRangeList<GRange>.Add2(const Range: GRange): integer;
+var
+  _Range: TRange absolute Range;
+begin
   if not FSorted or (Count=0) then
   begin
     Result := Count;
@@ -179,8 +176,8 @@ begin
     else
       inherited Insert(Result, Range);
   end;
-  *)
 end;
+*)
 
 function GRangeList<GRange>.NextAt(APos: integer): integer;
 begin
@@ -304,7 +301,7 @@ begin
   end;
 end;
 
-procedure GRangeList<GRange>.ClearFromIndex(AIndex: integer);
+procedure GRangeList<GRange>.ClearFromIndex(AIndex: integer); inline;
 begin
   if AIndex >= 0 then
     DeleteRange(AIndex, Count-1);
