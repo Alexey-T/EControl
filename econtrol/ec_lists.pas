@@ -72,6 +72,7 @@ type
     function IsIndexValid(AIndex: integer): boolean;
     //property Sorted: boolean read FSorted write FSorted;
     function Add(const Range: GRange): integer; virtual;
+    procedure ClearFromIndex(AIndex: integer);
     procedure ClearFromLine(ALine: integer);
     function InternalGet(AIndex: integer): PGRange; inline;
     // At position or next
@@ -303,23 +304,19 @@ begin
   end;
 end;
 
+procedure GRangeList<GRange>.ClearFromIndex(AIndex: integer);
+begin
+  if AIndex >= 0 then
+    DeleteRange(AIndex, Count-1);
+end;
+
+
 procedure GRangeList<GRange>.ClearFromLine(ALine: integer);
-var idx: integer;
 begin
   if ALine <= 0 then
-  begin
-    Clear;
-    Exit;
-  end;
-
-  idx := PriorAtLine(ALine);
-  if idx <> -1 then
-  begin
-    //NStart := TRange(InternalItems[idx]^).StartPos;
-    //if NStart < APos then
-    //  Result := NStart;
-    DeleteRange(idx, Count-1);
-  end;
+    Clear
+  else
+    ClearFromIndex(PriorAtLine(ALine));
 end;
 
 function GRangeList<GRange>.InternalGet(AIndex: integer): PGRange;
