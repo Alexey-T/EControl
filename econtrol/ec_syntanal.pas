@@ -3251,13 +3251,19 @@ begin
   repeat
     if FFinished then
       Exit;
+
     if Application.Terminated then
       Exit(eprAppTerminated);
+
     if FBuffer = nil then
       Exit(eprBufferInvalidated);
+
     CheckBuffer;
     if BufferInvalidated then
       Exit(eprBufferInvalidated);
+
+    if EventParseStop then
+      Exit(eprInterrupted);
 
     NTemp := GetLastPos;
     if NTemp > NPos then
