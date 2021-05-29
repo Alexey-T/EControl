@@ -311,11 +311,19 @@ end;
 
 
 procedure GRangeList<GRange>.ClearFromLine(ALine: integer);
+var
+  idx: integer;
 begin
   if ALine <= 0 then
     Clear
   else
-    ClearFromIndex(PriorAtLine(ALine));
+  begin
+    idx := PriorAtLine(ALine);
+    if idx <= 0 then
+      Clear
+    else
+      ClearFromIndex(idx);
+  end;
 end;
 
 function GRangeList<GRange>.InternalGet(AIndex: integer): PGRange;
