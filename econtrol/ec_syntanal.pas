@@ -3417,10 +3417,17 @@ var
 var
   //lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
   NDeltaRanges: integer;
-  NLine, i: integer;
+  NLine, NTokenIndex, i: integer;
 begin
   if FPrevChangeLine < 0 then Exit;
   NLine := FPrevChangeLine;
+
+  if NLine > 0 then
+  begin
+    NTokenIndex:= FTagList.PriorAtLine(NLine);
+    if NTokenIndex <= 0 then
+      NLine := 0;
+  end;
 
   if NLine = 0 then
   begin
@@ -3446,7 +3453,7 @@ begin
     NDeltaRanges := 0;
 
    ClearSublexerRangesFromLine(NLine);
-   FTagList.ClearFromLine(NLine);
+   FTagList.ClearFromIndex(NTokenIndex);
    ClearTokenIndexer;
 
    FLastAnalPos := 0;   // Reset current position
