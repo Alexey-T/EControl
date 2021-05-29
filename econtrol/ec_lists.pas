@@ -269,8 +269,9 @@ begin
   end;
 
   if Result >= NCount then
-    Result := NCount - 1;
-  if Result >= 0 then
+    Result := NCount - 1
+  else
+  if Result > 0 then
     if CompLines(I, ALine) > 0 then
       Dec(Result);
 end;
