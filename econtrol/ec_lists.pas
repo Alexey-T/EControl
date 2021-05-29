@@ -203,8 +203,21 @@ begin
 end;
 
 function GRangeList<GRange>.CompLines(AItemIndex, ALine: integer): integer;
+var
+  Ptr: pointer;
+  Y1, Y2: integer;
 begin
-  Result := TRange(InternalItems[AItemIndex]^).PointStart.Y - ALine;
+  Ptr := InternalItems[AItemIndex];
+  // support multi-line comments
+  Y1 := TRange(Ptr^).PointStart.Y;
+  Y2 := TRange(Ptr^).PointEnd.Y;
+  if Y1 = Y2 then
+    Result := Y1 - ALine
+  else
+  if (Y1 <= ALine) and (Y2 >= ALine) then
+    Result := 0
+  else
+    Result := Y1 - ALine
 end;
 
 
