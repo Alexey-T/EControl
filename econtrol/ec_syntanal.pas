@@ -494,10 +494,9 @@ type
     FoldRanges: TSortedList;
     SublexRanges: TecSubLexerRanges;
     TokenIndexer: array of integer;
-    LineTo: integer; //line index on editor bottom, parser checks that it reached this index
-                     //and updates editor when reached
+    LineTo: integer; //index of last parsed line (calculated from Tokens)
     Finished: boolean; //parsing is done until document end
-    FinishedPartially: boolean; //parsing is done until LineTo line index
+    FinishedPartially: boolean; //parsing is done until (at least) editor's bottom line
   end;
 
   { TecParserResults }
@@ -679,8 +678,8 @@ type
     procedure Finished; override;
     procedure CloseAtEnd(AStartTagIdx: integer); override;
   public
-    PublicDataNeedTo: integer;
-    PublicDataNeedTo2: integer;
+    PublicDataNeedTo: integer; //line index on editor bottom, parser checks that it reached this index
+    PublicDataNeedTo2: integer; //the same, but for the paired (splitted) editor
     PublicData: TecPublicData;
 
     FileName: string;
