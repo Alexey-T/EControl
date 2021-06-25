@@ -496,6 +496,7 @@ type
     TokenIndexer: array of integer;
     LineTo: integer;
     Finished: boolean;
+    FinishedPartially: boolean;
   end;
 
   { TecParserResults }
@@ -3101,6 +3102,7 @@ begin
     SetLength(PublicData.TokenIndexer, 0);
     PublicData.LineTo := 0;
     PublicData.Finished := False;
+    PublicData.FinishedPartially := False;
   finally
     CriSecForData.Leave;
   end;
@@ -3137,6 +3139,7 @@ procedure TecClientSyntAnalyzer.UpdatePublicDataOnTextChange;
 begin
   UpdatePublicDataCore;
   PublicData.Finished := False;
+  PublicData.FinishedPartially := False;
 end;
 
 procedure TecClientSyntAnalyzer.UpdatePublicData(AParseFinished: boolean);
@@ -3159,6 +3162,7 @@ begin
     bNeedUpdate := True;
     bNeedUpdate2 := True;
     PublicData.Finished := True;
+    PublicData.FinishedPartially := True;
   end
   else
   begin
@@ -3186,7 +3190,10 @@ begin
   end;
 
   if bNeedUpdate or bNeedUpdate2 then
+  begin
     UpdatePublicDataCore;
+    PublicData.FinishedPartially := True;
+  end;
 
   if Assigned(ParserThread) and not ParserThread.Terminated then
   begin
