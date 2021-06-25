@@ -494,9 +494,10 @@ type
     FoldRanges: TSortedList;
     SublexRanges: TecSubLexerRanges;
     TokenIndexer: array of integer;
-    LineTo: integer;
-    Finished: boolean;
-    FinishedPartially: boolean;
+    LineTo: integer; //line index on editor bottom, parser checks that it reached this index
+                     //and updates editor when reached
+    Finished: boolean; //parsing is done until document end
+    FinishedPartially: boolean; //parsing is done until LineTo line index
   end;
 
   { TecParserResults }
