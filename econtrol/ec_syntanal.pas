@@ -4030,6 +4030,9 @@ begin
 
   EventParseStop := True;
   EventParseNeeded.SetEvent;
+
+  //avoid too many repaints, CudaText issue #3461
+  PublicData.FinishedPartially:= false;
 end;
 
 function TecClientSyntAnalyzer.GetOpened(Index: integer): TecTextRange;
