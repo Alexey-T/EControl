@@ -3154,6 +3154,7 @@ begin
   if NCount=0 then
   begin
     ClearPublicData;
+    PublicData.FinishedPartially := True; //needed for the case: all-text-selected, and user types spaces over selection
     Exit;
   end;
 
