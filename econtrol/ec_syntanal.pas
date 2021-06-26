@@ -3154,6 +3154,7 @@ begin
   if NCount=0 then
   begin
     ClearPublicData;
+    PublicData.FinishedPartially := True; //reduce flicker when typing in line 0
     Exit;
   end;
 
