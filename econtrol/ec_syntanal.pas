@@ -3154,7 +3154,7 @@ begin
   if NCount=0 then
   begin
     ClearPublicData;
-    PublicData.FinishedPartially := True; //reduce flicker when typing in line 0
+    PublicData.FinishedPartially := True; //fix unpainted editor, when no tokens are placed
     Exit;
   end;
 
