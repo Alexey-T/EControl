@@ -157,6 +157,7 @@ begin
           if Assigned(anSub) then
             an.SubAnalyzers[j].SyntAnalyzer:= anSub
           else
+          if an.LexerName<>'HTML' then //ignore the HTML lexer which uses 'VBScript' 2 times
             AErrorLines+= Format('Lexer "%s" needs sub-lexer "%s" which was not installed'#10, [an.LexerName, LexName]);
         end;
       end;
