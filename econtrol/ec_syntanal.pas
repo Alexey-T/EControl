@@ -3158,18 +3158,16 @@ begin
     Exit;
   end;
 
+  bNeedUpdate := True;
+  bNeedUpdate2 := PublicDataNeedTo2>0;
+
   if AParseFinished then
   begin
-    bNeedUpdate := True;
-    bNeedUpdate2 := True;
     PublicData.Finished := True;
     PublicData.FinishedPartially := True;
   end
   else
   begin
-    bNeedUpdate := True;
-    bNeedUpdate2 := True;
-
     if PublicData.LineTo >= PublicDataNeedTo then
       bNeedUpdate := False;
 
@@ -3177,9 +3175,7 @@ begin
     begin
       if PublicData.LineTo >= PublicDataNeedTo2 then
         bNeedUpdate2 := False;
-    end
-    else
-      bNeedUpdate2 := False;
+    end;
 
     TagPtr := FTagList._GetItemPtr(NCount-1);
     NLastParsedLine := TagPtr^.Range.PointStart.Y;
