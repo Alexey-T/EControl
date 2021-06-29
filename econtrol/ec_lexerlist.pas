@@ -40,7 +40,7 @@ type
     function LexerCount: integer;
     property Lexers[AIndex: integer]: TecSyntAnalyzer read GetLexer;
     property Modified: boolean read FModified write FModified;
-    procedure InitLibrary(const AFolder: string);
+    procedure InitLibrary(const AFolder: string; out AErrorLines: string);
     function AddLexer: TecSyntAnalyzer;
     procedure DeleteLexer(An: TecSyntAnalyzer);
     function FindLexerByFilename(AFilename: string; AChooseFunc: TecLexerChooseFunc): TecSyntAnalyzer;
@@ -118,15 +118,16 @@ begin
   Result:= FList.Count;
 end;
 
-procedure TecLexerList.InitLibrary(const AFolder: string);
+procedure TecLexerList.InitLibrary(const AFolder: string; out AErrorLines: string);
 var
   LexName: string;
   L: TStringlist;
-  an: TecSyntAnalyzer;
+  an, anSub: TecSyntAnalyzer;
   i, j: integer;
 begin
   Clear;
   FFolder:= AFolder;
+  AErrorLines:= '';
 
   L:= TStringList.Create;
   try
@@ -151,7 +152,13 @@ begin
       begin
         LexName:= an.SubLexerName(j);
         if LexName<>'' then
-          an.SubAnalyzers[j].SyntAnalyzer:= FindLexerByName(LexName);
+        begin
+          anSub:= FindLexerByName(LexName);
+          if Assigned(anSub) then
+            an.SubAnalyzers[j].SyntAnalyzer:= anSub
+          else
+            AErrorLines+= Format('Lexer "%s" needs sub-lexer "%s" which was not installed'#10, [an.LexerName, LexName]);
+        end;
       end;
     end;
   finally
