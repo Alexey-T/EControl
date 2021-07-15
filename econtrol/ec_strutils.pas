@@ -164,11 +164,17 @@ begin
   Result := C;
   if (C >= 'a') and (C <= 'z') then
     Dec(Result, 32);
+  //for Russian chars:
+  if (Ord(C) >= $430) and (Ord(C) <= $44F) then
+    Dec(Result, 32);
 end;
 
 procedure CharToUpCase(var C: UCChar); inline;
 begin
   if (C >= 'a') and (C <= 'z') then
+    Dec(C, 32);
+  //for Russian chars:
+  if (Ord(C) >= $430) and (Ord(C) <= $44F) then
     Dec(C, 32);
 end;
 
