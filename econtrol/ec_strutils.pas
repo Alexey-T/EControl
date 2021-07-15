@@ -162,12 +162,7 @@ function ecUpCase(C: UCChar): UCChar; inline;
 // Alexey: to be fast, ignored Unicode here
 begin
   Result := C;
-  if (C >= 'a') and (C <= 'z') then
-    Dec(Result, 32)
-  else
-  //for Russian chars:
-  if (Ord(C) >= $430) and (Ord(C) <= $44F) then
-    Dec(Result, 32);
+  CharToUpCase(Result);
 end;
 
 procedure CharToUpCase(var C: UCChar); inline;
@@ -175,7 +170,7 @@ begin
   if (C >= 'a') and (C <= 'z') then
     Dec(C, 32)
   else
-  //for Russian chars:
+  //for Russian chars (needed for OneC_1C lexer, it's case insensitive)
   if (Ord(C) >= $430) and (Ord(C) <= $44F) then
     Dec(C, 32);
 end;
