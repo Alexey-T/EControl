@@ -3096,13 +3096,13 @@ procedure TecClientSyntAnalyzer.ClearPublicData;
 begin
   CriSecForData.Enter;
   try
+    PublicData.Finished := False;
+    PublicData.FinishedPartially := False;
     PublicData.Tokens.Clear;
     PublicData.FoldRanges.Clear;
     PublicData.SublexRanges.Clear;
     SetLength(PublicData.TokenIndexer, 0);
     PublicData.LineTo := 0;
-    PublicData.Finished := False;
-    PublicData.FinishedPartially := False;
   finally
     CriSecForData.Leave;
   end;
