@@ -3456,37 +3456,37 @@ begin
   else
     NDeltaRanges := 0;
 
-   ClearSublexerRangesFromLine(NLine);
-   FTagList.ClearFromIndex(NTokenIndex);
-   ClearTokenIndexer;
+  ClearSublexerRangesFromLine(NLine);
+  FTagList.ClearFromIndex(NTokenIndex);
+  ClearTokenIndexer;
 
-   FLastAnalPos := 0;   // Reset current position
-   NTagCount := FTagList.Count;
-   FStartSepRangeAnal := NTagCount;
+  FLastAnalPos := 0;   // Reset current position
+  NTagCount := FTagList.Count;
+  FStartSepRangeAnal := NTagCount;
 
-   // Remove text ranges from service containers
-   CleanRangeList(FOpenedBlocks, False);
+  // Remove text ranges from service containers
+  CleanRangeList(FOpenedBlocks, False);
 
-   //Alexey: prevent almost hang when user fastly pastes blocks in big file,
-   //which gives e.g. 400..800..3000 opened blocks
-   if FOpenedBlocks.Count>50 then
-     FOpenedBlocks.Clear;
+  //Alexey: prevent almost hang when user fastly pastes blocks in big file,
+  //which gives e.g. 400..800..3000 opened blocks
+  if FOpenedBlocks.Count>50 then
+    FOpenedBlocks.Clear;
 
-   // Remove text ranges from main storage
-   for i := FRanges.Count - 1 downto 0 do
-     with TecTextRange(FRanges[i]) do
-       if (FCondIndex >= NTagCount) or (StartIdx >= NTagCount) then
-         FRanges.Delete(i)
-       else
-       if (FEndCondIndex >= NTagCount - NDeltaRanges) or (EndIdx >= NTagCount - NDeltaRanges) then // Alexey: delta
-       begin
-         EndIdx := -1;
-         FEndCondIndex := -1;
-         FOpenedBlocks.Add(FRanges[i]);
-       end;
+  // Remove text ranges from main storage
+  for i := FRanges.Count - 1 downto 0 do
+    with TecTextRange(FRanges[i]) do
+      if (FCondIndex >= NTagCount) or (StartIdx >= NTagCount) then
+        FRanges.Delete(i)
+      else
+      if (FEndCondIndex >= NTagCount - NDeltaRanges) or (EndIdx >= NTagCount - NDeltaRanges) then // Alexey: delta
+      begin
+        EndIdx := -1;
+        FEndCondIndex := -1;
+        FOpenedBlocks.Add(FRanges[i]);
+      end;
 
-   // Restore parser state
-   RestoreState;
+  // Restore parser state
+  RestoreState;
 
   UpdatePublicDataOnTextChange;
 end;
