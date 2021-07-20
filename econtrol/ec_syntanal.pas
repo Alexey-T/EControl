@@ -1018,14 +1018,15 @@ uses
   SysUtils, Forms, Dialogs,
   Math;
 
+{
 const
-  SecDefaultTokenTypeNames = 'Unknown' + #13#10 +
-                             'Comment' + #13#10 +
-                             'Id'      + #13#10 +
-                             'Symbol'  + #13#10 +
-                             'String'  + #13#10 +
-                             'Number'  + #13#10 +
-                             'Preprocessor';
+  SecDefaultTokenTypeNames = 'Unknown' + #10 +
+                             'Comment' + #10 +
+                             'Id'      + #10 +
+                             'Symbol'  + #10 +
+                             'String'  + #10 +
+                             'Number';
+}
 
 function _IndentOfBuffer(S: PWideChar; Len: integer): Integer; inline; // Alexey
 var
@@ -4228,7 +4229,7 @@ begin
   FMasters := TFPList.Create;
   FSampleText := TStringList.Create;
   FTokenTypeNames := TStringList.Create;
-  FTokenTypeNames.Text := SecDefaultTokenTypeNames;
+  //FTokenTypeNames.Text := SecDefaultTokenTypeNames; //Alexey removed
   TStringList(FTokenTypeNames).OnChange := TokenNamesChanged;
 
   FFormats := TecStylesCollection.Create;
