@@ -2311,7 +2311,8 @@ begin
   while N>1 do
   begin
     Dec(N);
-    if N>Length(FBuffer.FText) then exit;
+    if N>Length(FBuffer.FText) then Exit;
+    if BufferVersion<>FBuffer.Version then Exit;
     ch:= FBuffer.FText[N];
     case ch of
       ' ':
@@ -2324,7 +2325,7 @@ begin
       else
         Exit(80);
         {
-        if token begins not after spaces, return some big value
+        if token begins not after spaces, return some big value;
         big value is needed for multiline tokens in Python:
         def f():
            s = '''ddd
