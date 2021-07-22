@@ -2311,6 +2311,7 @@ begin
   while N>1 do
   begin
     Dec(N);
+    if N>Length(FBuffer.FText) then exit;
     ch:= FBuffer.FText[N];
     case ch of
       ' ':
