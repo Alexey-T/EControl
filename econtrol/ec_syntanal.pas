@@ -2308,11 +2308,11 @@ var
 begin
   Result := 0;
   N := Token.Range.StartPos+1;
+  if N>Length(FBuffer.FText) then Exit;
+  if BufferVersion<>FBuffer.Version then Exit;
   while N>1 do
   begin
     Dec(N);
-    if N>Length(FBuffer.FText) then Exit;
-    if BufferVersion<>FBuffer.Version then Exit;
     ch:= FBuffer.FText[N];
     case ch of
       ' ':
