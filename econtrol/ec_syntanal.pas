@@ -1120,9 +1120,10 @@ begin
       until False;
 
     finally
-      // set IsFinished, even if we didn't actually finished parsing,
+      // set PublicData.Finished*, even if we didn't actually finished parsing,
       // to avoid ATSynEdit.Invalidate being blocked
-      An.IsFinished := True;
+      An.PublicData.Finished := True;
+      An.PublicData.FinishedPartially := True;
 
       if not Terminated and not Application.Terminated then
       begin
