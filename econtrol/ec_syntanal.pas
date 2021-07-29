@@ -2306,13 +2306,12 @@ var
   ch: WideChar;
 begin
   Result := 0;
-  if BufferInvalidated then Exit;
   N := Token.Range.StartPos+1;
-  if N>Length(FBuffer.FText) then Exit;
   while N>1 do
   begin
     Dec(N);
-    ch:= FBuffer.FText[N];
+    if N > Length(FBuffer.FText) then Exit(0);
+    ch := FBuffer.FText[N];
     case ch of
       ' ':
         Inc(Result);
