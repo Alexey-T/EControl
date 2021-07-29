@@ -564,7 +564,7 @@ type
 
     property Owner: TecSyntAnalyzer read FOwner;
     property Buffer: TATStringBuffer read FBuffer;
-    property IsFinished: Boolean read FFinished;
+    property IsFinished: Boolean read FFinished write FFinished;
     function TokenIndent(Token: PecSyntToken): integer; // Alexey
     function TagsSame(Index1, Index2: integer): boolean; // Alexey
     function TagSameAs(Index: integer; const Str: ecString): boolean; // Alexey
@@ -1118,18 +1118,22 @@ begin
         if Res in [eprNormal, eprAppTerminated] then Break;
         An.FPrevChangeLine := SavedChangeLine;
       until False;
+
     finally
-      if An.IsFinished then
-        if not Terminated then
-          if not Application.Terminated then
-          begin
-            {$ifdef ParseTime}
-            DebugMsg := 'parse-done';
-            DebugTicks := GetTickCount64-tick;
-            Synchronize(ShowDebugMsg);
-            {$endif}
-            Synchronize(ThreadParseDone);
-          end;
+      // set IsFinished, even if we didn't actually finished parsing,
+      // to avoid ATSynEdit.Invalidate being blocked
+      An.IsFinished := True;
+
+      if not Terminated and not Application.Terminated then
+      begin
+        {$ifdef ParseTime}
+        DebugMsg := 'parse-done';
+        DebugTicks := GetTickCount64-tick;
+        Synchronize(ShowDebugMsg);
+        {$endif}
+        Synchronize(ThreadParseDone);
+      end;
+
       An.EventParseIdle.SetEvent;
     end;
   until False;
