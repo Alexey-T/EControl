@@ -520,6 +520,7 @@ type
     function GetTags(Index: integer): PecSyntToken;
     function GetSubLexerRangeCount: integer;
     function GetSubLexerRange(Index: integer): TecSubLexerRange;
+    function BufferInvalidated: Boolean; inline;
 
     //moved to 'private' by Alexey, not needed in CudaText
     property TagCount: integer read GetTokenCount;
@@ -548,7 +549,6 @@ type
     procedure ShowCmtIndexer; //Alexey
   public
     BufferVersion: integer;
-    BufferInvalidated: boolean;
 
     //holds index of first token overlapping that i-th line ("overlapping" is for multi-line tokens)
     TokenIndexer: array of integer; //Alexey
@@ -561,7 +561,6 @@ type
     procedure Clear; virtual;
     function AnalyzerAtPos(APos: integer; ABlocks: TecSubLexerRanges): TecSyntAnalyzer;
     function ParserStateAtPos(ATokenIndex: integer): integer;
-    procedure CheckBuffer;
 
     property Owner: TecSyntAnalyzer read FOwner;
     property Buffer: TATStringBuffer read FBuffer;
@@ -2307,9 +2306,9 @@ var
   ch: WideChar;
 begin
   Result := 0;
+  if BufferInvalidated then Exit;
   N := Token.Range.StartPos+1;
   if N>Length(FBuffer.FText) then Exit;
-  if BufferVersion<>FBuffer.Version then Exit;
   while N>1 do
   begin
     Dec(N);
@@ -2840,10 +2839,9 @@ begin
    Result := 0;
 end;
 
-procedure TecParserResults.CheckBuffer;
+function TecParserResults.BufferInvalidated: Boolean; inline;
 begin
-  if BufferVersion <> Buffer.Version then
-    BufferInvalidated := True;
+  Result := BufferVersion <> Buffer.Version;
 end;
 
 { TecClientSyntAnalyzer }
@@ -3080,7 +3078,6 @@ begin
      end;
   end;
 
-  CheckBuffer;
   if BufferInvalidated then
   begin
     FOpenedBlocks.Clear;
@@ -3232,7 +3229,6 @@ begin
   Result := eprNormal;
   EventParseStop := False;
   BufferVersion := Buffer.Version;
-  BufferInvalidated := False;
   FFinished := False;
   ClearDataOnChange;
 
@@ -3265,7 +3261,6 @@ begin
     if FBuffer = nil then
       Exit(eprBufferInvalidated);
 
-    CheckBuffer;
     if BufferInvalidated then
       Exit(eprBufferInvalidated);
 
@@ -4113,7 +4108,6 @@ begin
 
   for iToken := ATokenIndexFrom to ATokenIndexTo do
   begin
-     CheckBuffer;
      if BufferInvalidated then
        Exit(True);
 
@@ -4158,7 +4152,6 @@ begin
 
   for i := FOpenedBlocks.Count - 1 downto 0 do
   begin
-    CheckBuffer;
     if BufferInvalidated then
     begin
       FOpenedBlocks.Clear;
@@ -4349,7 +4342,6 @@ begin
   N := Client.TagCount;
   for iRule := 0 to High(FBlockRules_Detecters) do
   begin
-    Client.CheckBuffer;
     if Client.BufferInvalidated then Exit;
 
     Rule := FBlockRules_Detecters[iRule];
@@ -4400,7 +4392,6 @@ begin
 
     for i := 0 to FBlockRules.Count - 1 do
     begin
-      Client.CheckBuffer;
       if Client.BufferInvalidated then Exit;
 
       Rule := FBlockRules[i];
