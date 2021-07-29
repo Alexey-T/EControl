@@ -4180,6 +4180,13 @@ begin
              NIndentSize := TokenIndent(Token1);
              for iLine := NLine+1 to High(TokenIndexer) do // not FBuffer.Count-1, it can be bigger
              begin
+               if BufferInvalidated then
+               begin
+                 FOpenedBlocks.Clear;
+                 FRanges.Clear;
+                 Exit
+               end;
+
                NTokenIndex := TokenIndexer[iLine];
                if (NTokenIndex >= 0) and (NTokenIndex < NTagCount) then
                begin
