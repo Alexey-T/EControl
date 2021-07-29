@@ -1096,6 +1096,11 @@ begin
     if Terminated then Exit;
     if Application.Terminated then Exit;
 
+    // set PublicData.Finished*, even if we didn't actually finished parsing,
+    // to avoid ATSynEdit.Invalidate being blocked
+    An.PublicData.Finished := True;
+    An.PublicData.FinishedPartially := True;
+
     //constant in WaitFor() affects how fast 'Close all tabs' will run
     if An.EventParseNeeded.WaitFor(100)<>wrSignaled then
       Continue;
@@ -1120,11 +1125,6 @@ begin
       until False;
 
     finally
-      // set PublicData.Finished*, even if we didn't actually finished parsing,
-      // to avoid ATSynEdit.Invalidate being blocked
-      An.PublicData.Finished := True;
-      An.PublicData.FinishedPartially := True;
-
       if not Terminated and not Application.Terminated then
       begin
         {$ifdef ParseTime}
@@ -3152,7 +3152,8 @@ var
   TagPtr: PecSyntToken;
   NCount, NLastParsedLine: integer;
 begin
-  if PublicData.Finished then Exit;
+  ////now we don't check .Finished coz it's already set to True before ParseInThread call
+  //if PublicData.Finished then Exit;
 
   NCount := FTagList.Count;
   if NCount=0 then
