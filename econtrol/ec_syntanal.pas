@@ -564,7 +564,7 @@ type
 
     property Owner: TecSyntAnalyzer read FOwner;
     property Buffer: TATStringBuffer read FBuffer;
-    property IsFinished: Boolean read FFinished write FFinished;
+    property IsFinished: Boolean read FFinished;
     function TokenIndent(Token: PecSyntToken): integer; // Alexey
     function TagsSame(Index1, Index2: integer): boolean; // Alexey
     function TagSameAs(Index: integer; const Str: ecString): boolean; // Alexey
