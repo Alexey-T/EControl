@@ -4093,7 +4093,7 @@ end;
 
 function TecClientSyntAnalyzer.CheckBracketsAreClosed(
   ATokenIndexFrom, ATokenIndexTo: integer): boolean; // Alexey
-// https://github.com/Alexey-T/CudaText/issues/2773
+// CudaText issue #2773
 var
   Token: PecSyntToken;
   iToken: integer;
@@ -4195,8 +4195,8 @@ begin
                    Continue;
                  if Owner.SpecialKinds[Token2.TokenType] then
                    if TokenIndent(Token2) <= NIndentSize then
-                     // also check that all brackets ()[]{} are closed at this pos
-                     // https://github.com/Alexey-T/CudaText/issues/2773
+                     // also check that all brackets ()[]{} are closed at this pos,
+                     // CudaText issue #2773
                      if CheckBracketsAreClosed(Range.StartIdx, NTokenIndex) then
                      begin
                        // close range at prev token
