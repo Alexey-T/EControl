@@ -4187,8 +4187,8 @@ begin
              begin
                if BufferInvalidated then
                begin
-                 FOpenedBlocks.Clear;
-                 FRanges.Clear;
+                 //FOpenedBlocks.Clear;
+                 //FRanges.Clear;
                  Exit
                end;
 
