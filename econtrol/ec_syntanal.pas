@@ -592,7 +592,7 @@ type
 
   //main thread, OnChange
   //---------------------
-  EventParseStop:=True
+  FlagStop:=True
   EventParseIdle.WaitFor(inf)
   Buffer_Setup
   Parser_Setup(Buffer)
@@ -609,6 +609,7 @@ type
   repeat
     EventParseNeeded.WaitFor(inf)
     EventParseIdle.ResetEvent
+    FlagStop:=False
     try
       //this 'repeat' block is ParseInThread()
       repeat
@@ -620,7 +621,7 @@ type
         else
           Show_some_progress
 
-        if EventParseStop then
+        if FlagStop then
           Break
       until false
 
