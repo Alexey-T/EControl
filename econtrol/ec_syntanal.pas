@@ -4162,7 +4162,7 @@ begin
 
   for i := FOpenedBlocks.Count - 1 downto 0 do
   begin
-    if BufferInvalidated then
+    if EventParseStop or BufferInvalidated then
     begin
       FOpenedBlocks.Clear;
       //FRanges.Clear;
@@ -4190,7 +4190,7 @@ begin
              NIndentSize := TokenIndent(Token1);
              for iLine := NLine+1 to High(TokenIndexer) do // not FBuffer.Count-1, it can be bigger
              begin
-               if BufferInvalidated then
+               if EventParseStop or BufferInvalidated then
                begin
                  FOpenedBlocks.Clear;
                  //FRanges.Clear;
