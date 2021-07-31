@@ -592,7 +592,7 @@ type
 
   //main thread, OnChange
   //---------------------
-  EventParseStop.SetEvent
+  EventParseStop:=True
   EventParseIdle.WaitFor(inf)
   Buffer_Setup
   Parser_Setup(Buffer)
@@ -620,10 +620,8 @@ type
         else
           Show_some_progress
 
-        Inc(cnt)
-        if cnt mod 1000=0 then
-          if EventParseStop.WaitFor(0)=Signaled then
-            Break
+        if EventParseStop then
+          Break
       until false
 
       FlushData(PublicData)
