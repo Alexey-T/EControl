@@ -663,7 +663,6 @@ type
     function GetOpenedCount: integer;
     procedure InitDummyRules(AOwner: TecSyntAnalyzer); //Alexey
     procedure ClearPublicData;
-    procedure StopThreadLoop;
     procedure UpdatePublicDataCore;
     procedure UpdatePublicData(AParseFinished: boolean);
     procedure UpdatePublicDataOnTextChange;
@@ -2895,16 +2894,13 @@ begin
   inherited;
 end;
 
-procedure TecClientSyntAnalyzer.StopThreadLoop;
-begin
-  if IsFinished then Exit;
-  FBuffer.IncreaseVersion;
-  Sleep(15);
-end;
-
 procedure TecClientSyntAnalyzer.Stop;
 begin
-  StopThreadLoop;
+  if not IsFinished then
+  begin
+    FBuffer.IncreaseVersion;
+    Sleep(15);
+  end;
   FFinished := True;
   //FPrevChangeLine := -1; //this causes CudaText issue #3410
 end;
@@ -2912,6 +2908,8 @@ end;
 procedure TecClientSyntAnalyzer.Clear;
 begin
   inherited;
+  Stop;
+
   FRepeateAnalysis := False;
   FTagList.Clear;
   FRanges.Clear;
@@ -2919,7 +2917,6 @@ begin
   SetLength(TokenIndexer, 0);
   SetLength(CmtIndexer, 0);
 
-  StopThreadLoop;
   FFinished := False;
   FLastAnalPos := 0;
   FStartSepRangeAnal := 0;
