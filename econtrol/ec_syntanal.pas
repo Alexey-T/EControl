@@ -4165,7 +4165,7 @@ begin
     if BufferInvalidated then
     begin
       FOpenedBlocks.Clear;
-      FRanges.Clear;
+      //FRanges.Clear;
       Exit(False);
     end;
 
@@ -4192,7 +4192,7 @@ begin
              begin
                if BufferInvalidated then
                begin
-                 //FOpenedBlocks.Clear;
+                 FOpenedBlocks.Clear;
                  //FRanges.Clear;
                  Exit(False);
                end;
@@ -4218,7 +4218,7 @@ begin
                          if Style=nil then Break;
                          if Style.TokenKind<>etkComment then Break;
                          Dec(NTokenIndex);
-                       until false;
+                       until False;
                        Range.EndIdx := NTokenIndex;
                        Break
                      end;
