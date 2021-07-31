@@ -2899,6 +2899,7 @@ procedure TecClientSyntAnalyzer.StopThreadLoop;
 begin
   if IsFinished then Exit;
   FBuffer.IncreaseVersion;
+  Sleep(15);
 end;
 
 procedure TecClientSyntAnalyzer.Stop;
