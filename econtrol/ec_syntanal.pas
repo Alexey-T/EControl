@@ -59,7 +59,6 @@ type
 
   TecParseInThreadResult = (
     eprNormal,
-    eprInterrupted,
     eprAppTerminated,
     eprBufferInvalidated
     );
@@ -684,7 +683,6 @@ type
     ParserThread: TecParserThread;
     EventParseNeeded: TEvent;
     EventParseIdle: TEvent;
-    EventParseStop: boolean;
     CriSecForData: TCriticalSection;
 
     constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
@@ -2879,7 +2877,7 @@ end;
 
 destructor TecClientSyntAnalyzer.Destroy;
 begin
-  EventParseStop := True;
+  Inc(FBuffer.Version);
   ParserThread.Terminate;
   ParserThread.WaitFor;
   FreeAndNil(ParserThread);
@@ -2900,7 +2898,7 @@ end;
 procedure TecClientSyntAnalyzer.StopThreadLoop;
 begin
   if IsFinished then Exit;
-  EventParseStop := True;
+  Inc(FBuffer.Version);
 end;
 
 procedure TecClientSyntAnalyzer.Stop;
@@ -3234,7 +3232,6 @@ const
   ProcessMsgStep2 = 1000; //stage2: finding ranges
 begin
   Result := eprNormal;
-  EventParseStop := False;
   BufferVersion := Buffer.Version;
   FFinished := False;
   ClearDataOnChange;
@@ -3271,9 +3268,6 @@ begin
     if BufferInvalidated then
       Exit(eprBufferInvalidated);
 
-    if EventParseStop then
-      Exit(eprInterrupted);
-
     NTemp := GetLastPos;
     if NTemp > NPos then
       NPos := NTemp;
@@ -3300,9 +3294,6 @@ begin
 
           if BufferInvalidated then
             Exit(eprBufferInvalidated);
-
-          if EventParseStop then
-            Exit(eprInterrupted);
 
           {$ifdef ParseProgress}
           if iToken mod ProcessMsgStep2 = 0 then
@@ -4031,7 +4022,6 @@ begin
   if FBuffer.TextLength <= Owner.FullRefreshSize then
     FPrevChangeLine := 0;
 
-  EventParseStop := True;
   EventParseNeeded.SetEvent;
 
   //avoid too many repaints, CudaText issue #3461
@@ -4161,7 +4151,7 @@ begin
 
   for i := FOpenedBlocks.Count - 1 downto 0 do
   begin
-    if EventParseStop or BufferInvalidated then
+    if BufferInvalidated then
     begin
       FOpenedBlocks.Clear;
       //FRanges.Clear;
@@ -4189,7 +4179,7 @@ begin
              NIndentSize := TokenIndent(Token1);
              for iLine := NLine+1 to High(TokenIndexer) do // not FBuffer.Count-1, it can be bigger
              begin
-               if EventParseStop or BufferInvalidated then
+               if BufferInvalidated then
                begin
                  FOpenedBlocks.Clear;
                  //FRanges.Clear;
