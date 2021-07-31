@@ -2877,7 +2877,7 @@ end;
 
 destructor TecClientSyntAnalyzer.Destroy;
 begin
-  Inc(FBuffer.Version);
+  FBuffer.IncreaseVersion;
   ParserThread.Terminate;
   ParserThread.WaitFor;
   FreeAndNil(ParserThread);
@@ -2898,7 +2898,7 @@ end;
 procedure TecClientSyntAnalyzer.StopThreadLoop;
 begin
   if IsFinished then Exit;
-  Inc(FBuffer.Version);
+  FBuffer.IncreaseVersion;
 end;
 
 procedure TecClientSyntAnalyzer.Stop;
