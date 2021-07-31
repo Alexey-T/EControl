@@ -534,9 +534,9 @@ type
     function GetTokenStr(Index: integer): ecString; override;
     function GetTokenStrEx(Index: integer; ATags: TecTokenList): ecString;
     function GetTokenType(Index: integer): integer; override;
-    procedure CloseAtEnd(StartTagIdx: integer); virtual; abstract;
+    function CloseAtEnd(StartTagIdx: integer): Boolean; virtual; abstract;
   protected
-    procedure Finished; virtual;
+    function Finished: Boolean; virtual;
     function IsEnabled(Rule: TRuleCollectionItem; OnlyGlobal: Boolean): Boolean; virtual;
     procedure ApplyStates(Rule: TRuleCollectionItem);
     procedure SaveState;
@@ -674,8 +674,8 @@ type
     procedure AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
     function HasOpened(Rule: TRuleCollectionItem; Parent: TecTagBlockCondition; Strict: Boolean): Boolean;
     function IsEnabled(Rule: TRuleCollectionItem; OnlyGlobal: Boolean): Boolean; override;
-    procedure Finished; override;
-    procedure CloseAtEnd(AStartTagIdx: integer); override;
+    function Finished: Boolean; override;
+    function CloseAtEnd(AStartTagIdx: integer): Boolean; override;
   public
     PublicDataNeedTo: integer; //line index on editor bottom, parser checks that it reached this index
     PublicDataNeedTo2: integer; //the same, but for the paired (splitted) editor
@@ -2259,8 +2259,9 @@ begin
   FPrevChangeLine := -1;
 end;
 
-procedure TecParserResults.Finished;
+function TecParserResults.Finished: Boolean;
 begin
+  Result := True;
   FFinished := True;
   FPrevChangeLine := -1;
 
@@ -3057,13 +3058,14 @@ begin
     end;
 end;
 
-procedure TecClientSyntAnalyzer.Finished;
+function TecClientSyntAnalyzer.Finished: Boolean;
 var i: integer;
   Sub: TecSubLexerRange;
 begin
   //ShowTokenIndexer; //debugging only!
   //ShowCmtIndexer;
 
+  Result := True;
   if FFinished then Exit;
   inherited Finished;
 
@@ -3085,11 +3087,12 @@ begin
   if BufferInvalidated then
   begin
     FOpenedBlocks.Clear;
-    Exit;
+    Exit(False);
   end;
 
   // Close blocks at the end of text
-  CloseAtEnd(0);
+  if not CloseAtEnd(0) then
+    Exit(False);
 
   FOpenedBlocks.Clear; //Alexey
 
@@ -3317,7 +3320,8 @@ begin
         end;
       end;
 
-      Finished;
+      if not Finished then
+        Exit(eprBufferInvalidated);
       UpdatePublicData(True); //after Finished, coz Finished must close Python ranges
     end
     else
@@ -4144,7 +4148,7 @@ begin
   Result := (LevelRound <= 0) and (LevelSquare <= 0) and (LevelCurly <= 0);
 end;
 
-procedure TecClientSyntAnalyzer.CloseAtEnd(AStartTagIdx: integer);
+function TecClientSyntAnalyzer.CloseAtEnd(AStartTagIdx: integer): Boolean;
 var
   NTagCount: integer;
   NIndentSize, NLine, NTokenIndex: integer;
@@ -4153,6 +4157,7 @@ var
   Style: TecSyntaxFormat;
   i, iLine: integer;
 begin
+  Result := True;
   NTagCount := TagCount;
 
   for i := FOpenedBlocks.Count - 1 downto 0 do
@@ -4161,7 +4166,7 @@ begin
     begin
       FOpenedBlocks.Clear;
       FRanges.Clear;
-      Exit
+      Exit(False);
     end;
 
     Range := TecTextRange(FOpenedBlocks[i]);
@@ -4189,7 +4194,7 @@ begin
                begin
                  //FOpenedBlocks.Clear;
                  //FRanges.Clear;
-                 Exit
+                 Exit(False);
                end;
 
                NTokenIndex := TokenIndexer[iLine];
