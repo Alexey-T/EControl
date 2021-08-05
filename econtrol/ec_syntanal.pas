@@ -1111,58 +1111,58 @@ var
   tick: QWord;
 {$endif}
 begin
- try
-  repeat
-    if Terminated then Exit;
-    if Application.Terminated then Exit;
+  try
+    repeat
+      if Terminated then Exit;
+      if Application.Terminated then Exit;
 
-    // set PublicData.Finished*, even if we didn't actually finished parsing,
-    // to avoid ATSynEdit.Invalidate being blocked
-    An.PublicData.Finished := True;
-    An.PublicData.FinishedPartially := True;
+      // set PublicData.Finished*, even if we didn't actually finished parsing,
+      // to avoid ATSynEdit.Invalidate being blocked
+      An.PublicData.Finished := True;
+      An.PublicData.FinishedPartially := True;
 
-    //constant in WaitFor() affects how fast 'Close all tabs' will run
-    if An.EventParseNeeded.WaitFor(100)<>wrSignaled then
-      Continue;
+      //constant in WaitFor() affects how fast 'Close all tabs' will run
+      if An.EventParseNeeded.WaitFor(100)<>wrSignaled then
+        Continue;
 
-    An.EventParseIdle.ResetEvent;
-    try
-      {$ifdef ParseTime}
-      DebugMsg := 'parse-begin';
-      DebugTicks := 0;
-      Synchronize(ShowDebugMsg);
-      tick := GetTickCount64;
-      {$else}
-      //Synchronize(DummyProc); //otherwise editor is not highlighted
-      {$endif}
-
-      //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
-      SavedChangeLine := An.FPrevChangeLine;
-      repeat
-        Res := An.ParseInThread;
-        if Res in [eprNormal, eprAppTerminated] then Break;
-        An.FPrevChangeLine := SavedChangeLine;
-      until False;
-
-    finally
-      if not Terminated and not Application.Terminated then
-      begin
+      An.EventParseIdle.ResetEvent;
+      try
         {$ifdef ParseTime}
-        DebugMsg := 'parse-done';
-        DebugTicks := GetTickCount64-tick;
+        DebugMsg := 'parse-begin';
+        DebugTicks := 0;
         Synchronize(ShowDebugMsg);
+        tick := GetTickCount64;
+        {$else}
+        //Synchronize(DummyProc); //otherwise editor is not highlighted
         {$endif}
-        Synchronize(ThreadParseDone);
+
+        //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
+        SavedChangeLine := An.FPrevChangeLine;
+        repeat
+          Res := An.ParseInThread;
+          if Res in [eprNormal, eprAppTerminated] then Break;
+          An.FPrevChangeLine := SavedChangeLine;
+        until False;
+
+      finally
+        if not Terminated and not Application.Terminated then
+        begin
+          {$ifdef ParseTime}
+          DebugMsg := 'parse-done';
+          DebugTicks := GetTickCount64-tick;
+          Synchronize(ShowDebugMsg);
+          {$endif}
+          Synchronize(ThreadParseDone);
+        end;
+
+        An.EventParseIdle.SetEvent;
       end;
+    until False;
 
-      An.EventParseIdle.SetEvent;
-    end;
-  until False;
-
- except
-  on E: Exception do
-    _LogError(E);
- end;
+  except
+    on E: Exception do
+      _LogError(E);
+  end;
 end;
 
 procedure TecParserThread.ShowDebugMsg;
