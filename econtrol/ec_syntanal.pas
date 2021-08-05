@@ -1083,11 +1083,13 @@ procedure TecParserThread.Execute;
 var
   Res: TecParseInThreadResult;
   SavedChangeLine: integer;
+  fError: System.Text;
 {$ifdef ParseTime}
 var
   tick: QWord;
 {$endif}
 begin
+ try
   repeat
     if Terminated then Exit;
     if Application.Terminated then Exit;
@@ -1134,6 +1136,22 @@ begin
       An.EventParseIdle.SetEvent;
     end;
   until False;
+
+ except
+  on E: Exception do
+  begin
+    Assign(fError, Application.ExeName+'.error');
+    {$I-}
+    Append(fError);
+    if IOResult<>0 then
+      Rewrite(fError);
+    Writeln(fError, '----------------------------');
+    Writeln(fError, 'Date: '+DateToStr(Now));
+    Writeln(fError, 'Exception: '+E.ClassName+', message: '+E.Message);
+    DumpExceptionBacktrace(fError);
+    Close(fError);
+  end;
+ end;
 end;
 
 procedure TecParserThread.ShowDebugMsg;
