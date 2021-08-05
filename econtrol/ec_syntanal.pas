@@ -1084,6 +1084,7 @@ var
   Res: TecParseInThreadResult;
   SavedChangeLine: integer;
   fError: System.Text;
+  SFilename: string;
 {$ifdef ParseTime}
 var
   tick: QWord;
@@ -1140,13 +1141,19 @@ begin
  except
   on E: Exception do
   begin
-    Assign(fError, Application.ExeName+'.error');
+    {$ifdef windows}
+    SFilename:= ExtractFileDir(Application.ExeName)+'\cudatext.error';
+    {$else}
+    SFilename:= GetEnvironmentVariable('HOME')+'/cudatext.error';
+    {$endif}
+
+    Assign(fError, SFilename);
     {$I-}
     Append(fError);
     if IOResult<>0 then
       Rewrite(fError);
-    Writeln(fError, '----------------------------');
-    Writeln(fError, 'Date: '+DateToStr(Now));
+    Writeln(fError, '---');
+    Writeln(fError, 'Date: '+DateTimeToStr(Now));
     Writeln(fError, 'Exception: '+E.ClassName+', message: '+E.Message);
     DumpExceptionBacktrace(fError);
     Close(fError);
