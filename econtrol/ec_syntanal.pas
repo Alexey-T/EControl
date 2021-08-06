@@ -1079,27 +1079,27 @@ begin
   An.DoProgressBoth;
 end;
 
-procedure _LogError(E: Exception);
+procedure _LogException(E: Exception);
 var
-  fError: System.Text;
-  SFilename: string;
+  f: System.Text;
+  fn: string;
 begin
   {$ifdef windows}
-  SFilename:= ExtractFileDir(Application.ExeName)+'\cudatext.error';
+  fn:= ExtractFileDir(Application.ExeName)+'\cudatext.error';
   {$else}
-  SFilename:= GetEnvironmentVariable('HOME')+'/cudatext.error';
+  fn:= GetEnvironmentVariable('HOME')+'/cudatext.error';
   {$endif}
 
-  AssignFile(fError, SFilename);
+  AssignFile(f, fn);
   {$I-}
-  Append(fError);
+  Append(f);
   if IOResult<>0 then
-    Rewrite(fError);
-  Writeln(fError, '---');
-  Writeln(fError, 'Date: '+DateTimeToStr(Now));
-  Writeln(fError, 'Exception: '+E.ClassName+', message: '+E.Message);
-  DumpExceptionBacktrace(fError);
-  Close(fError);
+    Rewrite(f);
+  Writeln(f, '---');
+  Writeln(f, 'Date: '+DateTimeToStr(Now));
+  Writeln(f, 'Exception: '+E.ClassName+', message: '+E.Message);
+  DumpExceptionBacktrace(f);
+  Close(f);
 end;
 
 procedure TecParserThread.Execute;
@@ -1161,7 +1161,7 @@ begin
 
   except
     on E: Exception do
-      _LogError(E);
+      _LogException(E);
   end;
 end;
 
