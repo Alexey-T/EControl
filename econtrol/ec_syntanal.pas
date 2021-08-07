@@ -3780,6 +3780,7 @@ end;
 begin
   idx := 0;
   Result := FmtStr;
+  if Range=nil then Exit;
   //try //Alexey: why try/except here?
 
    // HAW: obsolete -> to_idx := Length(Result);
@@ -3813,7 +3814,7 @@ begin
                                       //      negative for "..e.." clauses
      rngmax := 1000000000;            // HAW: allow a great amount of tokens
 
-     while UpCase(char(Result[j])) = 'P' do
+     while Assigned(rng) and (UpCase(char(Result[j])) = 'P') do
       begin
        rng := rng.Parent;
        if (rng = nil) or (j = Length(Result)) then Continue;
