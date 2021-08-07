@@ -3581,9 +3581,6 @@ type
 
 function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
   Range: TecTextRange): ecString;
-var i, j, idx, N, to_idx: integer;
-    rng: TecTextRange;
-    LineMode: TecParserLineMode;
 
 { HAW: hans@werschner.de [Oct'07] ......... additions to formatting token parts ......
 
@@ -3751,16 +3748,14 @@ var i, j, idx, N, to_idx: integer;
 
     Hans L. Werschner, Oct '07
 }
-var
-    //rngstyle: ecString;                    // HAW: add style identifier to range expression
-    rngtoken, rngResult: ecString;         //      a few more vars
-    swp_idx, rngdir, rngoffset, rngmax: integer;
-    to_rng: TecTextRange;
 
-function RangeNumber( const FmtStrNumber: ecString; var NumValue: integer ): boolean;
 var
-  ch: ecChar;
-begin
+  j, N: integer;
+
+  function RangeNumber( const FmtStrNumber: ecString; var NumValue: integer ): boolean;
+  var
+    ch: ecChar;
+  begin
     N := 0;
     Result := false;
     while (j + N) <= length( FmtStrNumber ) do
@@ -3775,8 +3770,15 @@ begin
       inc( j, N );
       Result := true;
     end;
-end;
+  end;
 
+var
+  i, idx, to_idx: integer;
+  rng: TecTextRange;
+  LineMode: TecParserLineMode;
+  rngtoken, rngResult: ecString;
+  swp_idx, rngdir, rngoffset, rngmax: integer;
+  to_rng: TecTextRange;
 begin
   idx := 0;
   Result := FmtStr;
