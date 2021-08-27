@@ -640,8 +640,6 @@ type
   private
     FRanges: TSortedList;
     FOpenedBlocks: TSortedList; // Opened ranges (without end)
-    FDummyRule: TecTagBlockCondition; //Alexey
-    FDummyRule2: TecTagBlockCondition; //Alexey
 
     FStartSepRangeAnal: integer;
     FRepeateAnalysis: Boolean;
@@ -661,7 +659,6 @@ type
     function GetRanges(Index: integer): TecTextRange;
     function GetOpened(Index: integer): TecTextRange;
     function GetOpenedCount: integer;
-    procedure InitDummyRules(AOwner: TecSyntAnalyzer); //Alexey
     procedure ClearPublicData;
     procedure UpdatePublicDataCore;
     procedure UpdatePublicData(AParseFinished: boolean);
@@ -826,6 +823,7 @@ type
     FIdleAppendDelay: Cardinal;
     FOnParseToken: TParseTokenEvent;
 
+    procedure InitCommentRules;
     procedure SetSampleText(const Value: TStrings);
     procedure FormatsChanged(Sender: TCollection; Item: TSyntCollectionItem);
     procedure TokenRuleChanged(Sender: TCollection; Item: TSyntCollectionItem);
@@ -881,6 +879,9 @@ type
     procedure Change; dynamic;
     property SeparateBlockAnalysis: Boolean read GetSeparateBlocks;
   public
+    CommentRule1: TecTagBlockCondition; //Alexey
+    CommentRule2: TecTagBlockCondition; //Alexey
+
     SpecialKinds: array of boolean; //Alexey: holds True for each TokenKind for indent-based folding
     IndentBasedFolding: boolean; //Alexey
 
@@ -2889,23 +2890,19 @@ end;
 
 { TecClientSyntAnalyzer }
 
-constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer;
-  ABuffer: TATStringBuffer);
+constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
 begin
   inherited Create(AOwner, ABuffer, nil);
 
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
 
+  if AutoFoldComments > 1 then
+    inherited OnAddRangeSimple := AddRangeSimple;
+
   PublicData.Tokens := TecTokenList.Create;
   PublicData.FoldRanges := TSortedList.Create(True);
   PublicData.SublexRanges := TecSubLexerRanges.Create;
-
-  if AutoFoldComments>1 then
-  begin
-    InitDummyRules(AOwner);
-    inherited OnAddRangeSimple := AddRangeSimple;
-  end;
 
   EventParseNeeded := TEvent.Create(nil, False, False, '');
   EventParseIdle := TEvent.Create(nil, True{ManualReset}, True{Signaled}, '');
@@ -2976,27 +2973,24 @@ begin
     FOpenedBlocks.Add(Range);
 end;
 
-procedure TecClientSyntAnalyzer.InitDummyRules(AOwner: TecSyntAnalyzer);
+procedure TecSyntAnalyzer.InitCommentRules;
 begin
-  if FDummyRule=nil then
-  begin
-    //fixes AV in BlockRules.OnChange, on loading Python file, with thread-parser
-    AOwner.BlockRules.OnChange := nil;
+  //fixes AV in BlockRules.OnChange, on loading Python file, with thread-parser
+  BlockRules.OnChange := nil;
 
-    FDummyRule := AOwner.BlockRules.Add;
-    FDummyRule.Enabled := false;
-    FDummyRule.BlockType := btRangeStart;
-    FDummyRule.DisplayInTree := false;
-    FDummyRule.NoEndRule := false;
-    FDummyRule.CollapseFmt:= '// ...';
+  CommentRule1 := BlockRules.Add;
+  CommentRule1.Enabled := false;
+  CommentRule1.BlockType := btRangeStart;
+  CommentRule1.DisplayInTree := false;
+  CommentRule1.NoEndRule := false;
+  CommentRule1.CollapseFmt:= '// ...';
 
-    FDummyRule2 := AOwner.BlockRules.Add;
-    FDummyRule2.Enabled := false;
-    FDummyRule2.BlockType := btRangeEnd;
-    FDummyRule2.DisplayInTree := false;
+  CommentRule2 := BlockRules.Add;
+  CommentRule2.Enabled := false;
+  CommentRule2.BlockType := btRangeEnd;
+  CommentRule2.DisplayInTree := false;
 
-    FDummyRule.BlockEndCond:= FDummyRule2;
-  end;
+  CommentRule1.BlockEndCond:= CommentRule2;
 end;
 
 procedure TecClientSyntAnalyzer.AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
@@ -3023,7 +3017,7 @@ begin
 
   Range := TecTextRange.Create(AStartIdx, NStartPos);
   Range.EndIdx := AEndIdx;
-  Range.Rule := FDummyRule;
+  Range.Rule := Owner.CommentRule1;
   AddRange(Range);
 end;
 
@@ -4311,6 +4305,9 @@ begin
 
   FIdleAppendDelayInit := 50;
   FIdleAppendDelay := 200;
+
+  if AutoFoldComments > 1 then
+    InitCommentRules;
 end;
 
 destructor TecSyntAnalyzer.Destroy;
