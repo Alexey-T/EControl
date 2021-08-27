@@ -2973,26 +2973,6 @@ begin
     FOpenedBlocks.Add(Range);
 end;
 
-procedure TecSyntAnalyzer.InitCommentRules;
-begin
-  //fixes AV in BlockRules.OnChange, on loading Python file, with thread-parser
-  BlockRules.OnChange := nil;
-
-  CommentRule1 := BlockRules.Add;
-  CommentRule1.Enabled := false;
-  CommentRule1.BlockType := btRangeStart;
-  CommentRule1.DisplayInTree := false;
-  CommentRule1.NoEndRule := false;
-  CommentRule1.CollapseFmt:= '// ...';
-
-  CommentRule2 := BlockRules.Add;
-  CommentRule2.Enabled := false;
-  CommentRule2.BlockType := btRangeEnd;
-  CommentRule2.DisplayInTree := false;
-
-  CommentRule1.BlockEndCond:= CommentRule2;
-end;
-
 procedure TecClientSyntAnalyzer.AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
 var
   Range: TecTextRange;
@@ -4101,6 +4081,26 @@ begin
     RR.Assign(R);
     L.Add(RR);
   end;
+end;
+
+procedure TecSyntAnalyzer.InitCommentRules;
+begin
+  //fixes AV in BlockRules.OnChange, on loading Python file, with thread-parser
+  BlockRules.OnChange := nil;
+
+  CommentRule1 := BlockRules.Add;
+  CommentRule1.Enabled := false;
+  CommentRule1.BlockType := btRangeStart;
+  CommentRule1.DisplayInTree := false;
+  CommentRule1.NoEndRule := false;
+  CommentRule1.CollapseFmt:= '// ...';
+
+  CommentRule2 := BlockRules.Add;
+  CommentRule2.Enabled := false;
+  CommentRule2.BlockType := btRangeEnd;
+  CommentRule2.DisplayInTree := false;
+
+  CommentRule1.BlockEndCond:= CommentRule2;
 end;
 
 procedure TecSyntAnalyzer.UpdateSpecialKinds; //Alexey
