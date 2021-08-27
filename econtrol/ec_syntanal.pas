@@ -4306,9 +4306,6 @@ begin
 
   FIdleAppendDelayInit := 50;
   FIdleAppendDelay := 200;
-
-  if AutoFoldComments > 1 then
-    InitCommentRules;
 end;
 
 destructor TecSyntAnalyzer.Destroy;
@@ -4718,6 +4715,10 @@ begin
 
   //Alexey
   UpdateSpecialKinds;
+
+  //Alexey
+  if AutoFoldComments > 1 then
+    InitCommentRules;
 end;
 
 procedure TecSyntAnalyzer.SetBlockRules(const Value: TecBlockRuleCollection);
