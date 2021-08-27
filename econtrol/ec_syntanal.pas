@@ -837,17 +837,24 @@ type
     procedure SetSkipSpaces(const Value: Boolean);
     procedure SetSubAnalyzers(const Value: TecSubAnalyzerRules);
     procedure SetTokenTypeNames(const Value: TStrings);
-
     function GetStyleName(const AName: string; const AStyle: TecSyntaxFormat): string;
-    //procedure SetMarkedBlock(const Value: TecSyntaxFormat);
-    //function GetMarkedBlockName: string;
-    //procedure SetMarkedBlockName(const Value: string);
-    //procedure SetSearchMatch(const Value: TecSyntaxFormat);
-    //function GetSearchMatchStyle: string;
-    //procedure SetSearchMatchStyle(const Value: string);
-    //procedure SetCurrentLine(const Value: TecSyntaxFormat);
-    //function GetCurrentLineStyle: string;
-    //procedure SetCurrentLineStyle(const Value: string);
+    {
+    procedure SetMarkedBlock(const Value: TecSyntaxFormat);
+    function GetMarkedBlockName: string;
+    procedure SetMarkedBlockName(const Value: string);
+    procedure SetSearchMatch(const Value: TecSyntaxFormat);
+    function GetSearchMatchStyle: string;
+    procedure SetSearchMatchStyle(const Value: string);
+    procedure SetCurrentLine(const Value: TecSyntaxFormat);
+    function GetCurrentLineStyle: string;
+    procedure SetCurrentLineStyle(const Value: string);
+    procedure SetDefStyle(const Value: TecSyntaxFormat);
+    function GetDefaultStyleName: string;
+    procedure SetDefaultStyleName(const Value: string);
+    function GetCollapseStyleName: string;
+    procedure SetCollapseStyleName(const Value: string);
+    procedure SetCollapseStyle(const Value: TecSyntaxFormat);
+    }
     procedure SetNotes(const Value: TStrings);
     procedure SetInternal(const Value: boolean);
     procedure SetRestartFromLineStart(const Value: Boolean);
@@ -856,15 +863,9 @@ type
     procedure CompileGramma;
     procedure SetGrammar(const Value: TGrammaAnalyzer);
     procedure GrammaChanged(Sender: TObject);
-    //procedure SetDefStyle(const Value: TecSyntaxFormat);
-    //function GetDefaultStyleName: string;
-    //procedure SetDefaultStyleName(const Value: string);
     procedure SetLineComment(const Value: ecString);
     procedure DetectBlockSeparate;
     procedure SetAlwaysSyncBlockAnal(const Value: Boolean);
-    //function GetCollapseStyleName: string;
-    //procedure SetCollapseStyleName(const Value: string);
-    //procedure SetCollapseStyle(const Value: TecSyntaxFormat);
     function GetSeparateBlocks: Boolean;
     procedure UpdateSpecialKinds; //Alexey
   protected
@@ -4349,11 +4350,13 @@ begin
     SampleText := Src.SampleText;
     FullRefreshSize := Src.FullRefreshSize;
     Formats := Src.Formats;
+    {
     MarkedBlockStyle := Src.MarkedBlockStyle;
     SearchMatchStyle := Src.SearchMatchStyle;
     CurrentLineStyle := Src.CurrentLineStyle;
     DefaultStyleName := Src.DefaultStyleName;
     CollapseStyleName := Src.CollapseStyleName;
+    }
     BlockRules := Src.BlockRules;
     TokenRules := Src.TokenRules;
     CodeTemplates := Src.CodeTemplates;
@@ -4610,7 +4613,7 @@ begin
       with FSubAnalyzers[i] do
         if not FFormats.ValidItem(Style) then Style := nil;
    end;
-//  UpdateClients;
+  //UpdateClients;
   Change;
 end;
 
@@ -4682,11 +4685,13 @@ var
 begin
   inherited;
 
-  //MarkedBlockStyle := FMarkedBlockName;
-  //SearchMatchStyle := FSearchMatchName;
-  //CurrentLineStyle := FCurrentLineName;
-  //CollapseStyleName := FCollapseStyleName;
-  //DefaultStyleName := FDefStyleName;
+  {
+  MarkedBlockStyle := FMarkedBlockName;
+  SearchMatchStyle := FSearchMatchName;
+  CurrentLineStyle := FCurrentLineName;
+  CollapseStyleName := FCollapseStyleName;
+  DefaultStyleName := FDefStyleName;
+  }
 
   FFormats.Loaded;
   FBlockRules.Loaded;
