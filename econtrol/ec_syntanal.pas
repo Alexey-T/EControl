@@ -1541,43 +1541,43 @@ function TecTagBlockCondition.Check(const Source: ecString;
   Tags: TecClientSyntAnalyzer; N: integer; var RefIdx: integer): Boolean;
 var i, offs, idx, skipped, skip_cond: integer;
 begin
- FCriSec.Enter;
- try
-  Result := False;
-  offs := CheckOffset;
-  skipped := 0;
-  skip_cond := 0;
-  i := 0;
-  while i < ConditionList.Count do
-  begin
-   idx := N - 1 - i - offs - skipped + skip_cond;
-   if (ConditionList[i].CondType = tcSkip) and (i < ConditionList.Count - 1)
-      and (ConditionList[i+1].CondType <> tcSkip) then
-     begin
+  FCriSec.Enter;
+  try
+    Result := False;
+    offs := CheckOffset;
+    skipped := 0;
+    skip_cond := 0;
+    i := 0;
+    while i < ConditionList.Count do
+    begin
+      idx := N - 1 - i - offs - skipped + skip_cond;
+      if (ConditionList[i].CondType = tcSkip) and (i < ConditionList.Count - 1)
+         and (ConditionList[i+1].CondType <> tcSkip) then
+        begin
+          inc(i);
+          inc(skip_cond);
+          while (idx >= 0) and not ConditionList[i].CheckToken(Source, Tags[idx]) do
+          begin
+            if not ConditionList[i - 1].CheckToken(Source, Tags[idx]) then
+              Exit;
+            dec(idx);
+            inc(skipped);
+          end;
+          if idx < 0 then Exit;
+        end;
+      with ConditionList[i] do
+        if (idx < 0) or not CheckToken(Source, Tags[idx]) then Exit;
       inc(i);
-      inc(skip_cond);
-      while (idx >= 0) and not ConditionList[i].CheckToken(Source, Tags[idx]) do
-       begin
-         if not ConditionList[i - 1].CheckToken(Source, Tags[idx]) then
-           Exit;
-         dec(idx);
-         inc(skipped);
-       end;
-      if idx < 0 then Exit;
-     end;
-   with ConditionList[i] do
-    if (idx < 0) or not CheckToken(Source, Tags[idx]) then Exit;
-   inc(i);
-  end;
+    end;
 
-  Result := ConditionList.Count > 0;
-//  if FRefToCondEnd then
-  RefIdx := N - ConditionList.Count - offs - skipped + skip_cond;
-//  else
-//    RefIdx := N - 1 - offs;
- finally
-  FCriSec.Leave;
- end;
+    Result := ConditionList.Count > 0;
+    //if FRefToCondEnd then
+    RefIdx := N - ConditionList.Count - offs - skipped + skip_cond;
+    //else
+    //  RefIdx := N - 1 - offs;
+  finally
+    FCriSec.Leave;
+  end;
 end;
 
 destructor TecTagBlockCondition.Destroy;
