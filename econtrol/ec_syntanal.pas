@@ -4090,6 +4090,7 @@ begin
   BlockRules.OnChange := nil;
 
   CommentRule1 := BlockRules.Add;
+  CommentRule1.DisplayName := 'auto_cmt_1';
   CommentRule1.Enabled := false;
   CommentRule1.BlockType := btRangeStart;
   CommentRule1.DisplayInTree := false;
@@ -4097,6 +4098,7 @@ begin
   CommentRule1.CollapseFmt:= '// ...';
 
   CommentRule2 := BlockRules.Add;
+  CommentRule2.DisplayName := 'auto_cmt_2';
   CommentRule2.Enabled := false;
   CommentRule2.BlockType := btRangeEnd;
   CommentRule2.DisplayInTree := false;
