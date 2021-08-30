@@ -2557,7 +2557,6 @@ begin
   repeat
     Dec(NLineFrom);
     Dec(NLineOld);
-    if NLineFrom=0 then Break;
 
     //skip empty lines
     if TokenIndexer[NLineFrom]<0 then Continue;
@@ -2567,6 +2566,8 @@ begin
       Inc(NLineFrom);
       Break;
     end;
+
+    if NLineFrom=0 then Break;
 
     NTokenIndex1 := TokenIndexer[NLineFrom];
     NTokenIndex2 := TokenIndexer[NLineOld];
