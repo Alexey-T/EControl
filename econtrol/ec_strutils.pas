@@ -32,10 +32,10 @@ function IsLineBreakChar(c: UCChar): Boolean;
 function IsWordChar(c: UCChar): Boolean; inline;
 function IsSpaceChar(c: UCChar): Boolean; inline;
 function IsSpaceOrBreakChar(c: UCChar): Boolean; inline;
-function IsAlphaChar(c: UCChar): Boolean; inline;
+//function IsAlphaChar(c: UCChar): Boolean; inline;
 function IsIdentChar(C: UCChar): Boolean; inline;
 function IsIdentDigitChar(C: UCChar): Boolean; inline;
-function IsIdentLetterChar(C: UCChar): Boolean; inline;
+//function IsIdentLetterChar(C: UCChar): Boolean; inline;
 function IsWordBreak(aPos: integer; const Text: UCString): Boolean;
 
 function ecUpCase(C: UCChar): UCChar; inline;
@@ -110,7 +110,7 @@ begin
   Result := CharCategoryArray[Ord(C)] and 128 <> 0;
 end;
 
-
+{
 function IsAlphaChar(c: UCChar): Boolean; inline;
 begin
   case C of
@@ -121,6 +121,7 @@ begin
       Result := false;
   end;
 end;
+}
 
 function IsIdentChar(C: UCChar): Boolean; inline;
 begin
@@ -135,6 +136,7 @@ begin
   end;
 end;
 
+{
 function IsIdentLetterChar(C: UCChar): Boolean; inline;
 begin
   case C of
@@ -146,6 +148,7 @@ begin
       Result := false;
   end;
 end;
+}
 
 function IsIdentDigitChar(C: UCChar): Boolean; inline;
 begin

@@ -351,9 +351,10 @@ begin
     // hex, rarely used
     'h': Result := IsHexDigitChar(C);
     'H': Result := not IsHexDigitChar(C);
-    { // Alexey removed
-    'l': Result := IsAlphaChar(C);
-    'L': Result := not IsAlphaChar(C);
+    // Alexey: changed /l and /L meaning, now it's: word char except '_'
+    'l': Result := IsWordChar(C) and (C<>'_');
+    'L': Result := not IsWordChar(C) or (C='_');
+    { //Alexey: removed
     'g': Result := IsIdentLetterChar(C);
     'G': Result := not IsIdentLetterChar(C);
     }
@@ -800,22 +801,10 @@ begin
         else
           Result := 'D';
       end;
-    { // Alexey
-    'l':
-      begin
-        if (MaskModR and Modifiers) = 0 then
-          Result := 'g'
-        else
-          Result := 'l';
-      end;
+    // Alexey
+    'l',
     'L':
-      begin
-        if (MaskModR and Modifiers) = 0 then
-          Result := 'G'
-        else
-          Result := 'L';
-      end;
-    }
+      Result := C;
     's',
     'S',
     'h',
