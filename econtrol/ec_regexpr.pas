@@ -802,21 +802,12 @@ begin
           Result := 'D';
       end;
     // Alexey
-    'l',
-    'L':
-      Result := C;
-    's',
-    'S',
-    'h',
-    'H',
-    'c',
-    'C',
-    { // Alexey
-    'g',
-    'G',
-    }
-    'k',
-    'K':
+    's', 'S',
+    'h', 'H',
+    'c', 'C',
+    'l', 'L',
+    //'g', 'G', // Alexey: removed
+    'k', 'K':
       Result := C;
     else
       Result := #0;
