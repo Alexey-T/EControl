@@ -1019,7 +1019,8 @@ var
 var
   MaxLinesWhenParserEnablesFolding: integer = 10*1000;
 
-  //if N>1, N consecutive 'comment' lines will make folding-range
+  //if N>1, N (or more) consecutive 'comment' lines make folding-range
+  //(works for single-line and multi-line comments)
   AutoFoldComments: integer = 5;
 
   //if True, several comments separated with an empty line, make several fold-ranges
