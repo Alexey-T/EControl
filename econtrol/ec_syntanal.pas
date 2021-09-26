@@ -1014,17 +1014,18 @@ type
 
 
 var
-  OnLexerParseProgress: TecParseProgressEvent;
+  EControlOptions: record
+    OnLexerParseProgress: TecParseProgressEvent;
 
-var
-  MaxLinesWhenParserEnablesFolding: integer = 10*1000;
+    MaxLinesWhenParserEnablesFolding: integer;
 
-  //if N>1, N (or more) consecutive 'comment' lines make folding-range
-  //(works for single-line and multi-line comments)
-  AutoFoldComments: integer = 5;
+    //if N>1, N (or more) consecutive 'comment' lines make folding-range
+    //(works for single-line and multi-line comments)
+    AutoFoldComments: integer;
 
-  //if True, several comments separated with an empty line, make several fold-ranges
-  AutoFoldComments_BreakOnEmptyLine: boolean = true;
+    //if True, several comments separated with an empty line, make several fold-ranges
+    AutoFoldComments_BreakOnEmptyLine: boolean;
+  end;
 
 implementation
 
@@ -2514,7 +2515,7 @@ begin
     TokenIndexer[NLine] := NTokenIndex;
     CmtIndexer[NLine] := bComment;
 
-    if AutoFoldComments>1 then
+    if EControlOptions.AutoFoldComments>1 then
     begin
       FindCommentRangeBeforeToken(Token, bComment, NCmtFrom, NCmtTo);
       if NCmtFrom >= 0 then
@@ -2551,7 +2552,7 @@ begin
   while (ALineTo>0) and (TokenIndexer[ALineTo]<0) do
     Dec(ALineTo);
 
-  if ALineTo < AutoFoldComments-1 then exit;
+  if ALineTo < EControlOptions.AutoFoldComments-1 then exit;
 
   if IsBadLine(ALineTo) then exit;
 
@@ -2565,7 +2566,7 @@ begin
     //found empty line (without tokens)
     if TokenIndexer[NLineFrom]<0 then
     begin
-      if AutoFoldComments_BreakOnEmptyLine then
+      if EControlOptions.AutoFoldComments_BreakOnEmptyLine then
       begin
         Inc(NLineFrom);
         Break;
@@ -2593,7 +2594,7 @@ begin
   while (TokenIndexer[NLineFrom]<0) and (NLineFrom<ALineTo) do
     Inc(NLineFrom);
 
-  if ALineTo-NLineFrom+1 >= AutoFoldComments then
+  if ALineTo-NLineFrom+1 >= EControlOptions.AutoFoldComments then
   begin
     ALineFrom := NLineFrom;
     //ShowMessage(Format('rng %d..%d', [ALineFrom+1, ALineTo+1]));
@@ -2912,7 +2913,7 @@ begin
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
 
-  if AutoFoldComments > 1 then
+  if EControlOptions.AutoFoldComments > 1 then
     inherited OnAddRangeSimple := AddRangeSimple;
 
   PublicData.Tokens := TecTokenList.Create;
@@ -3241,7 +3242,7 @@ end;
 
 function TecClientSyntAnalyzer.GetDisabledFolding: boolean; //Alexey
 begin
-  Result := FBuffer.Count>MaxLinesWhenParserEnablesFolding;
+  Result := FBuffer.Count > EControlOptions.MaxLinesWhenParserEnablesFolding;
 end;
 
 function TecClientSyntAnalyzer.ParseInThread: TecParseInThreadResult; //Alexey
@@ -4733,7 +4734,7 @@ begin
   UpdateSpecialKinds;
 
   //Alexey
-  if AutoFoldComments > 1 then
+  if EControlOptions.AutoFoldComments > 1 then
     InitCommentRules;
 end;
 
@@ -5738,5 +5739,13 @@ end;
 
 initialization
   Classes.RegisterClass(TLibSyntAnalyzer);
+
+  FillChar(EControlOptions, SizeOf(EControlOptions), 0);
+  with EControlOptions do
+  begin
+    MaxLinesWhenParserEnablesFolding := 10*1000;
+    AutoFoldComments := 5;
+    AutoFoldComments_BreakOnEmptyLine := true;
+  end;
 
 end.
