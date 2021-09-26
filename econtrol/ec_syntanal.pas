@@ -1021,6 +1021,7 @@ var
 
   //if N>1, N consecutive 'comment' lines will make folding-range
   AutoFoldComments: integer = 5;
+
   //if True, several comments separated with an empty line, make several fold-ranges
   AutoFoldComments_BreakOnEmptyLine: boolean = true;
 
