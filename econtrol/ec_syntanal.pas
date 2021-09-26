@@ -1021,6 +1021,8 @@ var
 
   //if N>1, N consecutive 'comment' lines will make folding-range
   AutoFoldComments: integer = 5;
+  //if True, several comments separated with an empty line, make several fold-ranges
+  AutoFoldComments_BreakOnEmptyLine: boolean = true;
 
 implementation
 
@@ -2558,8 +2560,17 @@ begin
     Dec(NLineFrom);
     Dec(NLineOld);
 
-    //skip empty lines
-    if TokenIndexer[NLineFrom]<0 then Continue;
+    //found empty line (without tokens)
+    if TokenIndexer[NLineFrom]<0 then
+    begin
+      if AutoFoldComments_BreakOnEmptyLine then
+      begin
+        Inc(NLineFrom);
+        Break;
+      end
+      else
+        Continue;
+    end;
 
     if IsBadLine(NLineFrom) then
     begin
