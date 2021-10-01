@@ -2545,7 +2545,9 @@ var
 begin
   ALineFrom := -1; //-1 means that we found nothing
   ALineTo := Token.Range.PointStart.Y; //it's always set
-  if not ATokenIsComment then
+
+  if EControlOptions.AutoFoldComments_BreakOnEmptyLine or
+     not ATokenIsComment then
     Dec(ALineTo);
 
   //skip empty lines
