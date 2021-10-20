@@ -1018,6 +1018,8 @@ var
     OnLexerParseProgress: TecParseProgressEvent;
 
     MaxLinesWhenParserEnablesFolding: integer;
+    //how much chars can take %sz0 format
+    MaxLengthForSZFormat: integer;
 
     //if N>1, N (or more) consecutive 'comment' lines make folding-range
     //(works for single-line and multi-line comments)
@@ -3980,14 +3982,15 @@ begin
            begin
               N := FBuffer.OffsetToOffsetOfLineStart(Tags[idx].Range.StartPos);
               to_idx := Tags[idx].Range.EndPos;
-              Insert(FBuffer.SubString(N, to_idx - N + 1), Result, i);
+              Insert(FBuffer.SubString(N, Min(to_idx - N + 1, EControlOptions.MaxLengthForSZFormat)), Result, i);
             end;
          plmToEnd:
            begin
               to_idx := FBuffer.OffsetToOffsetOfLineEnd(Tags[idx].Range.EndPos);
               N := Tags[idx].Range.StartPos;
-              Insert(FBuffer.SubString(N+1, to_idx - N + 1), Result, i);
-              // Alexey: fixed substring offset/len (2 patches)
+              Insert(FBuffer.SubString(N+1, Min(to_idx - N + 1, EControlOptions.MaxLengthForSZFormat)), Result, i);
+              // Alexey: fixed SubString offset/len (2 patches)
+              // Alexey: limited SubString length, for CudaText issue #3796
             end;
          // HAW: new mode = 3 --- explicit range  idx...to_idx
          plmExplicitRange:
@@ -5746,6 +5749,7 @@ initialization
   with EControlOptions do
   begin
     MaxLinesWhenParserEnablesFolding := 10*1000;
+    MaxLengthForSZFormat := 40;
     AutoFoldComments := 5;
     AutoFoldComments_BreakOnEmptyLine := true;
   end;
