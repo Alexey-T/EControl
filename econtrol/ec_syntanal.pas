@@ -5020,6 +5020,7 @@ begin
 end;
 
 function TecSyntAnalyzer.GetSeparateBlocks: Boolean;
+
   function HasStateModif(List: TCollection): Boolean;
   var i: integer;
   begin
@@ -5032,7 +5033,10 @@ function TecSyntAnalyzer.GetSeparateBlocks: Boolean;
           end;
     Result := False;
   end;
-var i: integer;
+
+var
+  SyntAn: TecSyntAnalyzer;
+  i: integer;
 begin
   if FSeparateBlocks = sbmUnknown then
     begin
@@ -5048,12 +5052,15 @@ begin
             end;
       if Result then
         for i := 0 to SubAnalyzers.Count - 1 do
-          if (SubAnalyzers[i].SyntAnalyzer <> nil) and
-             not SubAnalyzers[i].SyntAnalyzer.SeparateBlockAnalysis then
+        begin
+          SyntAn := SubAnalyzers[i].SyntAnalyzer;
+          if (SyntAn <> nil) and
+             not SyntAn.SeparateBlockAnalysis then
             begin
               Result := False;
               Break;
             end;
+        end;
       if Result then
         FSeparateBlocks := sbmEnabled
       else
