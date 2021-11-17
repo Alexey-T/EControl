@@ -5662,15 +5662,20 @@ end;
 procedure TecSubAnalyzerRule.SetSyntAnalyzer(const Value: TecSyntAnalyzer);
 var own: TecSyntAnalyzer;
 
-  function IsLinked(SAnal: TecSyntAnalyzer): Boolean;
-  var i: integer;
+  function IsLinked(AAnalyzer: TecSyntAnalyzer): Boolean;
+  var
+    CollectItem: TCollectionItem;
+    i: integer;
   begin
     for i := 0 to Collection.Count - 1 do
-     if (Collection.Items[i] <> Self) and ((Collection.Items[i] as TecSubAnalyzerRule).SyntAnalyzer = SAnal) then
+    begin
+      CollectItem := Collection.Items[i];
+      if (CollectItem <> Self) and ((CollectItem as TecSubAnalyzerRule).SyntAnalyzer = AAnalyzer) then
       begin
        Result := True;
        Exit;
       end;
+    end;
     Result := False;
   end;
 
