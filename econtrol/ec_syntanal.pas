@@ -730,6 +730,10 @@ type
   { TLoadableComponent }
 
   TLoadableComponent = class(TComponent)
+  private type
+    TThemeMappingItem = record
+      StrFrom, StrTo: string;
+    end;
   private
     FSkipNewName: Boolean;
     FFileName: string;
@@ -742,7 +746,7 @@ type
     function NotStored: Boolean;
   private
     ThemeMappingCount: integer;
-    ThemeMappingArray: array[0..40] of record StrFrom, StrTo: string; end;
+    ThemeMappingArray: array[0..40] of TThemeMappingItem;
     SubLexerNames: array[0..12] of string;
   public
     CommentRangeBegin: string;
@@ -5529,11 +5533,15 @@ end;
 
 function TLoadableComponent.ThemeMappingOfStyle(const AName: string): string;
 var
+  ItemPtr: ^TThemeMappingItem;
   i: integer;
 begin
   for i := 0 to ThemeMappingCount-1 do
-    if AName=ThemeMappingArray[i].StrFrom then
-      exit(ThemeMappingArray[i].StrTo);
+  begin
+    ItemPtr := @ThemeMappingArray[i];
+    if AName = ItemPtr^.StrFrom then
+      Exit(ItemPtr^.StrTo);
+  end;
   Result := '';
 end;
 
