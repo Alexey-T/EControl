@@ -3453,6 +3453,7 @@ var
   //lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
   NDeltaRanges: integer;
   NLine, NTokenIndex, i: integer;
+  Range: TecTextRange;
 begin
   if FPrevChangeLine < 0 then Exit;
   NLine := FPrevChangeLine;
@@ -3505,16 +3506,19 @@ begin
 
   // Remove text ranges from main storage
   for i := FRanges.Count - 1 downto 0 do
-    with TecTextRange(FRanges[i]) do
-      if (FCondIndex >= NTagCount) or (StartIdx >= NTagCount) then
-        FRanges.Delete(i)
-      else
-      if (FEndCondIndex >= NTagCount - NDeltaRanges) or (EndIdx >= NTagCount - NDeltaRanges) then // Alexey: delta
-      begin
-        EndIdx := -1;
-        FEndCondIndex := -1;
-        FOpenedBlocks.Add(FRanges[i]);
-      end;
+  begin
+    Range := TecTextRange(FRanges[i]);
+    if (Range.FCondIndex >= NTagCount) or (Range.StartIdx >= NTagCount) then
+      FRanges.Delete(i)
+    else
+    if (Range.FEndCondIndex >= NTagCount - NDeltaRanges) or
+       (Range.EndIdx >= NTagCount - NDeltaRanges) then // Alexey: delta
+    begin
+      Range.EndIdx := -1;
+      Range.FEndCondIndex := -1;
+      FOpenedBlocks.Add(Range);
+    end;
+  end;
 
   // Restore parser state
   RestoreState;
