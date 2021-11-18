@@ -860,14 +860,11 @@ type
     procedure SetCollapseStyle(const Value: TecSyntaxFormat);
     }
     procedure SetNotes(const Value: TStrings);
-    procedure SetInternal(const Value: boolean);
-    procedure SetRestartFromLineStart(const Value: Boolean);
     procedure SetParseEndOfLine(const Value: Boolean);
     procedure TokenNamesChanged(Sender: TObject);
     procedure CompileGramma;
     procedure SetGrammar(const Value: TGrammaAnalyzer);
     procedure GrammaChanged(Sender: TObject);
-    procedure SetLineComment(const Value: ecString);
     procedure DetectBlockSeparate;
     procedure SetAlwaysSyncBlockAnal(const Value: Boolean);
     function GetSeparateBlocks: Boolean;
@@ -940,10 +937,10 @@ type
     property SkipSpaces: Boolean read FSkipSpaces write SetSkipSpaces default True;
     property FullRefreshSize: integer read FFullRefreshSize write FFullRefreshSize default 0;
     property Notes: TStrings read FNotes write SetNotes;
-    property Internal: boolean read FInternal write SetInternal default False;
-    property RestartFromLineStart: Boolean read FRestartFromLineStart write SetRestartFromLineStart default False;
+    property Internal: boolean read FInternal write FInternal default False;
+    property RestartFromLineStart: Boolean read FRestartFromLineStart write FRestartFromLineStart default False;
     property ParseEndOfLine: Boolean read FParseEndOfLine write SetParseEndOfLine default False;
-    property LineComment: ecString read FLineComment write SetLineComment;
+    property LineComment: ecString read FLineComment write FLineComment;
     property Charset: TFontCharSet read FCharset write FCharset; // Alexey
     property AlwaysSyncBlockAnal: Boolean read FAlwaysSyncBlockAnal write SetAlwaysSyncBlockAnal default False;
     property IdleAppendDelay: Cardinal read FIdleAppendDelay write FIdleAppendDelay default 200;
@@ -1438,12 +1435,14 @@ end;
 
 procedure TecSingleTagCondition.SetTokenTypes(const Value: DWORD);
 begin
+  if FTokenTypes = Value then Exit;
   FTokenTypes := Value;
   Changed(False);
 end;
 
 procedure TecSingleTagCondition.SetCondType(const Value: TecTagConditionType);
 begin
+  if FCondType = Value then Exit;
   FCondType := Value;
   Changed(False);
 end;
@@ -1656,6 +1655,7 @@ end;
 
 procedure TecTagBlockCondition.SetBlockType(const Value: TecTagBlockType);
 begin
+  if FBlockType = Value then Exit;
   FBlockType := Value;
   if FBlockType in [btTagDetect, btLineBreak] then
    begin
@@ -4969,16 +4969,6 @@ begin
   FNotes.Assign(Value);
 end;
 
-procedure TecSyntAnalyzer.SetInternal(const Value: boolean);
-begin
-  FInternal := Value;
-end;
-
-procedure TecSyntAnalyzer.SetRestartFromLineStart(const Value: Boolean);
-begin
-  FRestartFromLineStart := Value;
-end;
-
 procedure TecSyntAnalyzer.SetParseEndOfLine(const Value: Boolean);
 begin
   if FParseEndOfLine <> Value then
@@ -5016,11 +5006,6 @@ end;
 procedure TecSyntAnalyzer.GrammaChanged(Sender: TObject);
 begin
   CompileGramma;
-end;
-
-procedure TecSyntAnalyzer.SetLineComment(const Value: ecString);
-begin
-  FLineComment := Value;
 end;
 
 function TecSyntAnalyzer.GetSeparateBlocks: Boolean;
@@ -5584,8 +5569,9 @@ begin
 end;
 
 procedure TLoadableComponent.SetName(const NewName: TComponentName);
-var Base: string;
-    n:integer;
+var
+  Base: string;
+  n: integer;
 begin
   if not FSkipNewName then
    if CheckExistingName and (Owner.FindComponent(NewName) <> nil) then
@@ -5668,18 +5654,21 @@ end;
 
 procedure TecSubAnalyzerRule.SetEndExpression(const Value: ecString);
 begin
+  if FEndRegExpr.Expression = Value then Exit;
   FEndRegExpr.Expression := Value;
   Changed(False);
 end;
 
 procedure TecSubAnalyzerRule.SetStartExpression(const Value: ecString);
 begin
+  if FStartRegExpr.Expression = Value then Exit;
   FStartRegExpr.Expression := Value;
   Changed(False);
 end;
 
 procedure TecSubAnalyzerRule.SetSyntAnalyzer(const Value: TecSyntAnalyzer);
-var own: TecSyntAnalyzer;
+var
+  own: TecSyntAnalyzer;
 
   function IsLinked(AAnalyzer: TecSyntAnalyzer): Boolean;
   var
