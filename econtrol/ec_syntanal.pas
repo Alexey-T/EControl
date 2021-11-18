@@ -5713,18 +5713,21 @@ end;
 
 procedure TecSubAnalyzerRule.SetFromTextBegin(const Value: Boolean);
 begin
+  if FFromTextBegin = Value then Exit;
   FFromTextBegin := Value;
   Changed(False);
 end;
 
 procedure TecSubAnalyzerRule.SetToTextEnd(const Value: Boolean);
 begin
+  if FToTextEnd = Value then Exit;
   FToTextEnd := Value;
   Changed(False);
 end;
 
 procedure TecSubAnalyzerRule.SetIncludeBounds(const Value: Boolean);
 begin
+  if FIncludeBounds = Value then Exit;
   FIncludeBounds := Value;
   Changed(False);
 end;
