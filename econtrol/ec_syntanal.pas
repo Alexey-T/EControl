@@ -2687,10 +2687,8 @@ begin
   Result := '';
   SrcLen := Length(Src);
   MarkLen := 0;
-  while APos <= SrcLen do
+  while (APos <= SrcLen) and IsFencedChar(Src[APos]) do
   begin
-    chW := Src[APos];
-    if not IsFencedChar(chW) then Break;
     Inc(MarkLen);
     Inc(APos);
   end;
