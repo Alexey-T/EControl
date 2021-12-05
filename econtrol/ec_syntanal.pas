@@ -2655,11 +2655,14 @@ end;
 
 
 function FindFencedBlockAlias(const Src: UnicodeString; APos: integer): string; // Alexey
+const
+  cFencedNameChars = ['a'..'z', 'A'..'Z', '0'..'9', '_', '.', '-', '+', '#'];
+  cFencedMaxLen = 20;
 var
   chW: WideChar;
   chA: char;
   BufLen, MarkLen, PosEnd: integer;
-  ResultBuf: array[0..40] of char;
+  ResultBuf: array[0..cFencedMaxLen-1] of char;
 begin
   Result := '';
   BufLen := Length(Src);
@@ -2680,8 +2683,8 @@ begin
     chW := Src[PosEnd];
     if Ord(chW) > 127 then Break;
     chA := char(Ord(chW));
-    if not (chA in ['a'..'z', '.', '-']) then Break;
-    if PosEnd-APos >= SizeOf(ResultBuf) then Break;
+    if not (chA in cFencedNameChars) then Break;
+    if PosEnd-APos >= cFencedMaxLen then Break;
     ResultBuf[PosEnd-APos] := chA;
     Inc(PosEnd);
   end;
@@ -2726,11 +2729,9 @@ var
               begin
                 MarkerStr := FindFencedBlockAlias(Source, MarkerPos);
                 if (MarkerStr <> '') and Assigned(EControlOptions.OnLexerResolveAlias) then
-                begin
                   AnFinal := EControlOptions.OnLexerResolveAlias(MarkerStr);
-                  Sub.FinalSubAnalyzer := AnFinal;
-                end;
               end;
+              Sub.FinalSubAnalyzer := AnFinal;
             end;
 
             //if Rule.ToTextEnd then N := 0 else
@@ -2744,6 +2745,12 @@ var
                    Sub.CondEndPos := Sub.Range.EndPos;
                    Sub.FinalSubAnalyzer := AnFinal;
                    own := Sub.FinalSubAnalyzer;
+                   if own = nil then
+                   begin
+                     own := Sub.Rule.SyntAnalyzer;
+                     if own = nil then
+                       own := FOwner;
+                   end;
                  end else
                  begin
                    Sub.Range.EndPos := FPos - 1;
@@ -2756,12 +2763,24 @@ var
              begin
                Sub.FinalSubAnalyzer := AnFinal;
                own := Sub.FinalSubAnalyzer;
+               if own = nil then
+               begin
+                 own := Sub.Rule.SyntAnalyzer;
+                 if own = nil then
+                   own := FOwner;
+               end;
                Exit;
              end;
           end else
        if FPos < Sub.Range.EndPos then
          begin
            own := Sub.FinalSubAnalyzer;
+           if own = nil then
+           begin
+             own := Sub.Rule.SyntAnalyzer;
+             if own = nil then
+               own := FOwner;
+           end;
            Exit;
          end;
     end;
@@ -2838,6 +2857,8 @@ var
 begin
   Source := FBuffer.FText;
   GetOwner;
+  if own=nil then
+    raise EParserError.Create('GetOwner=nil');
   TryOpenSubLexer;
   if own.SkipSpaces then
     begin
@@ -2847,6 +2868,8 @@ begin
    else if FPos > Length(Source) then N := -1 else N := 0;
   TryOpenSubLexer;
   GetOwner;
+  if own=nil then
+    raise EParserError.Create('GetOwner=nil');
 
   Result := N = -1;
   if Result then Exit;
