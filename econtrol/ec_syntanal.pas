@@ -2719,8 +2719,9 @@ var
    end;
 
    function CanOpen(Rule: TecSubAnalyzerRule): Boolean;
-   var N: integer;
+   var N, NCnt: integer;
        Sub: TecSubLexerRange;
+       SubPtr: PecSubLexerRange;
    begin
      Result := IsEnabled(Rule, False) and (Rule.SyntAnalyzer <> nil);
      if not Result then Exit;
@@ -2730,11 +2731,12 @@ var
      Result := Result or (N > 0);
      if not Result then Exit;
      // To prevent repeated opening
-     if FSubLexerBlocks.Count > 0 then
+     NCnt := FSubLexerBlocks.Count;
+     if NCnt > 0 then
      begin
-       sub := FSubLexerBlocks.Last;
-       if (sub.Range.EndPos = FPos - 1) and
-          (sub.Rule = Rule) then Exit;
+       SubPtr := FSubLexerBlocks.InternalGet(NCnt - 1);
+       if (SubPtr.Range.EndPos = FPos - 1) and
+          (SubPtr.Rule = Rule) then Exit;
      end;
 
      ApplyStates(Rule);
