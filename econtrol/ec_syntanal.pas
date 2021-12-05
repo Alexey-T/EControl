@@ -2693,11 +2693,13 @@ begin
     Inc(APos);
   end;
 
-  // need 3+ backtick chars
+  // need 3+ backtick/tilde chars
   if MarkLen < 3 then Exit;
 
   SkipSpaces;
 
+  (*
+  // this is not needed yet, Markdown lexer also don't support this. 2021/12.
   // marker can be:
   //   ```lang
   //   ``` lang
@@ -2716,6 +2718,7 @@ begin
     if (APos <= SrcLen) and (Src[APos] = '.') then
       Inc(APos);
   end;
+  *)
 
   PosEnd := APos;
   while PosEnd <= SrcLen do
