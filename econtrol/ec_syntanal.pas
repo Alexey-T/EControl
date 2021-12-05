@@ -2724,7 +2724,11 @@ var
             begin
               AnFinal := Sub.Rule.SyntAnalyzer;
               MarkerPos := Sub.CondStartPos + 1;
+              // marker can have leading spaces
+              while (MarkerPos < Length(Source)) and (Source[MarkerPos] = ' ') do
+                Inc(MarkerPos);
               MarkerChar := Source[MarkerPos];
+              // marker must start with a backtick
               if MarkerChar = '`' then
               begin
                 MarkerStr := FindFencedBlockAlias(Source, MarkerPos);
