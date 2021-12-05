@@ -774,6 +774,8 @@ type
 
   TecParseProgressEvent = procedure(Sender: TObject; AProgress: integer) of object;
 
+  TecResolveAlias = function(const AAlias: string): TecSyntAnalyzer of object;
+
   TecSeparateBlocksMode = (sbmUnknown, sbmEnabled, sbmDisabled);
 
   { TecSyntAnalyzer }
@@ -1017,6 +1019,7 @@ type
 var
   EControlOptions: record
     OnLexerParseProgress: TecParseProgressEvent;
+    OnLexerResolveAlias: TecResolveAlias;
 
     MaxLinesWhenParserEnablesFolding: integer;
     //how much chars can take %sz0 format
