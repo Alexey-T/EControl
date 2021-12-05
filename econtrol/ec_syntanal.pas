@@ -2672,12 +2672,12 @@ var
         if Sub.Range.EndPos = -1 then
           begin
             // try close sub lexer
-    //        if Rule.ToTextEnd then N := 0 else
+            //if Rule.ToTextEnd then N := 0 else
             N := Sub.Rule.MatchEnd(Source, FPos);
             if N > 0 then
              begin
                if Sub.Rule.IncludeBounds then
-                 begin // New mode in v2.35
+                 begin
                    Sub.Range.EndPos := FPos - 1 + N;
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
                    Sub.CondEndPos := Sub.Range.EndPos;
@@ -2690,7 +2690,6 @@ var
                  end;
                // Close ranges which belongs to this sub-lexer range
                CloseAtEnd(FTagList.PriorAt(Sub.Range.StartPos));
-               //FSubLexerBlocks[i] := Sub; // Write back to list //Alexey: not needed with pointer
              end else
              begin
                own := Sub.Rule.SyntAnalyzer;
@@ -2699,8 +2698,8 @@ var
           end else
        if FPos < Sub.Range.EndPos then
          begin
-               own := Sub.Rule.SyntAnalyzer;
-               Exit;
+           own := Sub.Rule.SyntAnalyzer;
+           Exit;
          end;
     end;
    end;
