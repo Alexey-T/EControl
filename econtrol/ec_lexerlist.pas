@@ -14,6 +14,7 @@ interface
 uses
   Classes, SysUtils,
   FileUtil,
+  IniFiles,
   ATStringProc_Separator,
   ec_SyntAnal;
 
@@ -29,6 +30,8 @@ type
     FList: TFPList;
     FModified: boolean;
     FFolder: string;
+    FAliasesFilename: string;
+    FAliasesIni: TCustomIniFile;
     FOnLexerLoaded: TecLexerLoadedEvent;
     function GetLexer(AIndex: integer): TecSyntAnalyzer;
     procedure CheckInited(const AMsg: string);
@@ -45,7 +48,7 @@ type
     procedure DeleteLexer(An: TecSyntAnalyzer);
     function FindLexerByFilename(AFilename: string; AChooseFunc: TecLexerChooseFunc): TecSyntAnalyzer;
     function FindLexerByName(const AName: string): TecSyntAnalyzer;
-    function FindLexerByFencedName(const AName: string): TecSyntAnalyzer;
+    function FindLexerByAlias(const AName: string): TecSyntAnalyzer;
     procedure SetSublexersFromString(An: TecSyntAnalyzer; const ALinks: string; ASep: char);
     property OnLexerLoaded: TecLexerLoadedEvent read FOnLexerLoaded write FOnLexerLoaded;
   end;
@@ -73,12 +76,15 @@ constructor TecLexerList.Create(AOwner: TComponent);
 begin
   inherited;
   FList:= TFPList.Create;
+  EControlOptions.OnLexerResolveAlias:= @FindLexerByAlias;
 end;
 
 destructor TecLexerList.Destroy;
 begin
   Clear;
   FreeAndNil(FList);
+  if Assigned(FAliasesIni) then
+    FreeAndNil(FAliasesIni);
   inherited;
 end;
 
@@ -296,28 +302,30 @@ begin
   end;
 end;
 
-function TecLexerList.FindLexerByFencedName(const AName: string): TecSyntAnalyzer;
+function TecLexerList.FindLexerByAlias(const AName: string): TecSyntAnalyzer;
 //find lexer by name from Markdown fenced block:
 // ```php
 // ```
 var
-  S: string;
+  LexName: string;
 begin
-  case AName of
-    'cpp':
-      S:= 'C++';
-    'csharp':
-      S:= 'C#';
-    'bash':
-      S:= 'Bash script';
-    'batch':
-      S:= 'Batch files';
-    'ini':
-      S:= 'Ini files';
-    else
-      S:= AName;
+  Result:= nil;
+
+  if FAliasesIni=nil then
+  begin
+    if FAliasesFilename='-' then exit;
+    FAliasesFilename:= FFolder+DirectorySeparator+'aliases.ini';
+    if not FileExists(FAliasesFilename) then
+    begin
+      FAliasesFilename:= '-';
+      exit;
+    end;
+    FAliasesIni:= TMemIniFile.Create(FAliasesFilename);
   end;
-  Result:= FindLexerByName(S); //it ignores case
+
+  LexName:= FAliasesIni.ReadString('a', AName, '');
+  if LexName<>'' then
+    Result:= FindLexerByName(LexName); //it ignores case
 end;
 
 
@@ -337,7 +345,6 @@ begin
     Inc(Cnt);
   until false;
 end;
-
 
 end.
 

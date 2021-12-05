@@ -159,6 +159,7 @@ type
     Rule: TecSubAnalyzerRule;   // Rule reference
     CondEndPos: integer;      // Start pos of the start condition
     CondStartPos: integer;    // End pos of the end condition
+    FinalSubAnalyzer: TecSyntAnalyzer;
     class operator =(const a, b: TecSubLexerRange): boolean;
   end;
 
@@ -774,6 +775,8 @@ type
 
   TecParseProgressEvent = procedure(Sender: TObject; AProgress: integer) of object;
 
+  TecResolveAlias = function(const AAlias: string): TecSyntAnalyzer of object;
+
   TecSeparateBlocksMode = (sbmUnknown, sbmEnabled, sbmDisabled);
 
   { TecSyntAnalyzer }
@@ -1017,6 +1020,7 @@ type
 var
   EControlOptions: record
     OnLexerParseProgress: TecParseProgressEvent;
+    OnLexerResolveAlias: TecResolveAlias;
 
     MaxLinesWhenParserEnablesFolding: integer;
     //how much chars can take %sz0 format
@@ -2649,6 +2653,53 @@ begin
  end;
 end;
 
+
+function IsFencedChar(ch: WideChar): boolean; inline;
+begin
+  Result := (ch = '`') or (ch = '~');
+end;
+
+function FindFencedBlockAlias(const Src: UnicodeString; APos: integer): string; // Alexey
+const
+  cFencedNameChars = ['a'..'z', 'A'..'Z', '0'..'9', '_', '.', '-', '+', '#'];
+  cFencedNameLen = 20;
+var
+  chW: WideChar;
+  chA: char;
+  SrcLen, MarkLen, PosEnd: integer;
+  ResultBuf: array[0..cFencedNameLen-1] of char;
+begin
+  Result := '';
+  SrcLen := Length(Src);
+  MarkLen := 0;
+  while APos <= SrcLen do
+  begin
+    chW := Src[APos];
+    if not IsFencedChar(chW) then Break;
+    Inc(MarkLen);
+    Inc(APos);
+  end;
+  // need 3+ backtick chars
+  if MarkLen < 3 then Exit;
+
+  while (APos < SrcLen) and (Src[APos] = ' ') do
+    Inc(APos);
+
+  PosEnd := APos;
+  while PosEnd <= SrcLen do
+  begin
+    chW := Src[PosEnd];
+    if Ord(chW) > 127 then Break;
+    chA := char(Ord(chW));
+    if not (chA in cFencedNameChars) then Break;
+    if PosEnd-APos >= cFencedNameLen then Break;
+    ResultBuf[PosEnd-APos] := chA;
+    Inc(PosEnd);
+  end;
+
+  SetString(Result, ResultBuf, PosEnd-APos);
+end;
+
 // True if end of the text
 function TecParserResults.ExtractTag(var FPos: integer; ADisableFolding: Boolean): Boolean;
 var
@@ -2660,6 +2711,10 @@ var
    procedure GetOwner;
    var i, N: integer;
        Sub: PecSubLexerRange;
+       AnFinal: TecSyntAnalyzer;
+       MarkerPos: integer;
+       MarkerChar: WideChar;
+       MarkerStr: string;
    begin
     own := FOwner;
     for i := FSubLexerBlocks.Count - 1 downto 0 do
@@ -2669,16 +2724,40 @@ var
         if Sub.Range.EndPos = -1 then
           begin
             // try close sub lexer
-    //        if Rule.ToTextEnd then N := 0 else
+
+            // Alexey: detect fenced code-block
+            if Sub.FinalSubAnalyzer <> nil then
+              AnFinal := Sub.FinalSubAnalyzer
+            else
+            begin
+              AnFinal := Sub.Rule.SyntAnalyzer;
+              MarkerPos := Sub.CondStartPos + 1;
+              MarkerChar := Source[MarkerPos];
+              if IsFencedChar(MarkerChar) then
+              begin
+                MarkerStr := FindFencedBlockAlias(Source, MarkerPos);
+                if (MarkerStr <> '') and Assigned(EControlOptions.OnLexerResolveAlias) then
+                  AnFinal := EControlOptions.OnLexerResolveAlias(MarkerStr);
+              end;
+              Sub.FinalSubAnalyzer := AnFinal;
+            end;
+
+            //if Rule.ToTextEnd then N := 0 else
             N := Sub.Rule.MatchEnd(Source, FPos);
             if N > 0 then
              begin
                if Sub.Rule.IncludeBounds then
-                 begin // New mode in v2.35
+                 begin
                    Sub.Range.EndPos := FPos - 1 + N;
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
                    Sub.CondEndPos := Sub.Range.EndPos;
-                   own := Sub.Rule.SyntAnalyzer;
+                   own := Sub.FinalSubAnalyzer;
+                   if own = nil then
+                   begin
+                     own := Sub.Rule.SyntAnalyzer;
+                     if own = nil then
+                       own := FOwner;
+                   end;
                  end else
                  begin
                    Sub.Range.EndPos := FPos - 1;
@@ -2687,17 +2766,28 @@ var
                  end;
                // Close ranges which belongs to this sub-lexer range
                CloseAtEnd(FTagList.PriorAt(Sub.Range.StartPos));
-               //FSubLexerBlocks[i] := Sub; // Write back to list //Alexey: not needed with pointer
              end else
              begin
-               own := Sub.Rule.SyntAnalyzer;
+               own := Sub.FinalSubAnalyzer;
+               if own = nil then
+               begin
+                 own := Sub.Rule.SyntAnalyzer;
+                 if own = nil then
+                   own := FOwner;
+               end;
                Exit;
              end;
           end else
        if FPos < Sub.Range.EndPos then
          begin
-               own := Sub.Rule.SyntAnalyzer;
-               Exit;
+           own := Sub.FinalSubAnalyzer;
+           if own = nil then
+           begin
+             own := Sub.Rule.SyntAnalyzer;
+             if own = nil then
+               own := FOwner;
+           end;
+           Exit;
          end;
     end;
    end;
@@ -2773,6 +2863,8 @@ var
 begin
   Source := FBuffer.FText;
   GetOwner;
+  if own=nil then
+    raise EParserError.Create('GetOwner=nil');
   TryOpenSubLexer;
   if own.SkipSpaces then
     begin
@@ -2782,6 +2874,8 @@ begin
    else if FPos > Length(Source) then N := -1 else N := 0;
   TryOpenSubLexer;
   GetOwner;
+  if own=nil then
+    raise EParserError.Create('GetOwner=nil');
 
   Result := N = -1;
   if Result then Exit;
