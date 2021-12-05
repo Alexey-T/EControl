@@ -159,6 +159,7 @@ type
     Rule: TecSubAnalyzerRule;   // Rule reference
     CondEndPos: integer;      // Start pos of the start condition
     CondStartPos: integer;    // End pos of the end condition
+    FinalSubAnalyzer: TecSyntAnalyzer;
     class operator =(const a, b: TecSubLexerRange): boolean;
   end;
 
@@ -2652,6 +2653,42 @@ begin
  end;
 end;
 
+
+function FindFencedBlockAlias(const Src: UnicodeString; APos: integer): string; // Alexey
+var
+  chW: WideChar;
+  chA: char;
+  BufLen, MarkLen, PosEnd: integer;
+  ResultBuf: array[0..40] of char;
+begin
+  Result := '';
+  BufLen := Length(Src);
+  MarkLen := 0;
+  while APos <= BufLen do
+  begin
+    chW := Src[APos];
+    if chW <> '`' then Break;
+    Inc(MarkLen);
+    Inc(APos);
+  end;
+  // need triple backticks
+  if MarkLen < 3 then Exit;
+
+  PosEnd := APos;
+  while PosEnd <= BufLen do
+  begin
+    chW := Src[PosEnd];
+    if Ord(chW) > 127 then Break;
+    chA := char(Ord(chW));
+    if not (chA in ['a'..'z', '.', '-']) then Break;
+    if PosEnd-APos >= SizeOf(ResultBuf) then Break;
+    ResultBuf[PosEnd-APos] := chA;
+    Inc(PosEnd);
+  end;
+
+  SetString(Result, ResultBuf, PosEnd-APos);
+end;
+
 // True if end of the text
 function TecParserResults.ExtractTag(var FPos: integer; ADisableFolding: Boolean): Boolean;
 var
@@ -2663,6 +2700,10 @@ var
    procedure GetOwner;
    var i, N: integer;
        Sub: PecSubLexerRange;
+       AnFinal: TecSyntAnalyzer;
+       MarkerPos: integer;
+       MarkerChar: WideChar;
+       MarkerStr: string;
    begin
     own := FOwner;
     for i := FSubLexerBlocks.Count - 1 downto 0 do
@@ -2672,6 +2713,26 @@ var
         if Sub.Range.EndPos = -1 then
           begin
             // try close sub lexer
+
+            // Alexey: detect fenced code-block
+            if Sub.FinalSubAnalyzer <> nil then
+              AnFinal := Sub.FinalSubAnalyzer
+            else
+            begin
+              AnFinal := Sub.Rule.SyntAnalyzer;
+              MarkerPos := Sub.CondStartPos + 1;
+              MarkerChar := Source[MarkerPos];
+              if MarkerChar = '`' then
+              begin
+                MarkerStr := FindFencedBlockAlias(Source, MarkerPos);
+                if (MarkerStr <> '') and Assigned(EControlOptions.OnLexerResolveAlias) then
+                begin
+                  AnFinal := EControlOptions.OnLexerResolveAlias(MarkerStr);
+                  Sub.FinalSubAnalyzer := AnFinal;
+                end;
+              end;
+            end;
+
             //if Rule.ToTextEnd then N := 0 else
             N := Sub.Rule.MatchEnd(Source, FPos);
             if N > 0 then
@@ -2681,7 +2742,8 @@ var
                    Sub.Range.EndPos := FPos - 1 + N;
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
                    Sub.CondEndPos := Sub.Range.EndPos;
-                   own := Sub.Rule.SyntAnalyzer;
+                   Sub.FinalSubAnalyzer := AnFinal;
+                   own := Sub.FinalSubAnalyzer;
                  end else
                  begin
                    Sub.Range.EndPos := FPos - 1;
@@ -2692,13 +2754,14 @@ var
                CloseAtEnd(FTagList.PriorAt(Sub.Range.StartPos));
              end else
              begin
-               own := Sub.Rule.SyntAnalyzer;
+               Sub.FinalSubAnalyzer := AnFinal;
+               own := Sub.FinalSubAnalyzer;
                Exit;
              end;
           end else
        if FPos < Sub.Range.EndPos then
          begin
-           own := Sub.Rule.SyntAnalyzer;
+           own := Sub.FinalSubAnalyzer;
            Exit;
          end;
     end;
