@@ -2664,9 +2664,24 @@ const
   cFencedNameChars = ['a'..'z', 'A'..'Z', '0'..'9', '_', '.', '-', '+', '#'];
   cFencedNameLen = 20;
 var
+  SrcLen: integer;
+  //
+  procedure SkipSpaces;
+  begin
+    while (APos < SrcLen) and (Src[APos] = ' ') do
+      Inc(APos);
+  end;
+  //
+  procedure SkipWordChars;
+  begin
+    while (APos < SrcLen) and IsWordChar(Src[APos]) do
+      Inc(APos);
+  end;
+  //
+var
   chW: WideChar;
   chA: char;
-  SrcLen, MarkLen, PosEnd: integer;
+  MarkLen, PosEnd: integer;
   ResultBuf: array[0..cFencedNameLen-1] of char;
 begin
   Result := '';
@@ -2679,11 +2694,30 @@ begin
     Inc(MarkLen);
     Inc(APos);
   end;
+
   // need 3+ backtick chars
   if MarkLen < 3 then Exit;
 
-  while (APos < SrcLen) and (Src[APos] = ' ') do
+  SkipSpaces;
+
+  // marker can be:
+  //   ```lang
+  //   ``` lang
+  //   ``` { .lang .foo }
+  //   ``` { #id .lang .foo }
+  if (APos <= SrcLen) and (Src[APos] = '{') then
+  begin
     Inc(APos);
+    SkipSpaces;
+    if (APos <= SrcLen) and (Src[APos] = '#') then
+    begin
+      Inc(APos);
+      SkipWordChars;
+      SkipSpaces;
+    end;
+    if (APos <= SrcLen) and (Src[APos] = '.') then
+      Inc(APos);
+  end;
 
   PosEnd := APos;
   while PosEnd <= SrcLen do
