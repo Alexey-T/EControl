@@ -2662,37 +2662,37 @@ end;
 function FindFencedBlockAlias(const Src: UnicodeString; APos: integer): string; // Alexey
 const
   cFencedNameChars = ['a'..'z', 'A'..'Z', '0'..'9', '_', '.', '-', '+', '#'];
-  cFencedMaxLen = 20;
+  cFencedNameLen = 20;
 var
   chW: WideChar;
   chA: char;
-  BufLen, MarkLen, PosEnd: integer;
-  ResultBuf: array[0..cFencedMaxLen-1] of char;
+  SrcLen, MarkLen, PosEnd: integer;
+  ResultBuf: array[0..cFencedNameLen-1] of char;
 begin
   Result := '';
-  BufLen := Length(Src);
+  SrcLen := Length(Src);
   MarkLen := 0;
-  while APos <= BufLen do
+  while APos <= SrcLen do
   begin
     chW := Src[APos];
     if not IsFencedChar(chW) then Break;
     Inc(MarkLen);
     Inc(APos);
   end;
-  // need triple backticks
+  // need 3+ backtick chars
   if MarkLen < 3 then Exit;
 
-  while (APos < BufLen) and (Src[APos] = ' ') do
+  while (APos < SrcLen) and (Src[APos] = ' ') do
     Inc(APos);
 
   PosEnd := APos;
-  while PosEnd <= BufLen do
+  while PosEnd <= SrcLen do
   begin
     chW := Src[PosEnd];
     if Ord(chW) > 127 then Break;
     chA := char(Ord(chW));
     if not (chA in cFencedNameChars) then Break;
-    if PosEnd-APos >= cFencedMaxLen then Break;
+    if PosEnd-APos >= cFencedNameLen then Break;
     ResultBuf[PosEnd-APos] := chA;
     Inc(PosEnd);
   end;
