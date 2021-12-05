@@ -2748,7 +2748,6 @@ var
                    Sub.Range.EndPos := FPos - 1 + N;
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
                    Sub.CondEndPos := Sub.Range.EndPos;
-                   Sub.FinalSubAnalyzer := AnFinal;
                    own := Sub.FinalSubAnalyzer;
                    if own = nil then
                    begin
@@ -2766,7 +2765,6 @@ var
                CloseAtEnd(FTagList.PriorAt(Sub.Range.StartPos));
              end else
              begin
-               Sub.FinalSubAnalyzer := AnFinal;
                own := Sub.FinalSubAnalyzer;
                if own = nil then
                begin
