@@ -2654,6 +2654,11 @@ begin
 end;
 
 
+function IsFencedChar(ch: WideChar): boolean; inline;
+begin
+  Result := (ch = '`') or (ch = '~');
+end;
+
 function FindFencedBlockAlias(const Src: UnicodeString; APos: integer): string; // Alexey
 const
   cFencedNameChars = ['a'..'z', 'A'..'Z', '0'..'9', '_', '.', '-', '+', '#'];
@@ -2670,7 +2675,7 @@ begin
   while APos <= BufLen do
   begin
     chW := Src[APos];
-    if chW <> '`' then Break;
+    if not IsFencedChar(chW) then Break;
     Inc(MarkLen);
     Inc(APos);
   end;
@@ -2724,12 +2729,8 @@ var
             begin
               AnFinal := Sub.Rule.SyntAnalyzer;
               MarkerPos := Sub.CondStartPos + 1;
-              //// marker can have leading spaces
-              //while (MarkerPos < Length(Source)) and (Source[MarkerPos] = ' ') do
-              //  Inc(MarkerPos);
               MarkerChar := Source[MarkerPos];
-              // marker must start with a backtick
-              if MarkerChar = '`' then
+              if IsFencedChar(MarkerChar) then
               begin
                 MarkerStr := FindFencedBlockAlias(Source, MarkerPos);
                 if (MarkerStr <> '') and Assigned(EControlOptions.OnLexerResolveAlias) then
