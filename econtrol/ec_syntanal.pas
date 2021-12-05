@@ -2682,6 +2682,9 @@ begin
   // need triple backticks
   if MarkLen < 3 then Exit;
 
+  while (APos < BufLen) and (Src[APos] = ' ') do
+    Inc(APos);
+
   PosEnd := APos;
   while PosEnd <= BufLen do
   begin
