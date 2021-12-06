@@ -311,6 +311,19 @@ var
 begin
   Result:= nil;
 
+  //CudaText has no preinstalled SQL lexer (only SQL^ lite lexer)
+  if (AName='sql') then
+  begin
+    Result:= FindLexerByName('SQL');
+    if Result=nil then
+      Result:= FindLexerByName('SQL White');
+    if Result=nil then
+      Result:= FindLexerByName('SQL Blue');
+    if Result=nil then
+      Result:= FindLexerByName('T-SQL');
+    exit;
+  end;
+
   if FAliasesIni=nil then
   begin
     if FAliasesFilename='-' then exit;
