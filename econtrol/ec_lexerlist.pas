@@ -307,22 +307,10 @@ function TecLexerList.FindLexerByAlias(const AName: string): TecSyntAnalyzer;
 // ```php
 // ```
 var
-  LexName: string;
+  LexName, LexNameItem: string;
+  Sep: TATStringSeparator;
 begin
   Result:= nil;
-
-  //CudaText has no preinstalled SQL lexer (only SQL^ lite lexer)
-  if (AName='sql') then
-  begin
-    Result:= FindLexerByName('SQL');
-    if Result=nil then
-      Result:= FindLexerByName('SQL White');
-    if Result=nil then
-      Result:= FindLexerByName('SQL Blue');
-    if Result=nil then
-      Result:= FindLexerByName('T-SQL');
-    exit;
-  end;
 
   if FAliasesIni=nil then
   begin
@@ -338,7 +326,19 @@ begin
 
   LexName:= FAliasesIni.ReadString('a', AName, '');
   if LexName<>'' then
-    Result:= FindLexerByName(LexName); //it ignores case
+  begin
+    if Pos(',', LexName)=0 then
+      Result:= FindLexerByName(LexName)
+    else
+    begin
+      Sep.Init(LexName, ',');
+      while Sep.GetItemStr(LexNameItem) do
+      begin
+        Result:= FindLexerByName(LexNameItem);
+        if Assigned(Result) then exit;
+      end;
+    end;
+  end;
 end;
 
 
