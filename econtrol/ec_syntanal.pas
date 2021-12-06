@@ -777,6 +777,10 @@ type
 
   TecResolveAlias = function(const AAlias: string): TecSyntAnalyzer of object;
 
+  TecLexerApplyThemeEvent = function(
+    An: TecSyntAnalyzer;
+    out AnNotCorrect: TecSyntAnalyzer): boolean;
+
   TecSeparateBlocksMode = (sbmUnknown, sbmEnabled, sbmDisabled);
 
   { TecSyntAnalyzer }
@@ -889,6 +893,7 @@ type
 
     SpecialKinds: array of boolean; //Alexey: holds True for each TokenKind for indent-based folding
     IndentBasedFolding: boolean; //Alexey
+    AppliedSyntaxTheme: string; //Alexey
 
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -1021,6 +1026,7 @@ var
   EControlOptions: record
     OnLexerParseProgress: TecParseProgressEvent;
     OnLexerResolveAlias: TecResolveAlias;
+    OnLexerApplyTheme: TecLexerApplyThemeEvent;
 
     MaxLinesWhenParserEnablesFolding: integer;
     //how much chars can take %sz0 format

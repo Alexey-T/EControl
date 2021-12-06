@@ -309,6 +309,7 @@ function TecLexerList.FindLexerByAlias(const AName: string): TecSyntAnalyzer;
 var
   LexName, LexNameItem: string;
   Sep: TATStringSeparator;
+  AnNotCorrect: TecSyntAnalyzer;
 begin
   Result:= nil;
 
@@ -327,15 +328,15 @@ begin
   LexName:= FAliasesIni.ReadString('a', AName, '');
   if LexName<>'' then
   begin
-    if Pos(',', LexName)=0 then
-      Result:= FindLexerByName(LexName)
-    else
+    Sep.Init(LexName, ',');
+    while Sep.GetItemStr(LexNameItem) do
     begin
-      Sep.Init(LexName, ',');
-      while Sep.GetItemStr(LexNameItem) do
+      Result:= FindLexerByName(LexNameItem);
+      if Assigned(Result) then
       begin
-        Result:= FindLexerByName(LexNameItem);
-        if Assigned(Result) then exit;
+        if Assigned(EControlOptions.OnLexerApplyTheme) then
+          EControlOptions.OnLexerApplyTheme(Result, AnNotCorrect);
+        exit;
       end;
     end;
   end;
