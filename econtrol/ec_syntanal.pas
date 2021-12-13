@@ -3401,10 +3401,12 @@ var
   bSeparateBlocks: boolean;
   bDisableFolding: boolean;
   NPos, NTemp, NTagCount, iToken: integer;
+{
 const
   ProgressMinPos = 2000;
   ProcessMsgStep1 = 1000; //stage1: finding tokens
   ProcessMsgStep2 = 1000; //stage2: finding ranges
+}
 begin
   Result := eprNormal;
   BufferVersion := Buffer.Version;

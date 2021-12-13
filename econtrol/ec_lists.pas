@@ -17,6 +17,7 @@ unit ec_Lists;
 interface
 
 uses
+  SysUtils,
   Classes,
   ATSynEdit_FGL;
 
@@ -97,9 +98,6 @@ type
   TecStateChanges = TFPGList<TecStateChange>;
 
 implementation
-
-uses
-  SysUtils, Contnrs;
 
 { TecStateChange }
 
