@@ -652,6 +652,7 @@ type
     FProgress: integer;
     {$endif}
 
+    procedure GetProperLineOfChange(var ALine: integer);
     function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
     procedure ClearDataOnChange;
     procedure ClearSublexerRangesFromLine(ALine: integer);
@@ -3578,6 +3579,28 @@ begin
   end;
 end;
 
+procedure TecClientSyntAnalyzer.GetProperLineOfChange(var ALine: integer);
+var
+  SublexRangePtr: PecSubLexerRange;
+  NSublexCount, N: integer;
+begin
+  if ALine = 0 then Exit;
+
+  //change in sublexer range? start parsing from that range start. to fix CudaText issue #3882
+  NSublexCount := FSubLexerBlocks.Count;
+  if NSublexCount > 0 then
+  begin
+    N := FSubLexerBlocks.FindSofter(FBuffer.CaretToStr(Point(0, ALine)));
+         //FindSofter is needed, to support command 'duplicate line' at the end of sublexer range, e.g. in Markdown lexer
+    if N >= 0 then
+    begin
+      SublexRangePtr := FSubLexerBlocks.InternalGet(N);
+      ALine := SublexRangePtr^.Range.PointStart.Y;
+      FSubLexerBlocks.DeleteRange(N, NSublexCount-1);
+    end;
+  end;
+end;
+
 procedure TecClientSyntAnalyzer.ClearDataOnChange;
 var
   NTagCount: integer;
@@ -3595,28 +3618,15 @@ var
 var
   //lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
   NDeltaRanges: integer;
-  NLine, NTokenIndex, NSublexCount, i: integer;
+  NLine, NTokenIndex, i: integer;
   Range: TecTextRange;
-  SublexRangePtr: PecSubLexerRange;
 begin
   if FPrevChangeLine < 0 then Exit;
   NLine := FPrevChangeLine;
 
   if NLine > 0 then
   begin
-    //change in sublexer range? start parsing from that range start. to fix CudaText issue #3882
-    NSublexCount := FSubLexerBlocks.Count;
-    if NSublexCount > 0 then
-    begin
-      i := FSubLexerBlocks.FindSofter(FBuffer.CaretToStr(Point(0, NLine)));
-           //FindSofter is needed, to support command 'duplicate line' at the end of sublexer range, e.g. in Markdown lexer
-      if i >= 0 then
-      begin
-        SublexRangePtr := FSubLexerBlocks.InternalGet(i);
-        NLine := SublexRangePtr^.Range.PointStart.Y;
-        FSubLexerBlocks.DeleteRange(i, NSublexCount-1);
-      end;
-    end;
+    GetProperLineOfChange(NLine);
 
     NTokenIndex:= FTagList.PriorAtLine(NLine);
     if NTokenIndex <= 0 then
