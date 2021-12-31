@@ -3602,45 +3602,47 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.ClearDataOnChange;
-var
-  NTagCount: integer;
  //
- procedure CleanRangeList(List: TSortedList; IsClosed: Boolean);
+ procedure CleanRangeList(List: TSortedList; IsClosed: Boolean; ATagCount: integer);
  var
+   R: TecTextRange;
    i: integer;
  begin
    for i := List.Count - 1 downto 0 do
-    with TecTextRange(List[i]) do
-     if (FCondIndex >= NTagCount) or (StartIdx >= NTagCount) or IsClosed and
-        ((FEndCondIndex >= NTagCount) or (EndIdx >= NTagCount)) then
-      List.Delete(i);
+   begin
+     R := TecTextRange(List[i]);
+     if (R.FCondIndex >= ATagCount) or (R.StartIdx >= ATagCount) or R.IsClosed and
+        ((R.FEndCondIndex >= ATagCount) or (R.EndIdx >= ATagCount)) then
+       List.Delete(i);
+   end;
  end;
  //
  procedure DeleteUnneededFoldRanges(ATagCount, ADeltaRanges: integer);
  var
-   Range: TecTextRange;
+   R: TecTextRange;
    i: integer;
  begin
    for i := FRanges.Count - 1 downto 0 do
    begin
-     Range := TecTextRange(FRanges[i]);
-     if (Range.FCondIndex >= ATagCount) or (Range.StartIdx >= ATagCount) then
+     R := TecTextRange(FRanges[i]);
+     if (R.FCondIndex >= ATagCount) or (R.StartIdx >= ATagCount) then
        FRanges.Delete(i)
      else
-     if (Range.FEndCondIndex >= ATagCount - ADeltaRanges) or
-        (Range.EndIdx >= ATagCount - ADeltaRanges) then // Alexey: delta
+     if (R.FEndCondIndex >= ATagCount - ADeltaRanges) or
+        (R.EndIdx >= ATagCount - ADeltaRanges) then // Alexey: delta
      begin
-       Range.EndIdx := -1;
-       Range.FEndCondIndex := -1;
-       FOpenedBlocks.Add(Range);
+       R.EndIdx := -1;
+       R.FEndCondIndex := -1;
+       FOpenedBlocks.Add(R);
      end;
    end;
  end;
-  //
+ //
 var
   //NDeltaRanges: lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
   NDeltaRanges: integer;
   NLine, NTokenIndex: integer;
+  NTagCount: integer;
 begin
   if FPrevChangeLine < 0 then Exit;
   NLine := FPrevChangeLine;
@@ -3686,7 +3688,7 @@ begin
   FStartSepRangeAnal := NTagCount;
 
   // Remove text ranges from service containers
-  CleanRangeList(FOpenedBlocks, False);
+  CleanRangeList(FOpenedBlocks, False, NTagCount);
 
   //Alexey: prevent almost hang when user fastly pastes blocks in big file,
   //which gives e.g. 400..800..3000 opened blocks
