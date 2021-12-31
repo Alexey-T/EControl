@@ -199,7 +199,7 @@ begin
   if AValuePtr^.StartPos > AKey then
     Result := 1
   else
-  if (AValuePtr^.StartPos <= AKey) and (AValuePtr^.EndPos > AKey) then
+  if AValuePtr^.EndPos > AKey then
     Result := 0
   else
     Result := -1;
@@ -210,7 +210,7 @@ begin
   if AValuePtr^.StartPos > AKey then
     Result := 1
   else
-  if (AValuePtr^.StartPos <= AKey) and (AValuePtr^.EndPos >= AKey) then
+  if AValuePtr^.EndPos >= AKey then
     Result := 0
   else
     Result := -1;
