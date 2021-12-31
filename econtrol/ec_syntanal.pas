@@ -3597,12 +3597,24 @@ var
   NDeltaRanges: integer;
   NLine, NTokenIndex, i: integer;
   Range: TecTextRange;
+  SublexRangePtr: PecSubLexerRange;
 begin
   if FPrevChangeLine < 0 then Exit;
   NLine := FPrevChangeLine;
 
   if NLine > 0 then
   begin
+    //change in sublexer range? start parsing from that range start. to fix CudaText issue #3882
+    if FSubLexerBlocks.Count > 0 then
+    begin
+      i := FSubLexerBlocks.FindAt(FBuffer.CaretToStr(Point(0, NLine)));
+      if i >= 0 then
+      begin
+        SublexRangePtr := FSubLexerBlocks.InternalGet(i);
+        NLine := SublexRangePtr^.Range.PointStart.Y;
+      end;
+    end;
+
     NTokenIndex:= FTagList.PriorAtLine(NLine);
     if NTokenIndex <= 0 then
       NLine := 0;
