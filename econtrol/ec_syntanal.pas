@@ -652,7 +652,7 @@ type
     FProgress: integer;
     {$endif}
 
-    procedure GetProperLineOfChange(var ALine: integer);
+    procedure UpdateFirstLineOfChange(var ALine: integer);
     function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
     procedure ClearDataOnChange;
     procedure ClearSublexerRangesFromLine(ALine: integer);
@@ -3579,19 +3579,19 @@ begin
   end;
 end;
 
-procedure TecClientSyntAnalyzer.GetProperLineOfChange(var ALine: integer);
+procedure TecClientSyntAnalyzer.UpdateFirstLineOfChange(var ALine: integer);
 var
   SublexRangePtr: PecSubLexerRange;
   NSublexCount, N: integer;
 begin
   if ALine = 0 then Exit;
 
-  //change in sublexer range? start parsing from that range start. to fix CudaText issue #3882
+  //change in sublexer range? get position of that range start. CudaText issue #3882.
+  //to support command 'duplicate line' at the end of sublexer range, e.g. in Markdown lexer with fenced blocks.
   NSublexCount := FSubLexerBlocks.Count;
   if NSublexCount > 0 then
   begin
     N := FSubLexerBlocks.FindSofter(FBuffer.CaretToStr(Point(0, ALine)));
-         //FindSofter is needed, to support command 'duplicate line' at the end of sublexer range, e.g. in Markdown lexer
     if N >= 0 then
     begin
       SublexRangePtr := FSubLexerBlocks.InternalGet(N);
@@ -3649,7 +3649,7 @@ begin
 
   if NLine > 0 then
   begin
-    GetProperLineOfChange(NLine);
+    UpdateFirstLineOfChange(NLine);
 
     NTokenIndex:= FTagList.PriorAtLine(NLine);
     if NTokenIndex <= 0 then
