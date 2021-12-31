@@ -3633,6 +3633,7 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
         (R.EndIdx >= ATagCount - ADeltaRanges) then
         //Delta>0 solves problem: editing in Python must update ranges including changed pos
      begin
+       //makes range opened: set ending to -1, add to FOpenedBlocks
        R.EndIdx := -1;
        R.FEndCondIndex := -1;
        FOpenedBlocks.Add(R);
