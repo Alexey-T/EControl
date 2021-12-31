@@ -3606,7 +3606,8 @@ var
   NTagCount: integer;
  //
  procedure CleanRangeList(List: TSortedList; IsClosed: Boolean);
- var i: integer;
+ var
+   i: integer;
  begin
    for i := List.Count - 1 downto 0 do
     with TecTextRange(List[i]) do
@@ -3615,11 +3616,31 @@ var
       List.Delete(i);
  end;
  //
+ procedure DeleteUnneededFoldRanges(ATagCount, ADeltaRanges: integer);
+ var
+   Range: TecTextRange;
+   i: integer;
+ begin
+   for i := FRanges.Count - 1 downto 0 do
+   begin
+     Range := TecTextRange(FRanges[i]);
+     if (Range.FCondIndex >= ATagCount) or (Range.StartIdx >= ATagCount) then
+       FRanges.Delete(i)
+     else
+     if (Range.FEndCondIndex >= ATagCount - ADeltaRanges) or
+        (Range.EndIdx >= ATagCount - ADeltaRanges) then // Alexey: delta
+     begin
+       Range.EndIdx := -1;
+       Range.FEndCondIndex := -1;
+       FOpenedBlocks.Add(Range);
+     end;
+   end;
+ end;
+  //
 var
-  //lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
+  //NDeltaRanges: lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
   NDeltaRanges: integer;
-  NLine, NTokenIndex, i: integer;
-  Range: TecTextRange;
+  NLine, NTokenIndex: integer;
 begin
   if FPrevChangeLine < 0 then Exit;
   NLine := FPrevChangeLine;
@@ -3673,20 +3694,7 @@ begin
     FOpenedBlocks.Clear;
 
   // Remove text ranges from main storage
-  for i := FRanges.Count - 1 downto 0 do
-  begin
-    Range := TecTextRange(FRanges[i]);
-    if (Range.FCondIndex >= NTagCount) or (Range.StartIdx >= NTagCount) then
-      FRanges.Delete(i)
-    else
-    if (Range.FEndCondIndex >= NTagCount - NDeltaRanges) or
-       (Range.EndIdx >= NTagCount - NDeltaRanges) then // Alexey: delta
-    begin
-      Range.EndIdx := -1;
-      Range.FEndCondIndex := -1;
-      FOpenedBlocks.Add(Range);
-    end;
-  end;
+  DeleteUnneededFoldRanges(NTagCount, NDeltaRanges);
 
   // Restore parser state
   RestoreState;
