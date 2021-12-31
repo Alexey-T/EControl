@@ -3595,7 +3595,7 @@ var
 var
   //lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
   NDeltaRanges: integer;
-  NLine, NTokenIndex, i: integer;
+  NLine, NTokenIndex, NSublexCount, i: integer;
   Range: TecTextRange;
   SublexRangePtr: PecSubLexerRange;
 begin
@@ -3605,13 +3605,15 @@ begin
   if NLine > 0 then
   begin
     //change in sublexer range? start parsing from that range start. to fix CudaText issue #3882
-    if FSubLexerBlocks.Count > 0 then
+    NSublexCount := FSubLexerBlocks.Count;
+    if NSublexCount > 0 then
     begin
       i := FSubLexerBlocks.FindAt(FBuffer.CaretToStr(Point(0, NLine)));
       if i >= 0 then
       begin
         SublexRangePtr := FSubLexerBlocks.InternalGet(i);
         NLine := SublexRangePtr^.Range.PointStart.Y;
+        FSubLexerBlocks.DeleteRange(i, NSublexCount-1);
       end;
     end;
 
