@@ -50,6 +50,7 @@ type
 
   { TRange }
 
+  PRange = ^TRange;
   TRange = packed record
     StartPos, EndPos: integer;
     PointStart, PointEnd: TPoint;
@@ -65,7 +66,7 @@ type
   private
     type PGRange = ^GRange;
   protected
-    function CompProc(const AValue: TRange; AKey: integer): integer;
+    function CompProc(AValuePtr: PRange; AKey: integer): integer;
     function CompLines(AItemIndex, ALine: integer): integer;
   public
     constructor Create(UnionSiblings: Boolean = True);
@@ -189,12 +190,12 @@ begin
      else Result := -1;
 end;
 
-function GRangeList<GRange>.CompProc(const AValue: TRange; AKey: integer): integer;
+function GRangeList<GRange>.CompProc(AValuePtr: PRange; AKey: integer): integer;
 begin
-  if AValue.StartPos > AKey then
+  if AValuePtr^.StartPos > AKey then
     Result := 1
   else
-  if (AValue.StartPos <= AKey) and (AValue.EndPos > AKey) then
+  if (AValuePtr^.StartPos <= AKey) and (AValuePtr^.EndPos > AKey) then
     Result := 0
   else
     Result := -1;
@@ -232,7 +233,7 @@ begin
   while Result <= H do
   begin
     I := (Result + H) shr 1;
-    Diff := CompProc(TRange(InternalItems[i]^), APos);
+    Diff := CompProc(InternalItems[i], APos);
     if Diff < 0 then
       Result := I + 1
     else
@@ -247,7 +248,7 @@ begin
     Result := NCount - 1
   else
   if Result > 0 then
-    if CompProc(TRange(InternalItems[i]^), APos) > 0 then
+    if CompProc(InternalItems[i], APos) > 0 then
       Dec(Result);
 end;
 
@@ -302,7 +303,7 @@ begin
   while L <= H do
   begin
     I := (L + H) shr 1;
-    Diff := CompProc(TRange(InternalItems[i]^), APos);
+    Diff := CompProc(InternalItems[i], APos);
     if Diff < 0 then
       L := I + 1
     else
