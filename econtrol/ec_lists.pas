@@ -67,7 +67,8 @@ type
     type PGRange = ^GRange;
   protected
     function CompProc(AValuePtr: PRange; AKey: integer): integer;
-    function CompProc2(AValuePtr: PRange; AKey: integer): integer; // For method FindAt2
+    // CompProc2 returns 0 also when APos is at the range end
+    function CompProc2(AValuePtr: PRange; AKey: integer): integer;
     function CompLines(AItemIndex, ALine: integer): integer;
   public
     constructor Create(UnionSiblings: Boolean = True);
@@ -85,7 +86,8 @@ type
     function PriorAtLine(ALine: integer): integer;
     // At position exactly, -1 if pos between tokens
     function FindAt(APos: integer): integer;
-    function FindAt2(APos: integer): integer; // Also allows APos to be exactly at the range end
+    // FindSofter also allows APos to be exactly at the range end
+    function FindSofter(APos: integer): integer;
   end;
 
   TecRangeList = GRangeList<TRange>;
@@ -328,7 +330,7 @@ begin
   end;
 end;
 
-function GRangeList<GRange>.FindAt2(APos: integer): integer;
+function GRangeList<GRange>.FindSofter(APos: integer): integer;
 var
   L, H, I, Diff, NCount: Integer;
 begin
