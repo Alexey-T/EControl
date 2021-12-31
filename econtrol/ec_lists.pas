@@ -33,8 +33,10 @@ type
   private
     FList: TFPList;
     FOwnsObjects: boolean;
+    function CompProc(ItemIndex, Key: integer): integer;
     function GetCount: integer;
     function GetItem(Index: integer): TSortedItem;
+    function QuickSearch(Key: integer; var Index: integer): Boolean;
   public
     constructor Create(AOwnObjects: Boolean);
     destructor Destroy; override;
@@ -449,49 +451,49 @@ begin
   Result := TSortedItem(FList[Index]);
 end;
 
-function TSortedList.PriorAt(Pos: integer): integer;
+function TSortedList.CompProc(ItemIndex, Key: integer): integer; inline;
+begin
+  Result := TSortedItem(FList[ItemIndex]).GetKey - Key;
+end;
 
-  function CompProc(ItemIndex, Key: integer): integer; inline;
+function TSortedList.QuickSearch(Key: integer; var Index: integer): Boolean;
+var
+  L, H, I, C, NCount: Integer;
+begin
+  Result := False;
+  NCount := FList.Count;
+  if NCount = 0 then
   begin
-    Result := TSortedItem(FList[ItemIndex]).GetKey - Key;
+    Index := -1;
+    Exit;
   end;
 
-  function QuickSearch(Key: integer; var Index: integer): Boolean; inline;
-  var
-    L, H, I, C, NCount: Integer;
+  L := 0;
+  H := NCount - 1;
+  while L <= H do
   begin
-    Result := False;
-    NCount := FList.Count;
-    if NCount = 0 then
+    I := (L + H) shr 1;
+    C := CompProc(I, Key);
+    if C < 0 then L := I + 1 else
     begin
-      Index := -1;
-      Exit;
-    end;
-
-    L := 0;
-    H := NCount - 1;
-    while L <= H do
-    begin
-      I := (L + H) shr 1;
-      C := CompProc(I, Key);
-      if C < 0 then L := I + 1 else
+      if C = 0 then
       begin
-        if C = 0 then
-        begin
-          Result := True;
-          Index := I;
-          Exit;
-        end;
-        H := I - 1;
+        Result := True;
+        Index := I;
+        Exit;
       end;
+      H := I - 1;
     end;
-    Index := L;
-    if Index >= NCount then
-      Index := NCount - 1;
-    if Index >= 0 then
-      if CompProc(Index, Key) > 0 then
-        dec(Index);
   end;
+  Index := L;
+  if Index >= NCount then
+    Index := NCount - 1;
+  if Index >= 0 then
+    if CompProc(Index, Key) > 0 then
+      Dec(Index);
+end;
+
+function TSortedList.PriorAt(Pos: integer): integer;
 begin
   QuickSearch(Pos, Result);
 end;
