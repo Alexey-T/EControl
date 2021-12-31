@@ -189,7 +189,7 @@ begin
    begin
      if Count > 0 then Result := 0
    end else
-   if TRange(InternalItems[Result]^).EndPos <= APos then
+   if PRange(InternalItems[Result])^.EndPos <= APos then
     if Result < Count - 1 then Inc(Result)
      else Result := -1;
 end;
@@ -218,13 +218,13 @@ end;
 
 function GRangeList<GRange>.CompLines(AItemIndex, ALine: integer): integer;
 var
-  Ptr: pointer;
+  Ptr: PRange;
   Y1, Y2: integer;
 begin
-  Ptr := InternalItems[AItemIndex];
+  Ptr := PRange(InternalItems[AItemIndex]);
   // support multi-line comments
-  Y1 := TRange(Ptr^).PointStart.Y;
-  Y2 := TRange(Ptr^).PointEnd.Y;
+  Y1 := Ptr^.PointStart.Y;
+  Y2 := Ptr^.PointEnd.Y;
   if Y1 = Y2 then
     Result := Y1 - ALine
   else
