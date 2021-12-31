@@ -67,6 +67,7 @@ type
     type PGRange = ^GRange;
   protected
     function CompProc(AValuePtr: PRange; AKey: integer): integer;
+    function CompProc2(AValuePtr: PRange; AKey: integer): integer; // For method FindAt2
     function CompLines(AItemIndex, ALine: integer): integer;
   public
     constructor Create(UnionSiblings: Boolean = True);
@@ -84,6 +85,7 @@ type
     function PriorAtLine(ALine: integer): integer;
     // At position exactly, -1 if pos between tokens
     function FindAt(APos: integer): integer;
+    function FindAt2(APos: integer): integer; // Also allows APos to be exactly at the range end
   end;
 
   TecRangeList = GRangeList<TRange>;
@@ -201,6 +203,17 @@ begin
     Result := -1;
 end;
 
+function GRangeList<GRange>.CompProc2(AValuePtr: PRange; AKey: integer): integer;
+begin
+  if AValuePtr^.StartPos > AKey then
+    Result := 1
+  else
+  if (AValuePtr^.StartPos <= AKey) and (AValuePtr^.EndPos >= AKey) then
+    Result := 0
+  else
+    Result := -1;
+end;
+
 function GRangeList<GRange>.CompLines(AItemIndex, ALine: integer): integer;
 var
   Ptr: pointer;
@@ -304,6 +317,32 @@ begin
   begin
     I := (L + H) shr 1;
     Diff := CompProc(InternalItems[i], APos);
+    if Diff < 0 then
+      L := I + 1
+    else
+    begin
+      if Diff = 0 then
+        Exit(I);
+      H := I - 1;
+    end;
+  end;
+end;
+
+function GRangeList<GRange>.FindAt2(APos: integer): integer;
+var
+  L, H, I, Diff, NCount: Integer;
+begin
+  Result := -1;
+  NCount := Count;
+  if NCount = 0 then
+    Exit;
+
+  L := 0;
+  H := NCount - 1;
+  while L <= H do
+  begin
+    I := (L + H) shr 1;
+    Diff := CompProc2(InternalItems[i], APos);
     if Diff < 0 then
       L := I + 1
     else

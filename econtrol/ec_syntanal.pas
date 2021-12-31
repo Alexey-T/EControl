@@ -3608,7 +3608,8 @@ begin
     NSublexCount := FSubLexerBlocks.Count;
     if NSublexCount > 0 then
     begin
-      i := FSubLexerBlocks.FindAt(FBuffer.CaretToStr(Point(0, NLine)));
+      i := FSubLexerBlocks.FindAt2(FBuffer.CaretToStr(Point(0, NLine)));
+           //FindAt2 is needed, to support command 'duplicate line' at the end of sublexer range, e.g. in Markdown lexer
       if i >= 0 then
       begin
         SublexRangePtr := FSubLexerBlocks.InternalGet(i);
