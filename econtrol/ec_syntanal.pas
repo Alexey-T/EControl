@@ -3592,6 +3592,7 @@ begin
   if NSublexCount > 0 then
   begin
     N := FSubLexerBlocks.FindSofter(FBuffer.CaretToStr(Point(0, ALine)));
+         //FindSofter is needed: change-position may occur at the very end of a range
     if N >= 0 then
     begin
       SublexRangePtr := FSubLexerBlocks.InternalGet(N);
