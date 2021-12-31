@@ -67,8 +67,8 @@ type
     type PGRange = ^GRange;
   protected
     function CompProc(AValuePtr: PRange; AKey: integer): integer;
-    // CompProc2 returns 0 also when APos is at the range end
-    function CompProc2(AValuePtr: PRange; AKey: integer): integer;
+    // CompProcSofter returns 0 also when APos is at the range end
+    function CompProcSofter(AValuePtr: PRange; AKey: integer): integer;
     function CompLines(AItemIndex, ALine: integer): integer;
   public
     constructor Create(UnionSiblings: Boolean = True);
@@ -205,7 +205,7 @@ begin
     Result := -1;
 end;
 
-function GRangeList<GRange>.CompProc2(AValuePtr: PRange; AKey: integer): integer;
+function GRangeList<GRange>.CompProcSofter(AValuePtr: PRange; AKey: integer): integer;
 begin
   if AValuePtr^.StartPos > AKey then
     Result := 1
@@ -344,7 +344,7 @@ begin
   while L <= H do
   begin
     I := (L + H) shr 1;
-    Diff := CompProc2(InternalItems[i], APos);
+    Diff := CompProcSofter(InternalItems[i], APos);
     if Diff < 0 then
       L := I + 1
     else
