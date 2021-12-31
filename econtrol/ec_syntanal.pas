@@ -3618,7 +3618,7 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
    end;
  end;
  //
- procedure DeleteUnneededFoldRanges(ATagCount, ADeltaRanges: integer);
+ procedure UpdateFoldRangesOnChange(ATagCount, ADeltaRanges: integer);
  var
    R: TecTextRange;
    i: integer;
@@ -3630,7 +3630,8 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
        FRanges.Delete(i)
      else
      if (R.FEndCondIndex >= ATagCount - ADeltaRanges) or
-        (R.EndIdx >= ATagCount - ADeltaRanges) then // Alexey: delta
+        (R.EndIdx >= ATagCount - ADeltaRanges) then
+        //Delta>0 solves problem: editing in Python must update ranges including changed pos
      begin
        R.EndIdx := -1;
        R.FEndCondIndex := -1;
@@ -3697,7 +3698,7 @@ begin
     FOpenedBlocks.Clear;
 
   // Remove text ranges from main storage
-  DeleteUnneededFoldRanges(NTagCount, NDeltaRanges);
+  UpdateFoldRangesOnChange(NTagCount, NDeltaRanges);
 
   // Restore parser state
   RestoreState;
