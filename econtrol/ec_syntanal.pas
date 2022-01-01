@@ -41,10 +41,10 @@ type
   TecSubAnalyzerRule    = class;
   TecTextRange        = class;
 
-  TOnMatchToken = procedure(Sender: TObject; Client: TecParserResults;
-    const Text: ecString; APos: integer; var MatchLen: integer) of object;
-  TOnBlockCheck = procedure(Sender: TObject; Client: TecClientSyntAnalyzer;
-    const Text: ecString; var RefIdx: integer; var Accept: Boolean) of object;
+  TecMatchTokenEvent = procedure(Sender: TObject; AClient: TecParserResults;
+    const AText: ecString; APos: integer; var AMatchLen: integer) of object;
+  TecBlockCheckEvent = procedure(Sender: TObject; AClient: TecClientSyntAnalyzer;
+    const AText: ecString; var ARefIndex: integer; var Accept: Boolean) of object;
   TecBoundDefEvent = procedure(Sender: TecClientSyntAnalyzer; ARange: TecTextRange;
     var AIndexStart, AIndexEnd: integer) of object;
 
@@ -231,7 +231,7 @@ type
     FHighlightPos: TecHighlightPos;
     FDynSelectMin: Boolean;
     FCancelNextRules: Boolean;
-    FOnBlockCheck: TOnBlockCheck;
+    FOnBlockCheck: TecBlockCheckEvent;
     FDrawStaple: Boolean;
     FGroupIndex: integer;
     FCollapseFmt: ecString;
@@ -303,6 +303,7 @@ type
     property TreeItemStyleObj: TecSyntaxFormat read FTreeItemStyleObj;
     property TreeGroupStyleObj: TecSyntaxFormat read FTreeGroupStyleObj;
     procedure Loaded; override;
+    property OnBlockCheck: TecBlockCheckEvent read FOnBlockCheck write FOnBlockCheck;
   published
     property BlockType: TecTagBlockType read FBlockType write SetBlockType default btRangeStart;
     property ConditionList: TecConditionCollection read FConditions write SetConditions;
@@ -326,7 +327,6 @@ type
     property DrawStaple: Boolean read FDrawStaple write SetDrawStaple default False;
     property GroupIndex: integer read FGroupIndex write FGroupIndex default 0;
     property CollapseFmt: ecString read FCollapseFmt write SetCollapseFmt;
-    property OnBlockCheck: TOnBlockCheck read FOnBlockCheck write FOnBlockCheck;
     property SelfClose: Boolean read FSelfClose write SetSelfClose default False;
     // New in v2.20
     property NoEndRule: Boolean read FNoEndRule write SetNoEndRule default False;
@@ -359,7 +359,7 @@ type
   private
     FRegExpr: TecRegExpr;
     FTokenType: integer;
-    FOnMatchToken: TOnMatchToken;
+    FOnMatchToken: TecMatchTokenEvent;
     FColumnTo: integer;
     FColumnFrom: integer;
     FCriSec: TCriticalSection;
@@ -376,12 +376,12 @@ type
     constructor Create(Collection: TCollection); override;
     destructor Destroy; override;
     function Match(const Source: ecString; Pos: integer): integer;
+    property OnMatchToken: TecMatchTokenEvent read FOnMatchToken write FOnMatchToken;
   published
     property TokenType: integer read FTokenType write SetTokenType default 0;
     property Expression: ecString read GetExpression write SetExpression;
     property ColumnFrom: integer read FColumnFrom write SetColumnFrom;
     property ColumnTo: integer read FColumnTo write SetColumnTo;
-    property OnMatchToken: TOnMatchToken read FOnMatchToken write FOnMatchToken;
   end;
 
   TecTokenRuleCollection = class(TSyntCollection)
