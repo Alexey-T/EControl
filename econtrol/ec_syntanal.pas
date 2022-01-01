@@ -3581,7 +3581,7 @@ end;
 
 procedure TecClientSyntAnalyzer.UpdateFirstLineOfChange(var ALine: integer);
 var
-  SublexRangePtr: PecSubLexerRange;
+  Rng: PecSubLexerRange;
   NSublexCount, N: integer;
 begin
   if ALine = 0 then Exit;
@@ -3595,10 +3595,10 @@ begin
          //FindSofter is needed: change-position may occur at the very end of a range
     if N >= 0 then
     begin
-      SublexRangePtr := FSubLexerBlocks.InternalGet(N);
-      if SublexRangePtr.FinalSubAnalyzer <> SublexRangePtr.Rule.SyntAnalyzer then
+      Rng := FSubLexerBlocks.InternalGet(N);
+      if Rng.FinalSubAnalyzer <> Rng.Rule.SyntAnalyzer then
       begin
-        ALine := SublexRangePtr^.Range.PointStart.Y;
+        ALine := Rng.Range.PointStart.Y;
         FSubLexerBlocks.DeleteRange(N, NSublexCount-1);
       end;
     end;
