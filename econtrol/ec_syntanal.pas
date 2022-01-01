@@ -11,8 +11,6 @@
 { *************************************************************************** }
 
 {$mode delphi}
-{.$define ParseProgress}
-{.$define ParseTime}
 
 unit ec_SyntAnal;
 
@@ -648,9 +646,6 @@ type
     FOnProgressFirst: TNotifyEvent;
     FOnProgressSecond: TNotifyEvent;
     FOnProgressBoth: TNotifyEvent;
-    {$ifdef ParseProgress}
-    FProgress: integer;
-    {$endif}
 
     procedure UpdateFirstLineOfChange(var ALine: integer);
     function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
@@ -709,7 +704,6 @@ type
     procedure ParseAll(AResetContent: Boolean);
     procedure ParseToPos(APos: integer);
     function ParseInThread: TecParseInThreadResult;
-    procedure DoShowProgress;
     //procedure CompleteAnalysis;
 
     function CloseRange(Cond: TecTagBlockCondition; RefTag: integer): Boolean;
@@ -1140,10 +1134,6 @@ procedure TecParserThread.Execute;
 var
   Res: TecParseInThreadResult;
   SavedChangeLine: integer;
-{$ifdef ParseTime}
-var
-  tick: QWord;
-{$endif}
 begin
   try
     repeat
@@ -1161,14 +1151,7 @@ begin
 
       An.EventParseIdle.ResetEvent;
       try
-        {$ifdef ParseTime}
-        DebugMsg := 'parse-begin';
-        DebugTicks := 0;
-        Synchronize(ShowDebugMsg);
-        tick := GetTickCount64;
-        {$else}
         //Synchronize(DummyProc); //otherwise editor is not highlighted
-        {$endif}
 
         //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
         SavedChangeLine := An.FPrevChangeLine;
@@ -1181,11 +1164,6 @@ begin
       finally
         if not Terminated and not Application.Terminated then
         begin
-          {$ifdef ParseTime}
-          DebugMsg := 'parse-done';
-          DebugTicks := GetTickCount64-tick;
-          Synchronize(ShowDebugMsg);
-          {$endif}
           Synchronize(ThreadParseDone);
         end;
 
@@ -3393,11 +3371,6 @@ end;
 
 function TecClientSyntAnalyzer.ParseInThread: TecParseInThreadResult; //Alexey
 var
-  {$ifdef ParseProgress}
-  BufLen: integer;
-  ProgressPrev: integer;
-  NMaxPercents: integer;
-  {$endif}
   own: TecSyntAnalyzer;
   bSeparateBlocks: boolean;
   bDisableFolding: boolean;
@@ -3416,15 +3389,6 @@ begin
 
   NPos := 0;
   bSeparateBlocks := FOwner.SeparateBlockAnalysis;
-
-  {$ifdef ParseProgress}
-  BufLen := FBuffer.TextLength;
-  if bSeparateBlocks then
-    NMaxPercents := 50
-  else
-    NMaxPercents := 100;
-  ProgressPrev := 0;
-  {$endif}
 
   bDisableFolding := GetDisabledFolding;
   if bDisableFolding then
@@ -3455,9 +3419,6 @@ begin
       //all tokens found, now find blocks (if bSeparateBlocks)
       if bSeparateBlocks then
       begin
-        {$ifdef ParseProgress}
-        ProgressPrev := 50;
-        {$endif}
         NTagCount := TagCount;
 
         for iToken := FStartSepRangeAnal + 1 to NTagCount do
@@ -3472,19 +3433,6 @@ begin
 
           if BufferInvalidated then
             Exit(eprBufferInvalidated);
-
-          {$ifdef ParseProgress}
-          if iToken mod ProcessMsgStep2 = 0 then
-          begin
-            //progress for 2nd half of parsing, range 50..100
-            FProgress := 50 + iToken * 50 div NTagCount;
-            if FProgress <> ProgressPrev then
-            begin
-              ProgressPrev := FProgress;
-              DoShowProgress;
-            end;
-          end;
-          {$endif}
         end;
       end;
 
@@ -3497,34 +3445,8 @@ begin
       //this works when parsing has reached the ed's LineBottom,
       //it updates not-complete PublicData
       UpdatePublicData(False);
-
-      {$ifdef ParseProgress}
-      if TagCount mod ProcessMsgStep1 = 0 then
-      begin
-        //if bSeparateBlocks, it's progress for 1st half of parsing, 0..50
-        //otherwise, it's progress for entire parsing, 0..100
-        if BufLen > 0 then
-          if FPos < ProgressMinPos then
-            FProgress := 0
-          else
-            FProgress := NPos * NMaxPercents div BufLen;
-        if FProgress <> ProgressPrev then
-        begin
-          ProgressPrev := FProgress;
-          DoShowProgress;
-        end;
-      end;
-      {$endif}
     end;
   until False;
-end;
-
-procedure TecClientSyntAnalyzer.DoShowProgress;
-begin
-  {$ifdef ParseProgress}
-  if Assigned(OnLexerParseProgress) then
-    OnLexerParseProgress(Owner, FProgress);
-  {$endif}
 end;
 
 procedure TecClientSyntAnalyzer.ParseToPos(APos: integer);
