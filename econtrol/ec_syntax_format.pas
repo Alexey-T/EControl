@@ -12,7 +12,7 @@
 
 unit ec_syntax_format;
 
-{$mode Delphi}{$H+}
+{$mode delphi}
 
 interface
 
