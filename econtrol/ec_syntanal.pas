@@ -3596,8 +3596,11 @@ begin
     if N >= 0 then
     begin
       SublexRangePtr := FSubLexerBlocks.InternalGet(N);
-      ALine := SublexRangePtr^.Range.PointStart.Y;
-      FSubLexerBlocks.DeleteRange(N, NSublexCount-1);
+      if SublexRangePtr.FinalSubAnalyzer <> SublexRangePtr.Rule.SyntAnalyzer then
+      begin
+        ALine := SublexRangePtr^.Range.PointStart.Y;
+        FSubLexerBlocks.DeleteRange(N, NSublexCount-1);
+      end;
     end;
   end;
 end;
