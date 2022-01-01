@@ -708,11 +708,6 @@ type
     procedure CopyRangesFold(L: TSortedList);
   end;
 
-// *******************************************************************
-//  Syntax analizer
-//            container of syntax rules
-// *******************************************************************
-
   { TLoadableComponent }
 
   TLoadableComponent = class(TComponent)
@@ -722,14 +717,11 @@ type
     FIgnoreAll: Boolean;
     FSaving: Boolean;
   protected
-    procedure OnReadError(Reader: TReader; const Message: string;
-                          var Handled: Boolean); virtual;
+    procedure OnReadError(Reader: TReader; const Message: string; var Handled: Boolean); virtual;
   public
-    procedure SaveToFile(const FileName: string); virtual;
+    procedure SaveToFile(const AFileName: string); virtual;
     procedure SaveToStream(Stream: TStream); virtual;
     procedure LoadFromFile(const AFileName: string); virtual;
-    procedure LoadFromResourceID(Instance: Cardinal; ResID: Integer; ResType: string); virtual;
-    procedure LoadFromResourceName(Instance: Cardinal; const ResName: string; ResType: string); virtual;
     procedure LoadFromStream(const Stream: TStream); virtual;
   protected
     procedure SetName(const NewName: TComponentName); override;
@@ -5534,34 +5526,6 @@ begin
   end;
 end;
 
-procedure TLoadableComponent.LoadFromResourceID(Instance: Cardinal;
-  ResID: Integer; ResType: string);
-var
-  Stream: TResourceStream;
-begin
-  Stream := TResourceStream.CreateFromID(Instance, ResID,
-    PChar(ResType));
-  try
-    LoadFromStream(Stream);
-  finally
-    FreeAndNil(Stream);
-  end;
-end;
-
-procedure TLoadableComponent.LoadFromResourceName(Instance: Cardinal;
-  const ResName: string; ResType: string);
-var
-  Stream: TResourceStream;
-begin
-  Stream := TResourceStream.Create(Instance, ResName,
-    PChar(ResType));
-  try
-    LoadFromStream(Stream);
-  finally
-    FreeAndNil(Stream);
-  end;
-end;
-
 procedure TLoadableComponent.LoadFromStream(const Stream: TStream);
 begin
   FSkipNewName := True;
@@ -5612,17 +5576,17 @@ begin
    end;
 end;
 
-procedure TLoadableComponent.SaveToFile(const FileName: string);
+procedure TLoadableComponent.SaveToFile(const AFileName: string);
 var
   Stream: TStream;
 begin
-  Stream := TFileStream.Create(FileName, fmCreate);
+  Stream := TFileStream.Create(AFileName, fmCreate);
   try
     SaveToStream(Stream);
   finally
     FreeAndNil(Stream);
   end;
-  FFileName := FileName;
+  FFileName := AFileName;
 end;
 
 procedure TLoadableComponent.SaveToStream(Stream: TStream);
