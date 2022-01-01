@@ -30,12 +30,6 @@ uses
   ec_proc_StreamComponent;
 
 type
-  IecSyntClient = interface
-    ['{045EAD6D-5584-4A60-849E-6B8994AA5B8F}']
-    procedure FormatChanged; // Lexer properties changed (update without clear)
-    procedure Finished;      // Compleat analysis
-  end;
-
   TecLineBreakPos = (lbTop, lbBottom);
   TecLineBreakBound = set of TecLineBreakPos; // for user blocks
 
@@ -501,7 +495,6 @@ type
   TecParserResults = class(TTokenHolder)
   private
     FBuffer: TATStringBuffer;
-    FClient: IecSyntClient;
     FOwner: TecSyntAnalyzer;
     FFinished: Boolean;
     FPrevChangeLine: integer;
@@ -552,7 +545,7 @@ type
     //holds booleans: first token of i-th line is a 'comment'
     CmtIndexer: packed array of boolean; //Alexey
 
-    constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer; const AClient: IecSyntClient);
+    constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
     destructor Destroy; override;
 
     procedure Clear; virtual;
@@ -2260,8 +2253,7 @@ end;
 
 { TecParserResults }
 
-constructor TecParserResults.Create(AOwner: TecSyntAnalyzer;
-  ABuffer: TATStringBuffer; const AClient: IecSyntClient);
+constructor TecParserResults.Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
 //TODO: del AUseTimer
 begin
   inherited Create;
@@ -2269,7 +2261,6 @@ begin
     raise Exception.Create('TextBuffer not passed to parser');
   FOwner := AOwner;
   FBuffer := ABuffer;
-  FClient := AClient;
   FTagList := TecTokenList.Create(False);
   FSubLexerBlocks := TecSubLexerRanges.Create;
   FOwner.FClientList.Add(Self);
@@ -3031,7 +3022,7 @@ end;
 
 constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
 begin
-  inherited Create(AOwner, ABuffer, nil);
+  inherited Create(AOwner, ABuffer);
 
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
@@ -4792,10 +4783,12 @@ begin
   if FCoping then Exit;
   FCoping := True;
   try
+    { //Alexey: removed
     for i := 0 to FClientList.Count - 1 do
      with TecClientSyntAnalyzer(FClientList[i]) do
        if FClient <> nil then
          FClient.FormatChanged;
+    }
     for i := 0 to FMasters.Count - 1 do
       TecSyntAnalyzer(FMasters[i]).UpdateClients;
   finally
