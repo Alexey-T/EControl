@@ -964,12 +964,12 @@ type
   private
     FOnChange: TNotifyEvent;
     FList: TFPList;
-    FCurrentLexer: TecSyntAnalyzer;
+    //FCurrentLexer: TecSyntAnalyzer;
     FOnLexerChanged: TNotifyEvent;
     FModified: Boolean;
     function GeItem(Index: integer): TecSyntAnalyzer;
     function GetCount: integer;
-    procedure SetCurrentLexer(const Value: TecSyntAnalyzer);
+    //procedure SetCurrentLexer(const Value: TecSyntAnalyzer);
   protected
     procedure GetChildren(Proc: TGetChildProc; Root: TComponent); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -989,7 +989,7 @@ type
     property AnalyzerCount: integer read GetCount;
     property Analyzers[Index: integer]: TecSyntAnalyzer read GeItem;
     property FileName;
-    property CurrentLexer: TecSyntAnalyzer read FCurrentLexer write SetCurrentLexer;
+    //property CurrentLexer: TecSyntAnalyzer read FCurrentLexer write SetCurrentLexer;
     property Modified: Boolean read FModified write FModified;
   published
     property OnLexerChanged: TNotifyEvent read FOnLexerChanged write FOnLexerChanged stored NotStored;
@@ -5317,6 +5317,7 @@ begin
   inherited;
 end;
 
+{
 procedure TecSyntaxManager.SetCurrentLexer(const Value: TecSyntAnalyzer);
 begin
   if (FCurrentLexer <> Value) and ((Value = nil) or (FList.IndexOf(value) <> -1)) then
@@ -5324,9 +5325,9 @@ begin
      FCurrentLexer := Value;
    end;
 end;
+}
 
-function TecSyntaxManager.FindAnalyzer(
-  const LexerName: string): TecSyntAnalyzer;
+function TecSyntaxManager.FindAnalyzer(const LexerName: string): TecSyntAnalyzer;
 var i: integer;
     An: TecSyntAnalyzer;
 begin
@@ -5334,10 +5335,7 @@ begin
   begin
    An := Analyzers[i];
    if SameText(An.LexerName, LexerName) then
-     begin
-      Result := An;
-      Exit;
-     end;
+      Exit(An);
   end;
   Result := nil;
 end;
