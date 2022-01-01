@@ -3624,16 +3624,16 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
  procedure UpdateFoldRangesOnChange(ATagCount: integer);
  var
    R: TecTextRange;
-   NDeltaRanges: integer;
+   NDelta: integer;
    i: integer;
  begin
    //delta>0 was added for Python: editing below the block end must enlarge that block to include the new text.
    //but delta>0 breaks HTML lexer: on editing in any place,
-  //             text in <p>text text</p> changes styles to "misspelled tag property".
+   //            text in <p>text text</p> changes styles to "misspelled tag property".
    if Owner.IndentBasedFolding then
-     NDeltaRanges := 4
+     NDelta := 4
    else
-     NDeltaRanges := 0;
+     NDelta := 0;
 
    for i := FRanges.Count - 1 downto 0 do
    begin
@@ -3641,9 +3641,8 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
      if (R.FCondIndex >= ATagCount) or (R.StartIdx >= ATagCount) then
        FRanges.Delete(i)
      else
-     if (R.FEndCondIndex >= ATagCount - NDeltaRanges) or
-        (R.EndIdx >= ATagCount - NDeltaRanges) then
-        //Delta>0 solves problem: editing in Python must update ranges including changed pos
+     if (R.FEndCondIndex >= ATagCount - NDelta) or
+        (R.EndIdx >= ATagCount - NDelta) then
      begin
        //makes range opened: set ending to -1, add to FOpenedBlocks
        R.EndIdx := -1;
