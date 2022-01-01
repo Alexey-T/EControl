@@ -42,11 +42,11 @@ type
   TecTextRange        = class;
 
   TOnMatchToken = procedure(Sender: TObject; Client: TecParserResults;
-      const Text: ecString; APos: integer; var MatchLen: integer) of object;
+    const Text: ecString; APos: integer; var MatchLen: integer) of object;
   TOnBlockCheck = procedure(Sender: TObject; Client: TecClientSyntAnalyzer;
-      const Text: ecString; var RefIdx: integer; var Accept: Boolean) of object;
-
-  TBoundDefEvent = procedure(Sender: TecClientSyntAnalyzer; Range: TecTextRange; var sIdx, eIdx: integer) of object;
+    const Text: ecString; var RefIdx: integer; var Accept: Boolean) of object;
+  TecBoundDefEvent = procedure(Sender: TecClientSyntAnalyzer; ARange: TecTextRange;
+    var AIndexStart, AIndexEnd: integer) of object;
 
   TecParseInThreadResult = (
     eprNormal,
@@ -757,7 +757,7 @@ type
     property FileName: string read FFileName;
   end;
 
-  TParseTokenEvent = procedure(Client: TecParserResults; const Text: ecString; Pos: integer;
+  TecParseTokenEvent = procedure(Client: TecParserResults; const Text: ecString; Pos: integer;
       var TokenLength: integer; var Rule: TecTokenRule) of object;
 
   TecParseProgressEvent = procedure(Sender: TObject; AProgress: integer) of object;
@@ -815,11 +815,11 @@ type
     FCharset: TFontCharSet;
     FSeparateBlocks: TecSeparateBlocksMode;
     FAlwaysSyncBlockAnal: Boolean;   // Indicates that blocks analysis may after tokens
-    FOnGetCollapseRange: TBoundDefEvent;
-    FOnCloseTextRange: TBoundDefEvent;
+    FOnGetCollapseRange: TecBoundDefEvent;
+    FOnCloseTextRange: TecBoundDefEvent;
     FIdleAppendDelayInit: Cardinal;
     FIdleAppendDelay: Cardinal;
-    FOnParseToken: TParseTokenEvent;
+    FOnParseToken: TecParseTokenEvent;
 
     procedure InitCommentRules;
     procedure SetSampleText(const Value: TStrings);
@@ -902,6 +902,12 @@ type
     property DefStyle: TecSyntaxFormat read FDefStyle write SetDefStyle;
     property CollapseStyle: TecSyntaxFormat read FCollapseStyle write SetCollapseStyle;
     }
+
+    property OnChange: TNotifyEvent read FOnChange write FOnChange;
+    property OnGetCollapseRange: TecBoundDefEvent read FOnGetCollapseRange write FOnGetCollapseRange;
+    property OnCloseTextRange: TecBoundDefEvent read FOnCloseTextRange write FOnCloseTextRange;
+    property OnParseToken: TecParseTokenEvent read FOnParseToken write FOnParseToken;
+
   published
     property Formats: TecStylesCollection read FFormats write SetFormats;
     property TokenRules: TecTokenRuleCollection read FTokenRules write SetTokenRules;
@@ -940,11 +946,6 @@ type
     property AlwaysSyncBlockAnal: Boolean read FAlwaysSyncBlockAnal write SetAlwaysSyncBlockAnal default False;
     property IdleAppendDelay: Cardinal read FIdleAppendDelay write FIdleAppendDelay default 200;
     property IdleAppendDelayInit: Cardinal read FIdleAppendDelayInit write FIdleAppendDelayInit default 50;
-
-    property OnChange: TNotifyEvent read FOnChange write FOnChange;
-    property OnGetCollapseRange: TBoundDefEvent read FOnGetCollapseRange write FOnGetCollapseRange;
-    property OnCloseTextRange: TBoundDefEvent read FOnCloseTextRange write FOnCloseTextRange;
-    property OnParseToken: TParseTokenEvent read FOnParseToken write FOnParseToken;
   end;
 
   TLibSyntAnalyzer = class(TecSyntAnalyzer)
