@@ -3624,13 +3624,12 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
  procedure UpdateFoldRangesOnChange(ATagCount: integer);
  var
    R: TecTextRange;
-   //NDeltaRanges: lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
    NDeltaRanges: integer;
    i: integer;
  begin
-   // delta>0 was added for Python: editing below block end must enlarge previous block to editing pos
-   // delta>0 breaks HTML lexer: on editing in any place,
-   // text in <p>text text</p> changes styles to "misspelled tag property"
+   //delta>0 was added for Python: editing below the block end must enlarge that block to include the new text.
+   //but delta>0 breaks HTML lexer: on editing in any place,
+  //             text in <p>text text</p> changes styles to "misspelled tag property".
    if Owner.IndentBasedFolding then
      NDeltaRanges := 4
    else
