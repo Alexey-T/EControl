@@ -716,32 +716,14 @@ type
   { TLoadableComponent }
 
   TLoadableComponent = class(TComponent)
-  private type
-    TThemeMappingItem = record
-      StrFrom, StrTo: string;
-    end;
   private
     FSkipNewName: Boolean;
     FFileName: string;
     FIgnoreAll: Boolean;
     FSaving: Boolean;
-    procedure LoadExtraData(const AFileName: string);
   protected
     procedure OnReadError(Reader: TReader; const Message: string;
                           var Handled: Boolean); virtual;
-  private
-    ThemeMappingCount: integer;
-    ThemeMappingArray: array[0..40] of TThemeMappingItem;
-    SubLexerNames: array[0..12] of string;
-  public
-    CommentRangeBegin: string;
-    CommentRangeEnd: string;
-    CommentFullLinesBegin: string;
-    CommentFullLinesEnd: string;
-    StylesOfComments: string;
-    StylesOfStrings: string;
-    function SubLexerName(Index: integer): string;
-    function ThemeMappingOfStyle(const AName: string): string;
   public
     procedure SaveToFile(const FileName: string); virtual;
     procedure SaveToStream(Stream: TStream); virtual;
@@ -754,8 +736,8 @@ type
     property FileName: string read FFileName;
   end;
 
-  TecParseTokenEvent = procedure(Client: TecParserResults; const Text: ecString; Pos: integer;
-      var TokenLength: integer; var Rule: TecTokenRule) of object;
+  TecParseTokenEvent = procedure(AClient: TecParserResults; const AText: ecString; APos: integer;
+    var ATokenLength: integer; var ARule: TecTokenRule) of object;
 
   TecParseProgressEvent = procedure(Sender: TObject; AProgress: integer) of object;
 
@@ -770,6 +752,10 @@ type
   { TecSyntAnalyzer }
 
   TecSyntAnalyzer = class(TLoadableComponent)
+  private type
+    TThemeMappingItem = record
+      StrFrom, StrTo: string;
+    end;
   private
     FDeleted: Boolean; //Alexey
     FClientList: TFPList;
@@ -818,6 +804,11 @@ type
     FIdleAppendDelay: Cardinal;
     FOnParseToken: TecParseTokenEvent;
 
+    ThemeMappingCount: integer;
+    ThemeMappingArray: array[0..40] of TThemeMappingItem;
+    SubLexerNames: array[0..12] of string;
+
+    procedure LoadExtraData(const AFileName: string);
     procedure InitCommentRules;
     procedure SetSampleText(const Value: TStrings);
     procedure FormatsChanged(Sender: TCollection; Item: TSyntCollectionItem);
@@ -861,6 +852,7 @@ type
     function GetSeparateBlocks: Boolean;
     procedure UpdateSpecialKinds; //Alexey
   protected
+    procedure LoadFromFile(const AFileName: string); override;
     function GetToken(Client: TecParserResults; const Source: ecString;
                        APos: integer; OnlyGlobal: Boolean): TecSyntToken; virtual;
     procedure HighlightKeywords(Client: TecParserResults; const Source: ecString;
@@ -879,12 +871,21 @@ type
     IndentBasedFolding: boolean; //Alexey
     AppliedSyntaxTheme: string; //Alexey
 
+    CommentRangeBegin: string;
+    CommentRangeEnd: string;
+    CommentFullLinesBegin: string;
+    CommentFullLinesEnd: string;
+    StylesOfComments: string;
+    StylesOfStrings: string;
+
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
     //function AddClient(const Client: IecSyntClient; ABuffer: TATStringBuffer): TecClientSyntAnalyzer;
     procedure ClearClientContents;
     procedure UpdateClients;
+    function SubLexerName(Index: integer): string;
+    function ThemeMappingOfStyle(const AName: string): string;
 
     procedure AddMasterLexer(SyntAnal: TecSyntAnalyzer);
     procedure RemoveMasterLexer(SyntAnal: TecSyntAnalyzer);
@@ -4235,6 +4236,40 @@ begin
   end;
 end;
 
+procedure TecSyntAnalyzer.LoadFromFile(const AFileName: string); //Alexey
+var
+  Stream: TFileStream;
+  Fmt: TecSyntaxFormat;
+  i: integer;
+begin
+  FFileName := AFileName;
+  Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+  try
+    LoadFromStream(Stream);
+    LoadExtraData(ChangeFileExt(AFileName, '.cuda-lexmap'));
+  finally
+    FreeAndNil(Stream);
+  end;
+
+  {
+  ShowMessage(ExtractFileName(AFileName)+#10+
+    CommentRangeBegin+' '+CommentRangeEnd+#10+
+    StylesOfComments+#10+
+    StylesOfStrings
+    );
+  }
+
+  for i := 0 to FFormats.Count-1 do
+  begin
+    Fmt := FFormats[i];
+    if Pos(','+Fmt.DisplayName+',', ','+StylesOfComments+',')>0 then
+      Fmt.TokenKind := etkComment
+    else
+    if Pos(','+Fmt.DisplayName+',', ','+StylesOfStrings+',')>0 then
+      Fmt.TokenKind := etkString;
+  end;
+end;
+
 function TecClientSyntAnalyzer.CheckBracketsAreClosed(
   ATokenIndexFrom, ATokenIndexTo: integer): boolean; // Alexey
 // CudaText issue #2773
@@ -5399,7 +5434,7 @@ begin
   end;
 end;
 
-procedure TLoadableComponent.LoadExtraData(const AFileName: string);
+procedure TecSyntAnalyzer.LoadExtraData(const AFileName: string);
 const
   //Utf8Bom = #$EF#$BB#$BF;
   sign1 = #$EF;
@@ -5489,40 +5524,13 @@ end;
 procedure TLoadableComponent.LoadFromFile(const AFileName: string);
 var
   Stream: TFileStream;
-  Fmts: TecStylesCollection;
-  Fmt: TecSyntaxFormat;
-  i: integer;
 begin
   FFileName := AFileName;
   Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
   try
     LoadFromStream(Stream);
-    LoadExtraData(ChangeFileExt(AFileName, '.cuda-lexmap'));
   finally
     FreeAndNil(Stream);
-  end;
-
-  {
-  ShowMessage(ExtractFileName(AFileName)+#10+
-    CommentRangeBegin+' '+CommentRangeEnd+#10+
-    StylesOfComments+#10+
-    StylesOfStrings
-    );
-  }
-
-  //Alexey
-  if Self is TecSyntAnalyzer then
-  begin
-    Fmts := TecSyntAnalyzer(Self).Formats;
-    for i := 0 to Fmts.Count-1 do
-    begin
-      Fmt := Fmts[i];
-      if Pos(','+Fmt.DisplayName+',', ','+StylesOfComments+',')>0 then
-        Fmt.TokenKind := etkComment
-      else
-      if Pos(','+Fmt.DisplayName+',', ','+StylesOfStrings+',')>0 then
-        Fmt.TokenKind := etkString;
-    end;
   end;
 end;
 
@@ -5567,7 +5575,7 @@ begin
   end;
 end;
 
-function TLoadableComponent.SubLexerName(Index: integer): string;
+function TecSyntAnalyzer.SubLexerName(Index: integer): string;
 begin
   if (Index>=0) and (Index<=High(SubLexerNames)) then
     Result := SubLexerNames[Index]
@@ -5575,7 +5583,7 @@ begin
     Result := '';
 end;
 
-function TLoadableComponent.ThemeMappingOfStyle(const AName: string): string;
+function TecSyntAnalyzer.ThemeMappingOfStyle(const AName: string): string;
 var
   ItemPtr: ^TThemeMappingItem;
   i: integer;
