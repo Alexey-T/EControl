@@ -714,7 +714,7 @@ type
   private
     FSkipNewName: Boolean;
     FFileName: string;
-    FIgnoreAll: Boolean;
+    FIgnoreReadErrors: Boolean;
     FSaving: Boolean;
     FCheckExistingName: Boolean;
   protected
@@ -5474,16 +5474,17 @@ procedure TecSyntaxManager.OnReadError(Reader: TReader;
   const Message: string; var Handled: Boolean);
 var S: string;
 begin
-  if not FIgnoreAll then
-   begin
+  if not FIgnoreReadErrors then
+  begin
     if AnalyzerCount > 0 then
       S := 'Error in lexer: '+Analyzers[AnalyzerCount - 1].Name +'. '
     else
       S := '';
     S := S + Message;
     inherited OnReadError(Reader, S, Handled);
-   end else
-  inherited;
+  end
+  else
+    inherited;
 end;
 
 { TLibSyntAnalyzer }
@@ -5553,7 +5554,7 @@ begin
   FSkipNewName := True;
   FCheckExistingName := True;
   try
-    FIgnoreAll := False;
+    FIgnoreReadErrors := False;
     LoadComponentFromStream(Self, Stream, OnReadError);
   finally
     FSkipNewName := False;
@@ -5564,14 +5565,13 @@ end;
 procedure TLoadableComponent.OnReadError(Reader: TReader;
   const Message: string; var Handled: Boolean);
 begin
-//  Handled := True;
-  Handled := FIgnoreAll;
+  Handled := FIgnoreReadErrors;
   if not Handled then
    case MessageDlg(Message + sLineBreak + 'Ignore this error?', mtError, [mbYes, mbNo, mbAll], 0) of
      mrYes: Handled := True;
      mrAll: begin
               Handled := True;
-              FIgnoreAll := True;
+              FIgnoreReadErrors := True;
             end;
    end;
 end;
