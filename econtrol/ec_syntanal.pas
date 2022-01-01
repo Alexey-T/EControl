@@ -962,18 +962,13 @@ type
 
   TecSyntaxManager = class(TLoadableComponent)
   private
-    FOnChange: TNotifyEvent;
     FList: TFPList;
-    //FCurrentLexer: TecSyntAnalyzer;
-    FOnLexerChanged: TNotifyEvent;
     FModified: Boolean;
     function GeItem(Index: integer): TecSyntAnalyzer;
     function GetCount: integer;
-    //procedure SetCurrentLexer(const Value: TecSyntAnalyzer);
   protected
     procedure GetChildren(Proc: TGetChildProc; Root: TComponent); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure Changed; dynamic;
     procedure OnReadError(Reader: TReader; const Message: string;
                           var Handled: Boolean); override;
   public
@@ -989,11 +984,7 @@ type
     property AnalyzerCount: integer read GetCount;
     property Analyzers[Index: integer]: TecSyntAnalyzer read GeItem;
     property FileName;
-    //property CurrentLexer: TecSyntAnalyzer read FCurrentLexer write SetCurrentLexer;
     property Modified: Boolean read FModified write FModified;
-  published
-    property OnLexerChanged: TNotifyEvent read FOnLexerChanged write FOnLexerChanged stored NotStored;
-    property OnChange: TNotifyEvent read FOnChange write FOnChange stored NotStored;
   end;
 
   TecSyntStyles = class(TLoadableComponent)
@@ -5248,7 +5239,6 @@ begin
     TObject(FList[0]).Free;
   end;
 
-  Changed;
   FModified := True;
 end;
 
@@ -5261,15 +5251,9 @@ end;
 
 destructor TecSyntaxManager.Destroy;
 begin
-  FOnChange := nil;
   Clear;
   FreeAndNil(FList);
   inherited;
-end;
-
-procedure TecSyntaxManager.Changed;
-begin
-  if Assigned(FOnChange) then FOnChange(Self);
 end;
 
 function TecSyntaxManager.GeItem(Index: integer): TecSyntAnalyzer;
@@ -5295,7 +5279,6 @@ procedure TecSyntaxManager.LoadFromFile(const FileName: string);
 begin
   Clear;
   inherited;
-  Changed;
   FModified := False;
 end;
 
