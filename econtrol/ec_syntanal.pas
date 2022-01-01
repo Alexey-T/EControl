@@ -2934,17 +2934,22 @@ end;
 
 function TecParserResults.AnalyzerAtPos(APos: integer; ABlocks: TecSubLexerRanges): TecSyntAnalyzer;
 var
-  Rng: PecSubLexerRange;
+  Sub: PecSubLexerRange;
   N: integer;
 begin
   Result := FOwner;
   if APos < 0 then Exit;
   N := ABlocks.PriorAt(APos);
   if N < 0 then Exit;
-  Rng := ABlocks.InternalGet(N);
-  if (Rng.Range.StartPos<=APos) and
-     ((Rng.Range.EndPos<0){Rng is not closed} or (APos<Rng.Range.EndPos)) then
-    Result := Rng.Rule.SyntAnalyzer;
+  Sub := ABlocks.InternalGet(N);
+  if (Sub.Range.StartPos <= APos) and
+     ((Sub.Range.EndPos < 0){Sub is not closed} or (APos < Sub.Range.EndPos)) then
+  begin
+    Result := Sub.FinalSubAnalyzer;
+    if Result = nil then
+      Result := Sub.Rule.SyntAnalyzer;
+  end;
+
  {
  for i := 0 to ABlocks.Count - 1 do
   with ABlocks[i] do
