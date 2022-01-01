@@ -1023,6 +1023,23 @@ const
                              'Number';
 }
 
+procedure _GetIniValue(const SItem: string; out SKey, SValue: string); inline;
+var
+  N: integer;
+begin
+  N := Pos('=', SItem);
+  if N=0 then
+  begin
+    SKey := '';
+    SValue := '';
+  end
+  else
+  begin
+    SKey := Copy(SItem, 1, N-1);
+    SValue := Copy(SItem, N+1, MaxInt);
+  end;
+end;
+
 function _IndentOfBuffer(S: PWideChar; Len: integer): Integer; inline; // Alexey
 var
   i: integer;
@@ -4183,6 +4200,117 @@ begin
   end;
 end;
 
+{ TecSyntAnalyzer }
+
+procedure TecSyntAnalyzer.LoadExtraData(const AFileName: string);
+const
+  //Utf8Bom = #$EF#$BB#$BF;
+  sign1 = #$EF;
+  sign2 = #$BB;
+  sign3 = #$BF;
+var
+  F: TextFile;
+  SItem, SKey, SValue: string;
+  Section: (secNone, secComments, secMap, secRef);
+  N: integer;
+begin
+  {$Push}
+  {$IOChecks off}
+  AssignFile(F, AFileName);
+  Reset(F);
+  if IOResult<>0 then exit;
+  {$Pop}
+  Section:= secNone;
+  while not EOF(F) do
+    begin
+      Readln(F, SItem);
+      if SItem='' then Continue;
+      if SItem[1]=';' then Continue;
+
+      //FreePascal writes BOM to ini files
+      if (Length(SItem)>3) and
+         (SItem[1]=sign1) and
+         (SItem[2]=sign2) and
+         (SItem[3]=sign3) then
+        Delete(SItem, 1, 3);
+
+      if SItem='[comments]' then
+      begin
+        Section := secComments;
+        Continue;
+      end;
+      if SItem='[map]' then
+      begin
+        Section := secMap;
+        Continue;
+      end;
+      if SItem='[ref]' then
+      begin
+        Section := secRef;
+        Continue;
+      end;
+      if SItem[1]='[' then
+      begin
+        Section := secNone;
+        Continue;
+      end;
+
+      _GetIniValue(SItem, SKey, SValue);
+      case Section of
+        secComments:
+          begin
+            if SKey='str1' then CommentRangeBegin := SValue else
+            if SKey='str2' then CommentRangeEnd := SValue else
+            if SKey='full1' then CommentFullLinesBegin := SValue else
+            if SKey='full2' then CommentFullLinesEnd := SValue else
+            if SKey='styles_cmt' then StylesOfComments := SValue else
+            if SKey='styles_str' then StylesOfStrings := SValue;
+          end;
+        secMap:
+          begin
+            if ThemeMappingCount<High(ThemeMappingArray) then
+            begin
+              Inc(ThemeMappingCount);
+              ThemeMappingArray[ThemeMappingCount-1].StrFrom := SKey;
+              ThemeMappingArray[ThemeMappingCount-1].StrTo := SValue;
+            end;
+          end;
+        secRef:
+          begin
+            N := StrToIntDef(SKey, -1);
+            if (N>=0) and (N<=High(SubLexerNames)) then
+             SubLexerNames[N] := SValue;
+          end;
+        secNone:
+          begin
+          end;
+      end;
+    end;
+  CloseFile(F);
+end;
+
+function TecSyntAnalyzer.SubLexerName(Index: integer): string;
+begin
+  if (Index>=0) and (Index<=High(SubLexerNames)) then
+    Result := SubLexerNames[Index]
+  else
+    Result := '';
+end;
+
+function TecSyntAnalyzer.ThemeMappingOfStyle(const AName: string): string;
+var
+  ItemPtr: ^TThemeMappingItem;
+  i: integer;
+begin
+  for i := 0 to ThemeMappingCount-1 do
+  begin
+    ItemPtr := @ThemeMappingArray[i];
+    if AName = ItemPtr^.StrFrom then
+      Exit(ItemPtr^.StrTo);
+  end;
+  Result := '';
+end;
+
 procedure TecSyntAnalyzer.InitCommentRules;
 begin
   //fixes AV in BlockRules.OnChange, on loading Python file, with thread-parser
@@ -5409,110 +5537,6 @@ end;
 var
   CheckExistingName: Boolean = False;
 
-procedure _GetIniValue(const SItem: string; out SKey, SValue: string); inline;
-var
-  N: integer;
-begin
-  N := Pos('=', SItem);
-  if N=0 then
-  begin
-    SKey := '';
-    SValue := '';
-  end
-  else
-  begin
-    SKey:= Copy(SItem, 1, N-1);
-    SValue := Copy(SItem, N+1, MaxInt);
-  end;
-end;
-
-procedure TecSyntAnalyzer.LoadExtraData(const AFileName: string);
-const
-  //Utf8Bom = #$EF#$BB#$BF;
-  sign1 = #$EF;
-  sign2 = #$BB;
-  sign3 = #$BF;
-var
-  F: TextFile;
-  SItem, SKey, SValue: string;
-  Section: (secNone, secComments, secMap, secRef);
-  N: integer;
-begin
-  {$Push}
-  {$IOChecks off}
-  AssignFile(F, AFileName);
-  Reset(F);
-  if IOResult<>0 then exit;
-  {$Pop}
-  Section:= secNone;
-  while not EOF(F) do
-    begin
-      Readln(F, SItem);
-      if SItem='' then Continue;
-      if SItem[1]=';' then Continue;
-
-      //FreePascal writes BOM to ini files
-      if (Length(SItem)>3) and
-         (SItem[1]=sign1) and
-         (SItem[2]=sign2) and
-         (SItem[3]=sign3) then
-        Delete(SItem, 1, 3);
-
-      if SItem='[comments]' then
-      begin
-        Section := secComments;
-        Continue;
-      end;
-      if SItem='[map]' then
-      begin
-        Section := secMap;
-        Continue;
-      end;
-      if SItem='[ref]' then
-      begin
-        Section := secRef;
-        Continue;
-      end;
-      if SItem[1]='[' then
-      begin
-        Section := secNone;
-        Continue;
-      end;
-
-      _GetIniValue(SItem, SKey, SValue);
-      case Section of
-        secComments:
-          begin
-            if SKey='str1' then CommentRangeBegin := SValue else
-            if SKey='str2' then CommentRangeEnd := SValue else
-            if SKey='full1' then CommentFullLinesBegin := SValue else
-            if SKey='full2' then CommentFullLinesEnd := SValue else
-            if SKey='styles_cmt' then StylesOfComments := SValue else
-            if SKey='styles_str' then StylesOfStrings := SValue;
-          end;
-        secMap:
-          begin
-            if ThemeMappingCount<High(ThemeMappingArray) then
-            begin
-              Inc(ThemeMappingCount);
-              ThemeMappingArray[ThemeMappingCount-1].StrFrom := SKey;
-              ThemeMappingArray[ThemeMappingCount-1].StrTo := SValue;
-            end;
-          end;
-        secRef:
-          begin
-            N := StrToIntDef(SKey, -1);
-            if (N>=0) and (N<=High(SubLexerNames)) then
-             SubLexerNames[N] := SValue;
-          end;
-        secNone:
-          begin
-          end;
-      end;
-    end;
-  CloseFile(F);
-end;
-
 procedure TLoadableComponent.LoadFromFile(const AFileName: string);
 var
   Stream: TFileStream;
@@ -5537,28 +5561,6 @@ begin
     FSkipNewName := False;
     CheckExistingName := False;
   end;
-end;
-
-function TecSyntAnalyzer.SubLexerName(Index: integer): string;
-begin
-  if (Index>=0) and (Index<=High(SubLexerNames)) then
-    Result := SubLexerNames[Index]
-  else
-    Result := '';
-end;
-
-function TecSyntAnalyzer.ThemeMappingOfStyle(const AName: string): string;
-var
-  ItemPtr: ^TThemeMappingItem;
-  i: integer;
-begin
-  for i := 0 to ThemeMappingCount-1 do
-  begin
-    ItemPtr := @ThemeMappingArray[i];
-    if AName = ItemPtr^.StrFrom then
-      Exit(ItemPtr^.StrTo);
-  end;
-  Result := '';
 end;
 
 procedure TLoadableComponent.OnReadError(Reader: TReader;
