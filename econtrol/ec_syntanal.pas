@@ -978,6 +978,7 @@ type
     property Modified: Boolean read FModified write FModified;
   end;
 
+  (*
   TecSyntStyles = class(TLoadableComponent)
   private
     FStyles: TecStylesCollection;
@@ -988,7 +989,7 @@ type
   published
     property Styles: TecStylesCollection read FStyles write SetStyles;
   end;
-
+  *)
 
 var
   EControlOptions: record
@@ -5769,6 +5770,7 @@ begin
   Result := TecSubAnalyzerRule(inherited Items[Index]);
 end;
 
+(*
 { TecSyntStyles }
 
 constructor TecSyntStyles.Create(AOwner: TComponent);
@@ -5787,7 +5789,7 @@ procedure TecSyntStyles.SetStyles(const Value: TecStylesCollection);
 begin
   FStyles.Assign(Value);
 end;
-
+*)
 
 initialization
   Classes.RegisterClass(TLibSyntAnalyzer);
