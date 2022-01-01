@@ -3556,7 +3556,7 @@ var
 begin
   for i := FSubLexerBlocks.Count - 1 downto 0 do
   begin
-    Sub := PecSubLexerRange(FSubLexerBlocks.InternalGet(i));
+    Sub := FSubLexerBlocks.InternalGet(i);
     if ALine <= Sub.Range.PointStart.Y then
     begin
       Pnt := Buffer.StrToCaret(Sub.CondStartPos);
