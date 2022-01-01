@@ -716,6 +716,7 @@ type
     FFileName: string;
     FIgnoreAll: Boolean;
     FSaving: Boolean;
+    FCheckExistingName: Boolean;
   protected
     procedure OnReadError(Reader: TReader; const Message: string; var Handled: Boolean); virtual;
   public
@@ -5534,9 +5535,6 @@ end;
 
 { TLoadableComponent }
 
-var
-  CheckExistingName: Boolean = False;
-
 procedure TLoadableComponent.LoadFromFile(const AFileName: string);
 var
   Stream: TFileStream;
@@ -5553,13 +5551,13 @@ end;
 procedure TLoadableComponent.LoadFromStream(const Stream: TStream);
 begin
   FSkipNewName := True;
-  CheckExistingName := True;
+  FCheckExistingName := True;
   try
     FIgnoreAll := False;
     LoadComponentFromStream(Self, Stream, OnReadError);
   finally
     FSkipNewName := False;
-    CheckExistingName := False;
+    FCheckExistingName := False;
   end;
 end;
 
@@ -5607,7 +5605,7 @@ var
   n: integer;
 begin
   if not FSkipNewName then
-   if CheckExistingName and (Owner.FindComponent(NewName) <> nil) then
+   if FCheckExistingName and (Owner.FindComponent(NewName) <> nil) then
     begin
      Base := ClassName;
      Delete(Base, 1, 1);
