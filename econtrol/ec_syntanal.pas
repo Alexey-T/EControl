@@ -509,7 +509,7 @@ type
     function ExtractTag(var FPos: integer; ADisableFolding: Boolean): Boolean;
     function GetTags(Index: integer): PecSyntToken;
     function GetSubLexerRangeCount: integer;
-    function GetSubLexerRange(Index: integer): TecSubLexerRange;
+    //function GetSubLexerRange(Index: integer): TecSubLexerRange;
     function BufferInvalidated: Boolean; inline;
 
     //moved to 'private' by Alexey, not needed in CudaText
@@ -517,7 +517,7 @@ type
     property Tags[Index: integer]: PecSyntToken read GetTags; default;
     property TagStr[Index: integer]: ecString read GetTokenStr;
     property SubLexerRangeCount: integer read GetSubLexerRangeCount;
-    property SubLexerRanges[Index: integer]: TecSubLexerRange read GetSubLexerRange;
+    //property SubLexerRanges[Index: integer]: TecSubLexerRange read GetSubLexerRange;
 
   protected
     function GetTokenCount: integer; override;
@@ -2961,10 +2961,12 @@ begin
   Result := FSubLexerBlocks.Count;
 end;
 
+{
 function TecParserResults.GetSubLexerRange(Index: integer): TecSubLexerRange;
 begin
   Result := FSubLexerBlocks[Index];
 end;
+}
 
 function TecParserResults.GetTokenType(Index: integer): integer;
 begin
