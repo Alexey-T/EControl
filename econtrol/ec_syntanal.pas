@@ -3201,10 +3201,12 @@ begin
 end;
 
 function TecClientSyntAnalyzer.Finished: Boolean;
-var i: integer;
-  Sub: TecSubLexerRange;
+var
+  Sub: PecSubLexerRange;
+  i: integer;
 begin
-  //ShowTokenIndexer; //debugging only!
+  ////Debugging only!
+  //ShowTokenIndexer;
   //ShowCmtIndexer;
 
   Result := True;
@@ -3214,7 +3216,7 @@ begin
   // Close SubLexers at the End of Text
   for i := FSubLexerBlocks.Count - 1 downto 0 do
   begin
-    Sub := FSubLexerBlocks[i];
+    Sub := FSubLexerBlocks.InternalGet(i);
     if (Sub.Range.EndPos = -1) and Sub.Rule.ToTextEnd then
      begin
        Sub.Range.EndPos := FBuffer.TextLength{ - 1};
@@ -3222,7 +3224,7 @@ begin
                       FBuffer.LineLength(FBuffer.Count-1),
                       FBuffer.Count-1); //at end
        Sub.CondEndPos := Sub.Range.EndPos;
-       FSubLexerBlocks[i] := Sub;
+       //FSubLexerBlocks[i] := Sub; //makes sense if we get record, not pointer to record
      end;
   end;
 
