@@ -23,7 +23,6 @@ uses
   ec_StrUtils,
   ec_Lists,
   ec_gramma,
-  ec_syntax_item,
   ec_syntax_collection,
   ec_syntax_format,
   ec_syntax_rule,

@@ -18,7 +18,6 @@ interface
 
 uses
   Classes, SysUtils, Graphics,
-  ec_syntax_item,
   ec_syntax_collection;
 
 type
