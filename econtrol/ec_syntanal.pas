@@ -729,7 +729,6 @@ type
   protected
     procedure OnReadError(Reader: TReader; const Message: string;
                           var Handled: Boolean); virtual;
-    function NotStored: Boolean;
   private
     ThemeMappingCount: integer;
     ThemeMappingArray: array[0..40] of TThemeMappingItem;
@@ -5566,11 +5565,6 @@ begin
     FSkipNewName := False;
     CheckExistingName := False;
   end;
-end;
-
-function TLoadableComponent.NotStored: Boolean;
-begin
-  Result := not FSaving;
 end;
 
 function TLoadableComponent.SubLexerName(Index: integer): string;
