@@ -3621,19 +3621,29 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
    end;
  end;
  //
- procedure UpdateFoldRangesOnChange(ATagCount, ADeltaRanges: integer);
+ procedure UpdateFoldRangesOnChange(ATagCount: integer);
  var
    R: TecTextRange;
+   //NDeltaRanges: lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
+   NDeltaRanges: integer;
    i: integer;
  begin
+   // delta>0 was added for Python: editing below block end must enlarge previous block to editing pos
+   // delta>0 breaks HTML lexer: on editing in any place,
+   // text in <p>text text</p> changes styles to "misspelled tag property"
+   if Owner.IndentBasedFolding then
+     NDeltaRanges := 4
+   else
+     NDeltaRanges := 0;
+
    for i := FRanges.Count - 1 downto 0 do
    begin
      R := TecTextRange(FRanges[i]);
      if (R.FCondIndex >= ATagCount) or (R.StartIdx >= ATagCount) then
        FRanges.Delete(i)
      else
-     if (R.FEndCondIndex >= ATagCount - ADeltaRanges) or
-        (R.EndIdx >= ATagCount - ADeltaRanges) then
+     if (R.FEndCondIndex >= ATagCount - NDeltaRanges) or
+        (R.EndIdx >= ATagCount - NDeltaRanges) then
         //Delta>0 solves problem: editing in Python must update ranges including changed pos
      begin
        //makes range opened: set ending to -1, add to FOpenedBlocks
@@ -3645,10 +3655,7 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
  end;
  //
 var
-  //NDeltaRanges: lexer will update ranges, which have ending at changed-pos minus delta (in tokens)
-  NDeltaRanges: integer;
-  NLine, NTokenIndex: integer;
-  NTagCount: integer;
+  NLine, NTokenIndex, NTagCount: integer;
 begin
   if FPrevChangeLine < 0 then Exit;
   NLine := FPrevChangeLine;
@@ -3677,14 +3684,6 @@ begin
     Exit
   end;
 
-  // delta>0 was added for Python: editing below block end must enlarge previous block to editing pos
-  // delta>0 breaks HTML lexer: on editing in any place,
-  // text in <p>text text</p> changes styles to "misspelled tag property"
-  if Owner.IndentBasedFolding then
-    NDeltaRanges := 4
-  else
-    NDeltaRanges := 0;
-
   ClearSublexerRangesFromLine(NLine);
   FTagList.ClearFromIndex(NTokenIndex);
   ClearTokenIndexer;
@@ -3702,7 +3701,7 @@ begin
     FOpenedBlocks.Clear;
 
   // Remove text ranges from main storage
-  UpdateFoldRangesOnChange(NTagCount, NDeltaRanges);
+  UpdateFoldRangesOnChange(NTagCount);
 
   // Restore parser state
   RestoreState;
