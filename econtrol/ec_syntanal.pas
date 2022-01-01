@@ -979,8 +979,6 @@ type
     function FindAnalyzer(const LexerName: string): TecSyntAnalyzer;
     function AddAnalyzer: TecSyntAnalyzer;
     procedure Clear;
-    procedure Move(CurIndex, NewIndex: Integer);
-
     property AnalyzerCount: integer read GetCount;
     property Analyzers[Index: integer]: TecSyntAnalyzer read GeItem;
     property FileName;
@@ -5286,12 +5284,6 @@ procedure TecSyntaxManager.SaveToFile(const FileName: string);
 begin
   inherited;
   FModified := False;
-end;
-
-procedure TecSyntaxManager.Move(CurIndex, NewIndex: Integer);
-begin
-  FList.Move(CurIndex, NewIndex);
-  FModified := True;
 end;
 
 procedure TecSyntaxManager.Notification(AComponent: TComponent;
