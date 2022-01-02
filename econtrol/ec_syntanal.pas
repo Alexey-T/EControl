@@ -11,6 +11,7 @@
 { *************************************************************************** }
 
 {$mode delphi}
+{$define EC_CUSTOM_STR_FIND}
 
 unit ec_SyntAnal;
 
@@ -27,6 +28,9 @@ uses
   ec_syntax_format,
   ec_syntax_rule,
   ATStringProc_TextBuffer,
+  {$ifdef EC_CUSTOM_STR_FIND}
+  ec_proc_widebuf,
+  {$endif}
   ec_proc_StreamComponent;
 
 type
@@ -1346,8 +1350,16 @@ begin
        end;
      end else
      begin
+       {$ifdef EC_CUSTOM_STR_FIND}
+       Result := StringList_FindWideBuffer(
+         TStringList(FTagList),
+         @Source[Token.Range.StartPos + 1],
+         Token.Range.EndPos - Token.Range.StartPos,
+         N);
+       {$else}
        SToken := Token.GetStr(Source, True);
        Result := (FTagList as TStringList).Find(SToken, N);
+       {$endif}
        if FCondType = tcNotEqual then
          Result := not Result;
      end;
