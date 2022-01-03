@@ -12,7 +12,7 @@
 
 {$mode delphi}
 
-// Gives almost no speedup (about 5% on slow PC), but it breaks Russian ids matching
+// Gives almost no speedup (about 5% on slow PC), but it breaks non-ASCII ids matching
 {.$define EC_CUSTOM_STR_FIND}
 
 unit ec_SyntAnal;
