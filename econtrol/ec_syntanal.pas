@@ -18,7 +18,7 @@ unit ec_SyntAnal;
 interface
 
 uses
-  Classes, Graphics, Controls, ExtCtrls,
+  Classes, Graphics, Controls,
   Contnrs, syncobjs,
   ec_RegExpr,
   ec_StrUtils,
