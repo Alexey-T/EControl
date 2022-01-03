@@ -11,7 +11,9 @@
 { *************************************************************************** }
 
 {$mode delphi}
-{$define EC_CUSTOM_STR_FIND}
+
+// Gives almost no speedup (about 5% on slow PC), but it breaks Russian ids matching
+{.$define EC_CUSTOM_STR_FIND}
 
 unit ec_SyntAnal;
 
@@ -35,7 +37,7 @@ uses
 
 type
   TecLineBreakPos = (lbTop, lbBottom);
-  TecLineBreakBound = set of TecLineBreakPos; // for user blocks
+  TecLineBreakBound = set of TecLineBreakPos;
 
   TecSyntAnalyzer       = class;
   TecParserResults      = class;
@@ -43,7 +45,7 @@ type
   TecTagBlockCondition  = class;
   TecSyntaxManager      = class;
   TecSubAnalyzerRule    = class;
-  TecTextRange        = class;
+  TecTextRange          = class;
 
   TecMatchTokenEvent = procedure(Sender: TObject; AClient: TecParserResults;
     const AText: ecString; APos: integer; var AMatchLen: integer) of object;
