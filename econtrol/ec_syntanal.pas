@@ -617,7 +617,7 @@ type
 
         if FlagStop then
           Break
-      until false
+      until False
 
       FlushData(PublicData)
       CriSec.Enter
@@ -626,7 +626,7 @@ type
     finally
       EventParseIdle.SetEvent
     end
-  until false
+  until False
   *)
 
   { TecClientSyntAnalyzer }
@@ -1194,7 +1194,7 @@ end;
 
 class operator TecSubLexerRange.=(const a, b: TecSubLexerRange): boolean;
 begin
-  Result := false;
+  Result := False;
 end;
 
 { TecSyntToken }
@@ -1232,7 +1232,7 @@ end;
 
 class operator TecSyntToken.=(const A, B: TecSyntToken): boolean;
 begin
-  Result := false;
+  Result := False;
 end;
 
 function TecSyntToken.Style: TecSyntaxFormat;
@@ -1374,9 +1374,9 @@ begin
   FCondType := tcEqual;
   FTagList := TStringList.Create;
   {$if FPC_FULLVERSION>=30200}
-  TStringList(FTagList).UseLocale := false; //Alexey, makes Find() faster by 30%
+  TStringList(FTagList).UseLocale := False; //Alexey, makes Find() faster by 30%
   {$endif}
-  TStringList(FTagList).Sorted := true;
+  TStringList(FTagList).Sorted := True;
   TStringList(FTagList).Delimiter := ' ';
   TStringList(FTagList).Duplicates := dupIgnore;
   TStringList(FTagList).CaseSensitive := True;
@@ -2422,7 +2422,7 @@ begin
   SkipQuotes(Ptr2, Len2);
 
   if Len1 <> Len2 then
-    Exit(false);
+    Exit(False);
 
   // case-insensitive, like in original EControl compare
   // (used for HTML/XML lexer mostly)
@@ -2439,7 +2439,7 @@ begin
   St := T.Range.StartPos;
   Len := T.Range.EndPos - St;
   if Len <> Length(Str) then
-    Exit(false);
+    Exit(False);
   // case-sensitive
   Result := strlcomp(
     PWideChar(Str),
@@ -2474,7 +2474,7 @@ begin
   for i := NLastLine + 1 to High(TokenIndexer) do
   begin
     TokenIndexer[i] := -1;
-    CmtIndexer[i] := false;
+    CmtIndexer[i] := False;
   end;
 end;
 
@@ -2495,7 +2495,7 @@ begin
     for i := NPrevLen to NNewLen - 1 do
     begin
       TokenIndexer[i] := -1;
-      CmtIndexer[i] := false;
+      CmtIndexer[i] := False;
     end;
   end;
 
@@ -2587,7 +2587,7 @@ begin
     //allow max 1 token per line! 0 is for multi-line comments
     if (NTokenIndex1>=0) and (NTokenIndex2>=0) then
       if NTokenIndex2-NTokenIndex1 > 1 then Break;
-  until false;
+  until False;
 
   //move down to 1st non-empty
   while (TokenIndexer[NLineFrom]<0) and (NLineFrom<ALineTo) do
@@ -3875,7 +3875,7 @@ var
     ch: ecChar;
   begin
     N := 0;
-    Result := false;
+    Result := False;
     while (j + N) <= length( FmtStrNumber ) do
     begin
       ch := FmtStrNumber[j + N];
@@ -3886,7 +3886,7 @@ var
     if  N > 0  then  begin
       NumValue := StrToIntDef( copy( FmtStrNumber, j, N ), 0 );
       inc( j, N );
-      Result := true;
+      Result := True;
     end;
   end;
 
@@ -4333,17 +4333,17 @@ begin
 
   CommentRule1 := BlockRules.Add;
   CommentRule1.DisplayName := 'auto_cmt_1';
-  CommentRule1.Enabled := false;
+  CommentRule1.Enabled := False;
   CommentRule1.BlockType := btRangeStart;
-  CommentRule1.DisplayInTree := false;
-  CommentRule1.NoEndRule := false;
+  CommentRule1.DisplayInTree := False;
+  CommentRule1.NoEndRule := False;
   CommentRule1.CollapseFmt:= '// ...';
 
   CommentRule2 := BlockRules.Add;
   CommentRule2.DisplayName := 'auto_cmt_2';
-  CommentRule2.Enabled := false;
+  CommentRule2.Enabled := False;
   CommentRule2.BlockType := btRangeEnd;
-  CommentRule2.DisplayInTree := false;
+  CommentRule2.DisplayInTree := False;
 
   CommentRule1.BlockEndCond:= CommentRule2;
 end;
@@ -5356,7 +5356,7 @@ begin
   inherited;
   FName:= '';
   FDescription:= '';
-  FAdvanced:= false;
+  FAdvanced:= False;
   FCode:= TStringList.Create;
 end;
 
@@ -5813,7 +5813,7 @@ initialization
     MaxLinesWhenParserEnablesFolding := 10*1000;
     MaxLengthForSZFormat := 40;
     AutoFoldComments := 5;
-    AutoFoldComments_BreakOnEmptyLine := true;
+    AutoFoldComments_BreakOnEmptyLine := True;
   end;
 
 end.
