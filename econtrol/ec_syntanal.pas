@@ -2265,7 +2265,6 @@ end;
 { TecParserResults }
 
 constructor TecParserResults.Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
-//TODO: del AUseTimer
 begin
   inherited Create;
   if ABuffer = nil then
