@@ -20,22 +20,22 @@ function StringList_FindWideBuffer(AList: TStringList; ABuf: PWideChar; ABufLen:
 implementation
 
 //compares String item with WideChar buffer (ASCII string in wide buffer)
-function CompareFunc(ABuf: PWideChar; ABufLen: integer; const SItem: AnsiString): integer; inline;
+function CompareFunc(ABuf: PWideChar; ABufLen: integer; const AStr: AnsiString): integer; inline;
 var
   NCmp: integer;
   i: PtrInt;
 begin
   //compare 1st char
-  NCmp:= Ord(ABuf[0])-Ord(SItem[1]);
+  NCmp:= Ord(ABuf[0])-Ord(AStr[1]);
   if NCmp<>0 then Exit(NCmp);
 
   //compare others
-  for i:= 1{>0} to Min(ABufLen, Length(SItem))-1 do
+  for i:= 1{>0} to Min(ABufLen, Length(AStr))-1 do
   begin
-    NCmp:= Ord(ABuf[i])-Ord(SItem[i+1]);
+    NCmp:= Ord(ABuf[i])-Ord(AStr[i+1]);
     if NCmp<>0 then Exit(NCmp);
   end;
-  Result:= ABufLen-Length(SItem);
+  Result:= ABufLen-Length(AStr);
 end;
 
 function StringList_FindWideBuffer(AList: TStringList; ABuf: PWideChar; ABufLen: integer; out AIndex: integer): boolean;
