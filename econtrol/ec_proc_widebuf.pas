@@ -7,38 +7,38 @@ Copyright (c) Alexey Torgashin
 *)
 unit ec_proc_widebuf;
 
+{$mode objfpc}{$H+}
 {$Optimization LEVEL3}
 
 interface
 
 uses
-  SysUtils, Classes, Math;
+  Classes, Math;
 
 function StringList_FindWideBuffer(AList: TStringList; ABuf: PWideChar; ABufLen: integer; out AIndex: integer): boolean;
 
 implementation
 
-function StringList_FindWideBuffer(AList: TStringList; ABuf: PWideChar; ABufLen: integer; out AIndex: integer): boolean;
-  //
-  //compares String item with WideChar buffer (ASCII string in wide buffer)
-  function CompareFunc(const SItem: string): integer; inline;
-  var
-    NCmp: integer;
-    i: PtrInt;
-  begin
-    //compare 1st char
-    NCmp:= Ord(ABuf[0])-Ord(SItem[1]);
-    if NCmp<>0 then Exit(NCmp);
+//compares String item with WideChar buffer (ASCII string in wide buffer)
+function CompareFunc(ABuf: PWideChar; ABufLen: integer; const SItem: AnsiString): integer; inline;
+var
+  NCmp: integer;
+  i: PtrInt;
+begin
+  //compare 1st char
+  NCmp:= Ord(ABuf[0])-Ord(SItem[1]);
+  if NCmp<>0 then Exit(NCmp);
 
-    //compare others
-    for i:= 1{>0} to Min(ABufLen, Length(SItem))-1 do
-    begin
-      NCmp:= Ord(ABuf[i])-Ord(SItem[i+1]);
-      if NCmp<>0 then Exit(NCmp);
-    end;
-    Result:= ABufLen-Length(SItem);
+  //compare others
+  for i:= 1{>0} to Min(ABufLen, Length(SItem))-1 do
+  begin
+    NCmp:= Ord(ABuf[i])-Ord(SItem[i+1]);
+    if NCmp<>0 then Exit(NCmp);
   end;
-  //
+  Result:= ABufLen-Length(SItem);
+end;
+
+function StringList_FindWideBuffer(AList: TStringList; ABuf: PWideChar; ABufLen: integer; out AIndex: integer): boolean;
 var
   L, R, I: PtrInt;
   CompareRes: integer;
@@ -53,7 +53,7 @@ begin
   while (L<=R) do
   begin
     I := L + (R - L) div 2;
-    CompareRes := CompareFunc(AList[I]);
+    CompareRes := CompareFunc(ABuf, ABufLen, AList[I]);
     if (CompareRes>0) then
       L := I+1
     else
