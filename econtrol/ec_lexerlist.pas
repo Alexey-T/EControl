@@ -21,7 +21,7 @@ uses
 type
   TecLexerChooseFunc = function(const Filename: string; Lexers: TStringList): integer of object;
   TecLexerLoadedEvent = procedure(Sender: TObject; ALexer: TecSyntAnalyzer);
-  TecLexerLoadErrorEvent = procedure(const AMsg: string);
+  TecLexerLoadErrorEvent = procedure(const AFileName: string);
 
 type
   { TecLexerList }
@@ -153,7 +153,7 @@ begin
           FOnLexerLoaded(Self, an);
       except
         if Assigned(FOnLexerLoadError) then
-          FOnLexerLoadError('ERROR: Cannot load lexer file: '+ExtractFileName(L[i]));
+          FOnLexerLoadError(L[i]);
         an.LexerName:= '-';
       end;
     end;
