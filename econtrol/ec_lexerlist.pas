@@ -154,7 +154,7 @@ begin
       except
         if Assigned(FOnLexerLoadError) then
           FOnLexerLoadError(L[i]);
-        an.LexerName:= '-';
+        an.MarkAsDeleted;
       end;
     end;
 
