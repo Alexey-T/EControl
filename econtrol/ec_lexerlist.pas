@@ -21,6 +21,7 @@ uses
 type
   TecLexerChooseFunc = function(const Filename: string; Lexers: TStringList): integer of object;
   TecLexerLoadedEvent = procedure(Sender: TObject; ALexer: TecSyntAnalyzer);
+  TecLexerLoadErrorEvent = procedure(const AMsg: string);
 
 type
   { TecLexerList }
@@ -33,6 +34,7 @@ type
     FAliasesFilename: string;
     FAliasesIni: TCustomIniFile;
     FOnLexerLoaded: TecLexerLoadedEvent;
+    FOnLexerLoadError: TecLexerLoadErrorEvent;
     function GetLexer(AIndex: integer): TecSyntAnalyzer;
     procedure CheckInited(const AMsg: string);
   public
@@ -51,6 +53,7 @@ type
     function FindLexerByAlias(const AName: string): TecSyntAnalyzer;
     procedure SetSublexersFromString(An: TecSyntAnalyzer; const ALinks: string; ASep: char);
     property OnLexerLoaded: TecLexerLoadedEvent read FOnLexerLoaded write FOnLexerLoaded;
+    property OnLexerLoadError: TecLexerLoadErrorEvent read FOnLexerLoadError write FOnLexerLoadError;
   end;
 
 implementation
@@ -144,9 +147,15 @@ begin
     for i:= 0 to L.Count-1 do
     begin
       an:= AddLexer;
-      an.LoadFromFile(L[i]);
-      if Assigned(FOnLexerLoaded) then
-        FOnLexerLoaded(Self, an);
+      try
+        an.LoadFromFile(L[i]);
+        if Assigned(FOnLexerLoaded) then
+          FOnLexerLoaded(Self, an);
+      except
+        if Assigned(FOnLexerLoadError) then
+          FOnLexerLoadError('ERROR: Cannot load lexer file: '+ExtractFileName(L[i]));
+        an.LexerName:= '-';
+      end;
     end;
 
     //correct sublexer links
