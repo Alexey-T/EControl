@@ -2296,8 +2296,8 @@ begin
   FSubLexerBlocks.Clear;
   FStateChanges.Clear;
   FCurState := 0;
-  SetLength(TokenIndexer, 0);
-  SetLength(CmtIndexer, 0);
+  TokenIndexer := nil;
+  CmtIndexer := nil;
   FPrevChangeLine := -1;
 end;
 
@@ -3095,8 +3095,8 @@ begin
   FTagList.Clear;
   FRanges.Clear;
   FOpenedBlocks.Clear;
-  SetLength(TokenIndexer, 0);
-  SetLength(CmtIndexer, 0);
+  TokenIndexer := nil;
+  CmtIndexer := nil;
 
   FFinished := False;
   FLastAnalPos := 0;
@@ -4979,8 +4979,7 @@ begin
   for i := 0 to FMasters.Count - 1 do
     TecSyntAnalyzer(FMasters[i]).DetectBlockSeparate;
 
-  //Alexey
-  SetLength(FBlockRules_Detecters, 0);
+  FBlockRules_Detecters := nil;
   for i := 0 to FBlockRules.Count - 1 do
   begin
     Rule := FBlockRules[i];
@@ -4993,10 +4992,8 @@ begin
       end;
   end;
 
-  //Alexey
   UpdateSpecialKinds;
 
-  //Alexey
   if EControlOptions.AutoFoldComments > 1 then
     InitCommentRules;
 end;
