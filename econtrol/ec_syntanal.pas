@@ -1116,6 +1116,7 @@ begin
   {$endif}
 
   AssignFile(f, fn);
+  {$Push}
   {$I-}
   Append(f);
   if IOResult<>0 then
@@ -1125,6 +1126,7 @@ begin
   Writeln(f, 'Exception: '+E.ClassName+', message: '+E.Message);
   DumpExceptionBacktrace(f);
   Close(f);
+  {$Pop}
 end;
 
 procedure TecParserThread.Execute;
