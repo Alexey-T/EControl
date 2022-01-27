@@ -111,17 +111,21 @@ begin
     L.LineBreak:= ' ';
     L.Text:= an.Extentions;
     if L.Count=0 then Exit;
-    Result:= an.LexerName+' ('+an.Extentions+')|';
+    Result:= an.LexerName+'|';
+
     for i:= 0 to L.Count-1 do
       if not SBeginsWith(L[i], '/') then //skip some for eg "Makefile" lexer
-        Result:= Result+('*.'+L[i]+';');
+        Result+= '*.'+L[i]+';';
+    if SEndsWith(Result, ';') then
+      SetLength(Result, Length(Result)-1);
+
     Result:= Result+'|';
   finally
     L.Free;
   end;
 
   if AllFilesText<>'' then
-    Result:= Result+(AllFilesText+'|'+AllFilesMask+'|');
+    Result+= AllFilesText+'|'+AllFilesMask+'|';
 end;
 
 function DoGetLexerDefaultExt(an: TecSyntAnalyzer): string;
