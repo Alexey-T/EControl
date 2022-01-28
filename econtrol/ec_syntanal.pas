@@ -2958,7 +2958,7 @@ begin
   if N < 0 then Exit;
   Sub := ABlocks.InternalGet(N);
   if (Sub.Range.StartPos <= APos) and
-     ((Sub.Range.EndPos < 0){Sub is not closed} or (APos < Sub.Range.EndPos)) then
+     ((Sub.Range.EndPos < 0){Sub is not closed} or (APos <= Sub.Range.EndPos)) then //'<=' to fix CudaText #3933
   begin
     Result := Sub.FinalSubAnalyzer;
     if Result = nil then
