@@ -12,9 +12,6 @@
 
 {$mode delphi}
 
-// Gives almost no speedup (about 5% on slow PC), but it breaks non-ASCII ids matching
-{.$define EC_CUSTOM_STR_FIND}
-
 unit ec_SyntAnal;
 
 interface
@@ -30,9 +27,6 @@ uses
   ec_syntax_format,
   ec_syntax_rule,
   ATStringProc_TextBuffer,
-  {$ifdef EC_CUSTOM_STR_FIND}
-  ec_proc_widebuf,
-  {$endif}
   ec_proc_StreamComponent;
 
 type
@@ -1355,6 +1349,7 @@ begin
      end else
      begin
        {$ifdef EC_CUSTOM_STR_FIND}
+       // gives almost no speedup, max 1-5%
        Result := StringList_FindWideBuffer(
          TStringList(FTagList),
          @Source[Token.Range.StartPos + 1],
