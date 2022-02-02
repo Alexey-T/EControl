@@ -3488,7 +3488,7 @@ begin
 
   NIndex := FSubLexerBlocks.FindFirstAfterLine(ALine);
   if NIndex >= 0 then
-    FSubLexerBlocks.DeleteRange(NIndex, FSubLexerBlocks.Count-1);
+    FSubLexerBlocks.ClearFromIndex(NIndex);
 
   (*
   for i := FSubLexerBlocks.Count - 1 downto 0 do
