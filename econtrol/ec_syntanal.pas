@@ -3534,11 +3534,16 @@ begin
     if N >= 0 then
     begin
       Sub := FSubLexerBlocks.InternalGet(N);
-      //if Sub.FinalSubAnalyzer <> Sub.Rule.SyntAnalyzer then //also needed for lexers PHP/PHP_
-      begin
-        ALine := Sub.Range.PointStart.Y;
-        FSubLexerBlocks.ClearFromIndex(N);
-      end;
+
+      {
+      // delete sublexer range, decrease ALine
+      ALine := Sub.Range.PointStart.Y;
+      FSubLexerBlocks.ClearFromIndex(N);
+      }
+
+      // just mark sublexer range as opened
+      Sub.Range.EndPos := -1;
+      Sub.CondEndPos := -1;
     end;
   end;
 end;
