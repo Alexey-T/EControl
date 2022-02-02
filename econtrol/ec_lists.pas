@@ -90,8 +90,8 @@ type
     function FindAt(APos: integer): integer;
     // FindSofter also allows APos to be exactly at the range end
     function FindSofter(APos: integer): integer;
-    // First which starts after line index
-    function FindFirstAfterLine(ALine: integer): integer;
+    // First which has Y>=ALine
+    function FindFirstAtOrAfterLine(ALine: integer): integer;
   end;
 
   TecRangeList = GRangeList<TRange>;
@@ -360,7 +360,7 @@ begin
   end;
 end;
 
-function GRangeList<GRange>.FindFirstAfterLine(ALine: integer): integer;
+function GRangeList<GRange>.FindFirstAtOrAfterLine(ALine: integer): integer;
 var
   L, H, I, Diff, NCount: Integer;
 begin
@@ -380,10 +380,7 @@ begin
     else
     if Diff = 0 then
     begin
-      if I + 1 < NCount then
-        Exit(I + 1)
-      else
-        Exit(-1);
+      Exit(I);
     end
     else
     begin

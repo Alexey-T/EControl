@@ -3486,7 +3486,7 @@ begin
     Exit
   end;
 
-  NIndex := FSubLexerBlocks.FindFirstAfterLine(ALine);
+  NIndex := FSubLexerBlocks.FindFirstAtOrAfterLine(ALine);
   if NIndex >= 0 then
     FSubLexerBlocks.ClearFromIndex(NIndex);
 
