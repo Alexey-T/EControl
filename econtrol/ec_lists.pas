@@ -90,6 +90,8 @@ type
     function FindAt(APos: integer): integer;
     // FindSofter also allows APos to be exactly at the range end
     function FindSofter(APos: integer): integer;
+    // First which starts after line index
+    function FindFirstAfterLine(ALine: integer): integer;
   end;
 
   TecRangeList = GRangeList<TRange>;
@@ -320,7 +322,7 @@ begin
   while L <= H do
   begin
     I := (L + H) shr 1;
-    Diff := CompProc(InternalItems[i], APos);
+    Diff := CompProc(InternalItems[I], APos);
     if Diff < 0 then
       L := I + 1
     else
@@ -346,7 +348,7 @@ begin
   while L <= H do
   begin
     I := (L + H) shr 1;
-    Diff := CompProcSofter(InternalItems[i], APos);
+    Diff := CompProcSofter(InternalItems[I], APos);
     if Diff < 0 then
       L := I + 1
     else
@@ -357,6 +359,40 @@ begin
     end;
   end;
 end;
+
+function GRangeList<GRange>.FindFirstAfterLine(ALine: integer): integer;
+var
+  L, H, I, Diff, NCount: Integer;
+begin
+  Result := -1;
+  NCount := Count;
+  if NCount = 0 then
+    Exit;
+
+  L := 0;
+  H := NCount - 1;
+  while L <= H do
+  begin
+    I := (L + H) shr 1;
+    Diff := PRange(InternalItems[I])^.PointStart.Y - ALine;
+    if Diff < 0 then
+      L := I + 1
+    else
+    if Diff = 0 then
+    begin
+      if I + 1 < NCount then
+        Exit(I + 1)
+      else
+        Exit(-1);
+    end
+    else
+    begin
+      Result := I;
+      H := I - 1;
+    end;
+  end;
+end;
+
 
 procedure GRangeList<GRange>.ClearFromIndex(AIndex: integer); inline;
 begin

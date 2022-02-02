@@ -3478,10 +3478,19 @@ end;
 
 procedure TecClientSyntAnalyzer.ClearSublexerRangesFromLine(ALine: integer);
 var
-  Sub: PecSubLexerRange;
-  Pnt: TPoint;
-  i: integer;
+  NIndex: integer;
 begin
+  if ALine = 0 then
+  begin
+    FSubLexerBlocks.Clear;
+    Exit
+  end;
+
+  NIndex := FSubLexerBlocks.FindFirstAfterLine(ALine);
+  if NIndex >= 0 then
+    FSubLexerBlocks.DeleteRange(NIndex, FSubLexerBlocks.Count-1);
+
+  (*
   for i := FSubLexerBlocks.Count - 1 downto 0 do
   begin
     Sub := FSubLexerBlocks.InternalGet(i);
@@ -3505,6 +3514,7 @@ begin
       end;
     end;
   end;
+  *)
 end;
 
 procedure TecClientSyntAnalyzer.UpdateFirstLineOfChange(var ALine: integer);
