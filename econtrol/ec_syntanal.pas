@@ -3535,15 +3535,16 @@ begin
     begin
       Sub := FSubLexerBlocks.InternalGet(N);
 
-      {
       // delete sublexer range, decrease ALine
       ALine := Sub.Range.PointStart.Y;
       FSubLexerBlocks.ClearFromIndex(N);
-      }
 
+      {
       // just mark sublexer range as opened
+      // it's bad: in Markdown fenced blocks, sublexer ranges are duplicated after editing
       Sub.Range.EndPos := -1;
       Sub.CondEndPos := -1;
+      }
     end;
   end;
 end;
