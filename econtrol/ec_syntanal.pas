@@ -3600,12 +3600,13 @@ var
 begin
   if FPrevChangeLine < 0 then Exit;
   NLine := FPrevChangeLine;
+  NTokenIndex := -1;
 
   if NLine > 0 then
   begin
     UpdateFirstLineOfChange(NLine);
 
-    NTokenIndex:= FTagList.PriorAtLine(NLine);
+    NTokenIndex := FTagList.PriorAtLine(NLine);
     if NTokenIndex <= 0 then
       NLine := 0;
   end;
