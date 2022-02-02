@@ -3537,7 +3537,7 @@ begin
       //if Sub.FinalSubAnalyzer <> Sub.Rule.SyntAnalyzer then //also needed for lexers PHP/PHP_
       begin
         ALine := Sub.Range.PointStart.Y;
-        FSubLexerBlocks.DeleteRange(N, NSublexCount-1);
+        FSubLexerBlocks.ClearFromIndex(N);
       end;
     end;
   end;
