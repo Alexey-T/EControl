@@ -71,6 +71,7 @@ type
     function CompProc(AValuePtr: PRange; AKey: integer): integer;
     // CompProcSofter returns 0 also when APos is at the range end
     function CompProcSofter(AValuePtr: PRange; AKey: integer): integer;
+    function CompProcForLine(AValuePtr: PRange; ALine: integer): integer;
     function CompLines(AItemIndex, ALine: integer): integer;
   public
     constructor Create(UnionSiblings: Boolean = True);
@@ -92,6 +93,7 @@ type
     function FindSofter(APos: integer): integer;
     // First which has Y>=ALine
     function FindFirstAtOrAfterLine(ALine: integer): integer;
+    function FindFirstContainingLine(ALine: integer): integer;
   end;
 
   TecRangeList = GRangeList<TRange>;
@@ -219,6 +221,18 @@ begin
   else
     Result := -1;
 end;
+
+function GRangeList<GRange>.CompProcForLine(AValuePtr: PRange; ALine: integer): integer;
+begin
+  if AValuePtr^.PointStart.Y > ALine then
+    Result := 1
+  else
+  if AValuePtr^.PointEnd.Y >= ALine then
+    Result := 0
+  else
+    Result := -1;
+end;
+
 
 function GRangeList<GRange>.CompLines(AItemIndex, ALine: integer): integer;
 var
@@ -388,6 +402,34 @@ begin
   end;
 end;
 
+function GRangeList<GRange>.FindFirstContainingLine(ALine: integer): integer;
+var
+  L, H, I, Diff, NCount: Integer;
+begin
+  Result := -1;
+  NCount := Count;
+  if NCount = 0 then
+    Exit;
+
+  L := 0;
+  H := NCount - 1;
+  while L <= H do
+  begin
+    I := (L + H) shr 1;
+    Diff := CompProcForLine(InternalItems[I], ALine);
+    if Diff < 0 then
+      L := I + 1
+    else
+    if Diff = 0 then
+    begin
+      while (I > 0) and (CompProcForLine(InternalItems[I - 1], ALine) = 0) do
+        Dec(I);
+      Exit(I);
+    end
+    else
+      H := I - 1;
+  end;
+end;
 
 procedure GRangeList<GRange>.ClearFromIndex(AIndex: integer); inline;
 begin
