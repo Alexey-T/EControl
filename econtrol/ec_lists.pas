@@ -326,11 +326,10 @@ begin
     if Diff < 0 then
       L := I + 1
     else
-    begin
-      if Diff = 0 then
-        Exit(I);
+    if Diff = 0 then
+      Exit(I)
+    else
       H := I - 1;
-    end;
   end;
 end;
 
@@ -352,11 +351,10 @@ begin
     if Diff < 0 then
       L := I + 1
     else
-    begin
-      if Diff = 0 then
-        Exit(I);
+    if Diff = 0 then
+      Exit(I)
+    else
       H := I - 1;
-    end;
   end;
 end;
 
