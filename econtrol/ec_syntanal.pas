@@ -2628,7 +2628,7 @@ begin
  if FStateChanges.Count = 0 then
    b := FCurState <> 0
  else
-   b := FCurState <> FStateChanges.Last.State;
+   b := FCurState <> FStateChanges._GetItemPtr(FStateChanges.Count-1)^.State;
  if b then
  begin
    Item.TokenCount := FTagList.Count;
