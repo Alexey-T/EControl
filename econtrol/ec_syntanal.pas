@@ -2624,11 +2624,13 @@ end;
 procedure TecParserResults.SaveState;
 var b: Boolean;
     Item: TecStateChange;
+    NStateCount: integer;
 begin
- if FStateChanges.Count = 0 then
+ NStateCount := FStateChanges.Count;
+ if NStateCount = 0 then
    b := FCurState <> 0
  else
-   b := FCurState <> FStateChanges._GetItemPtr(FStateChanges.Count-1)^.State;
+   b := FCurState <> FStateChanges._GetItemPtr(NStateCount-1)^.State;
  if b then
  begin
    Item.TokenCount := FTagList.Count;
