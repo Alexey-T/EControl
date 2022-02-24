@@ -3514,7 +3514,7 @@ end;
 
 procedure TecClientSyntAnalyzer.UpdateFirstLineOfChange(var ALine: integer);
 var
-  Sub: PecSubLexerRange;
+  Sub, Sub2: PecSubLexerRange;
   NSublexCount, N: integer;
 begin
   if ALine = 0 then Exit;
@@ -3529,15 +3529,25 @@ begin
     begin
       Sub := FSubLexerBlocks.InternalGet(N);
 
-      // delete sublexer range, decrease ALine
-      ALine := Sub.Range.PointStart.Y;
-      FSubLexerBlocks.ClearFromIndex(N);
+      // mark sublexer range as opened
+      Sub.Range.EndPos := -1;
+      Sub.Range.PointEnd := Point(-1, -1);
+      Sub.CondEndPos := -1;
+
+      // in PHP blocks / in Markdown fenced blocks, sublexer ranges are duplicated after editing
+      // so we must delete 'duplicates'
+      if N+1 < FSubLexerBlocks.Count then
+      begin
+        Sub2 := FSubLexerBlocks.InternalGet(N+1);
+        if Sub2.CondStartPos = Sub.CondStartPos then
+          FSubLexerBlocks.Delete(N+1);
+      end;
 
       {
-      // just mark sublexer range as opened
-      // it's bad: in Markdown fenced blocks, sublexer ranges are duplicated after editing
-      Sub.Range.EndPos := -1;
-      Sub.CondEndPos := -1;
+      // delete sublexer range, decrease ALine
+      // - bad, gives big flickering on editing in big PHP blocks
+      ALine := Sub.Range.PointStart.Y;
+      FSubLexerBlocks.ClearFromIndex(N);
       }
     end;
   end;
