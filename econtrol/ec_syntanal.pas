@@ -3626,7 +3626,10 @@ begin
     FRanges.Clear;
     FLastAnalPos := 0;
     FStartSepRangeAnal := 0;
-    RestoreState;
+
+    FStateChanges.Clear; //faster than RestoreState
+    FCurState := 0;
+
     UpdatePublicDataOnTextChange;
     Exit
   end;
