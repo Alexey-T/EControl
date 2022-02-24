@@ -1199,12 +1199,12 @@ end;
 function TecSubLexerRange.RelationToLine(ALine: integer): TecRangeLineRelation;
 begin
   if Range.PointStart.Y > ALine then
-    Exit(rlrAfterLine);
-
+    Result := rlrAfterLine
+  else
   if Range.PointEnd.Y < ALine then
-    Exit(rlrBeforeLine);
-
-  Result := rlrTouchesLine;
+    Result := rlrBeforeLine
+  else
+    Result := rlrTouchesLine;
 end;
 
 procedure TecSubLexerRange.Reopen;
