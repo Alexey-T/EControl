@@ -32,7 +32,7 @@ uses
 type
   TecLineBreakPos = (lbTop, lbBottom);
   TecLineBreakBound = set of TecLineBreakPos;
-  TecRangeLineRelation = (rlrBeforeLine, rlrContainsLine, rlrAfterLine);
+  TecRangeLineRelation = (rlrBeforeLine, rlrTouchesLine, rlrAfterLine);
 
   TecSyntAnalyzer       = class;
   TecParserResults      = class;
@@ -1204,7 +1204,7 @@ begin
   if Range.PointEnd.Y < ALine then
     Exit(rlrBeforeLine);
 
-  Result := rlrContainsLine;
+  Result := rlrTouchesLine;
 end;
 
 procedure TecSubLexerRange.Reopen;
@@ -3579,7 +3579,7 @@ begin
         case Sub^.RelationToLine(ALine) of
           rlrAfterLine:
             Break;
-          rlrContainsLine:
+          rlrTouchesLine:
             Sub^.Reopen;
         end;
       until False;
