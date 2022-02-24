@@ -185,8 +185,9 @@ begin
   Result := False;
   NLen := Length(Source);
   while (APos <= NLen) and IsSpaceChar(Source[APos]) do // Alexey
-    inc(APos);
-  if APos > NLen then Result := True;
+    Inc(APos);
+  if APos > NLen then
+    Result := True;
 end;
 
 function SkipSpacesAndBreaks(const Source: ecString; var APos: integer): boolean;
@@ -196,10 +197,7 @@ begin
   Result := False;
   NLen := Length(Source);
   while (APos <= NLen) and IsSpaceOrBreakChar(Source[APos]) do // Alexey
-  begin
-    //if Source[APos] = #10 then Inc(Result);
     Inc(APos);
-  end;
   if APos > NLen then
     Result := True;
 end;
