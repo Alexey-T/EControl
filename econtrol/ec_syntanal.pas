@@ -3546,7 +3546,7 @@ end;
 procedure TecClientSyntAnalyzer.UpdateFirstLineOfChange(var ALine: integer);
 var
   Sub, Sub2: PecSubLexerRange;
-  N: integer;
+  N, NTempIndex: integer;
 begin
   if ALine = 0 then Exit;
 
@@ -3571,18 +3571,16 @@ begin
 
       // open sub-lexer ranges nested into N-th range and also containing ALine
       // CudaText issue #3973
-      repeat
-        Inc(N);
-        if N >= FSubLexerBlocks.Count then Break;
-        Sub := FSubLexerBlocks.InternalGet(N);
-
+      for NTempIndex := N+1 to FSubLexerBlocks.Count-1 do
+      begin
+        Sub := FSubLexerBlocks.InternalGet(NTempIndex);
         case Sub^.RelationToLine(ALine) of
           rlrAfterLine:
             Break;
           rlrTouchesLine:
             Sub^.Reopen;
         end;
-      until False;
+      end;
     end;
   end;
 end;
