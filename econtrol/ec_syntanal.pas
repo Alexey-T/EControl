@@ -2909,9 +2909,9 @@ begin
   GetOwner;
   if own=nil then
     raise EParserError.Create('GetOwner=nil');
-  TryOpenSubLexer;
 
-  // bEnded means we reached end of buffer
+  //TryOpenSubLexer; // Alexey: why we had 2 calls of TryOpenSublexer?
+
   if own.SkipSpaces then
   begin
     if own.ParseEndOfLine then
