@@ -2887,18 +2887,22 @@ var
      FSubLexerBlocks.Add(sub);
    end;
 
-   procedure TryOpenSubLexer;
+   function TryOpenSubLexer: boolean;
    var i: integer;
        Rule: TecSubAnalyzerRule;
    begin
+     Result := False;
      for i := 0 to own.SubAnalyzers.Count - 1 do
-      if CanOpen(own.SubAnalyzers[i]) then Exit;
+     begin
+       Rule := own.SubAnalyzers[i];
+       if CanOpen(Rule) then Exit(True);
+     end;
      if own <> FOwner then
-      for i := 0 to FOwner.SubAnalyzers.Count - 1 do
-      begin
-       Rule := FOwner.SubAnalyzers[i];
-       if Rule.AlwaysEnabled and CanOpen(Rule) then Exit;
-      end;
+       for i := 0 to FOwner.SubAnalyzers.Count - 1 do
+       begin
+         Rule := FOwner.SubAnalyzers[i];
+         if Rule.AlwaysEnabled and CanOpen(Rule) then Exit(True);
+       end;
    end;
 
 var
