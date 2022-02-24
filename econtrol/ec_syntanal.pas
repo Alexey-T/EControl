@@ -152,6 +152,9 @@ type
     CondStartPos: integer;    // End pos of the end condition
     FinalSubAnalyzer: TecSyntAnalyzer;
     class operator =(const a, b: TecSubLexerRange): boolean;
+    function ContainsLine(ALine: integer): boolean;
+    function AfterLine(ALine: integer): boolean;
+    procedure Reopen;
   end;
 
 // *******************************************************************
@@ -1192,6 +1195,27 @@ class operator TecSubLexerRange.=(const a, b: TecSubLexerRange): boolean;
 begin
   Result := False;
 end;
+
+function TecSubLexerRange.ContainsLine(ALine: integer): boolean;
+begin
+  Result :=
+    (Range.PointStart.Y <= ALine) and
+    (Range.PointEnd.Y >= ALine);
+end;
+
+function TecSubLexerRange.AfterLine(ALine: integer): boolean;
+begin
+  Result := Range.PointStart.Y > ALine;
+end;
+
+procedure TecSubLexerRange.Reopen;
+begin
+  Range.EndPos := -1;
+  Range.PointEnd := Point(-1, -1);
+  CondEndPos := -1;
+end;
+
+
 
 { TecSyntToken }
 
@@ -3521,20 +3545,6 @@ begin
   *)
 end;
 
-function IsSublexerRangeHasLine(Sub: PecSubLexerRange; ALine: integer): boolean;
-begin
-  Result :=
-    (Sub.Range.PointStart.Y <= ALine) and
-    (Sub.Range.PointEnd.Y >= ALine);
-end;
-
-procedure ReopenSublexerRange(Sub: PecSubLexerRange);
-begin
-  Sub.Range.EndPos := -1;
-  Sub.Range.PointEnd := Point(-1, -1);
-  Sub.CondEndPos := -1;
-end;
-
 procedure TecClientSyntAnalyzer.UpdateFirstLineOfChange(var ALine: integer);
 var
   Sub, Sub2: PecSubLexerRange;
@@ -3550,7 +3560,7 @@ begin
     if N >= 0 then
     begin
       Sub := FSubLexerBlocks.InternalGet(N);
-      ReopenSublexerRange(Sub);
+      Sub^.Reopen;
 
       // in PHP blocks / in Markdown fenced blocks, sublexer ranges are duplicated after editing
       // so we must delete 'duplicates'
@@ -3568,9 +3578,9 @@ begin
         if N >= FSubLexerBlocks.Count then Break;
         Sub := FSubLexerBlocks.InternalGet(N);
 
-        if Sub.Range.PointStart.Y > ALine then Break;
-        if IsSublexerRangeHasLine(Sub, ALine) then
-          ReopenSublexerRange(Sub);
+        if Sub^.AfterLine(ALine) then Break;
+        if Sub^.ContainsLine(ALine) then
+          Sub^.Reopen;
       until False;
     end;
   end;
