@@ -3521,43 +3521,57 @@ begin
   *)
 end;
 
+function IsSublexerRangeHasLine(Sub: PecSubLexerRange; ALine: integer): boolean;
+begin
+  Result :=
+    (Sub.Range.PointStart.Y <= ALine) and
+    (Sub.Range.PointEnd.Y >= ALine);
+end;
+
+procedure ReopenSublexerRange(Sub: PecSubLexerRange);
+begin
+  Sub.Range.EndPos := -1;
+  Sub.Range.PointEnd := Point(-1, -1);
+  Sub.CondEndPos := -1;
+end;
+
 procedure TecClientSyntAnalyzer.UpdateFirstLineOfChange(var ALine: integer);
 var
   Sub, Sub2: PecSubLexerRange;
-  NSublexCount, N: integer;
+  N: integer;
 begin
   if ALine = 0 then Exit;
 
   //change in sublexer range? get position of that range start. CudaText issue #3882.
   //to support command 'duplicate line' at the end of sublexer range, e.g. in Markdown lexer with fenced blocks.
-  NSublexCount := FSubLexerBlocks.Count;
-  if NSublexCount > 0 then
+  if FSubLexerBlocks.Count > 0 then
   begin
     N := FSubLexerBlocks.FindFirstContainingLine(ALine);
     if N >= 0 then
     begin
       Sub := FSubLexerBlocks.InternalGet(N);
-
-      // mark sublexer range as opened
-      Sub.Range.EndPos := -1;
-      Sub.Range.PointEnd := Point(-1, -1);
-      Sub.CondEndPos := -1;
+      ReopenSublexerRange(Sub);
 
       // in PHP blocks / in Markdown fenced blocks, sublexer ranges are duplicated after editing
       // so we must delete 'duplicates'
       if N+1 < FSubLexerBlocks.Count then
       begin
         Sub2 := FSubLexerBlocks.InternalGet(N+1);
-        if Sub2.CondStartPos = Sub.CondStartPos then
+        if Sub2.Range.PointStart = Sub.Range.PointStart then
           FSubLexerBlocks.Delete(N+1);
       end;
 
-      {
-      // delete sublexer range, decrease ALine
-      // - bad, gives big flickering on editing in big PHP blocks
-      ALine := Sub.Range.PointStart.Y;
-      FSubLexerBlocks.ClearFromIndex(N);
-      }
+      // open sub-lexer ranges nested into N-th range and also containing ALine
+      // CudaText issue #3973
+      repeat
+        Inc(N);
+        if N >= FSubLexerBlocks.Count then Break;
+        Sub := FSubLexerBlocks.InternalGet(N);
+
+        if Sub.Range.PointStart.Y > ALine then Break;
+        if IsSublexerRangeHasLine(Sub, ALine) then
+          ReopenSublexerRange(Sub);
+      until False;
     end;
   end;
 end;
