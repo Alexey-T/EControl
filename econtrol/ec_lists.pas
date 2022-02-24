@@ -100,6 +100,7 @@ type
 
   { TecStateChange }
 
+  PecStateChange = ^TecStateChange;
   TecStateChange = record
     TokenCount: integer;
     State: integer;

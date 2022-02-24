@@ -2988,14 +2988,21 @@ begin
 end;
 
 procedure TecParserResults.RestoreState;
-var i, NCount: integer;
+var
+  NCount, NTagCount, i: integer;
+  StatePtr: PecStateChange;
 begin
   NCount := 0;
+  NTagCount := TagCount;
+
   for i := FStateChanges.Count - 1 downto 0 do
-    if FStateChanges[i].TokenCount >= TagCount then
+  begin
+    StatePtr := FStateChanges._GetItemPtr(i);
+    if StatePtr^.TokenCount >= NTagCount then
       Inc(NCount)
     else
       Break;
+  end;
 
   if NCount > 0 then
     FStateChanges.DeleteRange(FStateChanges.Count-NCount, FStateChanges.Count-1);
