@@ -3617,7 +3617,10 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
    begin
      R := TecTextRange(FRanges[i]);
      if (R.FCondIndex >= ATagCount) or (R.StartIdx >= ATagCount) then
-       FRanges.Delete(i)
+     begin
+       //Writeln('del rng: '+IntToStr(FBuffer.StrToCaret(R.StartPos).Y));
+       FRanges.Delete(i);
+     end
      else
      if (R.FEndCondIndex >= ATagCount - NDelta) or
         (R.EndIdx >= ATagCount - NDelta) then
@@ -3626,6 +3629,7 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
        R.EndIdx := -1;
        R.FEndCondIndex := -1;
        FOpenedBlocks.Add(R);
+       //Writeln('open rng: '+IntToStr(FBuffer.StrToCaret(R.StartPos).Y));
      end;
    end;
  end;
