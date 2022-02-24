@@ -182,24 +182,20 @@ function SkipSpacesNoLineBreak(const Source: ecString; var APos: integer): boole
 //returns bool: reached end of buffer
 var NLen: integer;
 begin
-  Result := False;
   NLen := Length(Source);
-  while (APos <= NLen) and IsSpaceChar(Source[APos]) do // Alexey
+  while (APos <= NLen) and IsSpaceChar(Source[APos]) do
     Inc(APos);
-  if APos > NLen then
-    Result := True;
+  Result := APos > NLen;
 end;
 
 function SkipSpacesAndBreaks(const Source: ecString; var APos: integer): boolean;
 //returns bool: reached end of buffer
 var NLen: integer;
 begin
-  Result := False;
   NLen := Length(Source);
-  while (APos <= NLen) and IsSpaceOrBreakChar(Source[APos]) do // Alexey
+  while (APos <= NLen) and IsSpaceOrBreakChar(Source[APos]) do
     Inc(APos);
-  if APos > NLen then
-    Result := True;
+  Result := APos > NLen;
 end;
 
 function ecEncodeString(const S: string): string;
