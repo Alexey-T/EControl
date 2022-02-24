@@ -32,6 +32,7 @@ uses
 type
   TecLineBreakPos = (lbTop, lbBottom);
   TecLineBreakBound = set of TecLineBreakPos;
+  TecRangeLineRelation = (rlrBeforeLine, rlrContainsLine, rlrAfterLine);
 
   TecSyntAnalyzer       = class;
   TecParserResults      = class;
@@ -152,8 +153,7 @@ type
     CondStartPos: integer;    // End pos of the end condition
     FinalSubAnalyzer: TecSyntAnalyzer;
     class operator =(const a, b: TecSubLexerRange): boolean;
-    function ContainsLine(ALine: integer): boolean;
-    function AfterLine(ALine: integer): boolean;
+    function RelationToLine(ALine: integer): TecRangeLineRelation;
     procedure Reopen;
   end;
 
@@ -1196,16 +1196,15 @@ begin
   Result := False;
 end;
 
-function TecSubLexerRange.ContainsLine(ALine: integer): boolean;
+function TecSubLexerRange.RelationToLine(ALine: integer): TecRangeLineRelation;
 begin
-  Result :=
-    (Range.PointStart.Y <= ALine) and
-    (Range.PointEnd.Y >= ALine);
-end;
+  if Range.PointStart.Y > ALine then
+    Exit(rlrAfterLine);
 
-function TecSubLexerRange.AfterLine(ALine: integer): boolean;
-begin
-  Result := Range.PointStart.Y > ALine;
+  if Range.PointEnd.Y < ALine then
+    Exit(rlrBeforeLine);
+
+  Result := rlrContainsLine;
 end;
 
 procedure TecSubLexerRange.Reopen;
@@ -1214,7 +1213,6 @@ begin
   Range.PointEnd := Point(-1, -1);
   CondEndPos := -1;
 end;
-
 
 
 { TecSyntToken }
@@ -3578,9 +3576,12 @@ begin
         if N >= FSubLexerBlocks.Count then Break;
         Sub := FSubLexerBlocks.InternalGet(N);
 
-        if Sub^.AfterLine(ALine) then Break;
-        if Sub^.ContainsLine(ALine) then
-          Sub^.Reopen;
+        case Sub^.RelationToLine(ALine) of
+          rlrAfterLine:
+            Break;
+          rlrContainsLine:
+            Sub^.Reopen;
+        end;
       until False;
     end;
   end;
