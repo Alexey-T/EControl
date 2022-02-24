@@ -2902,25 +2902,34 @@ var
    end;
 
 var
-  N, NNextPos: integer;
+  NMarkEnd, NNextPos: integer;
 begin
   Source := FBuffer.FText;
   GetOwner;
   if own=nil then
     raise EParserError.Create('GetOwner=nil');
   TryOpenSubLexer;
+
+  // NMarkEnd=-1 means we reached end of buffer
   if own.SkipSpaces then
-    begin
-     if own.ParseEndOfLine then N := SkipSpacesNoLineBreak(Source, FPos)
-      else N := SkipSpacesAndBreaks(Source, FPos);
-    end
-   else if FPos > Length(Source) then N := -1 else N := 0;
+  begin
+    if own.ParseEndOfLine then
+      NMarkEnd := SkipSpacesNoLineBreak(Source, FPos)
+    else
+      NMarkEnd := SkipSpacesAndBreaks(Source, FPos);
+  end
+  else
+  if FPos > Length(Source) then
+    NMarkEnd := -1
+  else
+    NMarkEnd := 0;
+
   TryOpenSubLexer;
   GetOwner;
   if own=nil then
     raise EParserError.Create('GetOwner=nil');
 
-  Result := N = -1;
+  Result := NMarkEnd = -1;
   if Result then Exit;
 
   CurToken := FOwner.GetToken(Self, Source, FPos, own <> FOwner);
