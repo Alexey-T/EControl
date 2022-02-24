@@ -40,8 +40,8 @@ function IsWordBreak(aPos: integer; const Text: UCString): Boolean;
 
 function ecUpCase(C: UCChar): UCChar; inline;
 procedure CharToUpCase(var C: UCChar); inline;
-function SkipSpacesAndBreaks(const Source: ecString; var APos: integer): integer;
-function SkipSpacesNoLineBreak(const Source: ecString; var APos: integer): integer;
+function SkipSpacesAndBreaks(const Source: ecString; var APos: integer): boolean;
+function SkipSpacesNoLineBreak(const Source: ecString; var APos: integer): boolean;
 
 {
 function ecEncodeString(const S: string): string;
@@ -178,27 +178,30 @@ begin
     Dec(C, 32);
 end;
 
-function SkipSpacesNoLineBreak(const Source: ecString; var APos: integer): integer;
-var N: integer;
+function SkipSpacesNoLineBreak(const Source: ecString; var APos: integer): boolean;
+//returns bool: reached end of buffer
+var NLen: integer;
 begin
-  Result := 0;
-  N := Length(Source);
-  while (APos <= N) and IsSpaceChar(Source[APos]) do // Alexey
+  Result := False;
+  NLen := Length(Source);
+  while (APos <= NLen) and IsSpaceChar(Source[APos]) do // Alexey
     inc(APos);
-  if APos > N then Result := -1;
+  if APos > NLen then Result := True;
 end;
 
-function SkipSpacesAndBreaks(const Source: ecString; var APos: integer): integer;
-var N: integer;
+function SkipSpacesAndBreaks(const Source: ecString; var APos: integer): boolean;
+//returns bool: reached end of buffer
+var NLen: integer;
 begin
-  Result := 0;
-  N := Length(Source);
-  while (APos <= N) and IsSpaceOrBreakChar(Source[APos]) do // Alexey
-   begin
-    if Source[APos] = #10 then inc(Result);
-    inc(APos);
-   end;
-  if APos > N then Result := -1;
+  Result := False;
+  NLen := Length(Source);
+  while (APos <= NLen) and IsSpaceOrBreakChar(Source[APos]) do // Alexey
+  begin
+    //if Source[APos] = #10 then Inc(Result);
+    Inc(APos);
+  end;
+  if APos > NLen then
+    Result := True;
 end;
 
 function ecEncodeString(const S: string): string;
