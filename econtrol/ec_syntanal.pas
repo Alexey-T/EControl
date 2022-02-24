@@ -1210,7 +1210,8 @@ end;
 procedure TecSubLexerRange.Reopen;
 begin
   Range.EndPos := -1;
-  Range.PointEnd := Point(-1, -1);
+  Range.PointEnd.X := -1;
+  Range.PointEnd.Y := -1;
   CondEndPos := -1;
 end;
 
@@ -2881,9 +2882,8 @@ var
        sub.Range.StartPos := FPos - 1
      else
        sub.Range.StartPos := FPos + N - 1;
-     sub.Range.EndPos := -1;
      sub.Range.PointStart := FBuffer.StrToCaret(sub.Range.StartPos);
-     sub.CondEndPos := -1;
+     sub.Reopen;
      FSubLexerBlocks.Add(sub);
    end;
 
@@ -3534,9 +3534,7 @@ begin
       begin
         if ALine > Sub.Range.PointEnd.Y then
           ALine := Sub.Range.PointEnd.Y;
-        Sub.Range.EndPos := -1; // open sublexer block
-        Sub.CondEndPos := -1;
-        //FSubLexerBlocks[i] := Sub; // no need to write back, we use pointer
+        Sub^.Reopen;
       end;
     end;
   end;
