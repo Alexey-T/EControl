@@ -43,11 +43,6 @@ procedure CharToUpCase(var C: UCChar); inline;
 function SkipSpacesAndBreaks(const Source: ecString; var APos: integer): boolean;
 function SkipSpacesNoLineBreak(const Source: ecString; var APos: integer): boolean;
 
-{
-function ecEncodeString(const S: string): string;
-function ecDecodeString(const S: string): string;
-}
-
 implementation
 
 function IsSpaceChar(c: UCChar): Boolean; inline; // Alexey
