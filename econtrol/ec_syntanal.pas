@@ -2914,7 +2914,8 @@ begin
   if own=nil then
     raise EParserError.Create('GetOwner=nil');
 
-  //TryOpenSubLexer; // Alexey: why we had 2 calls of TryOpenSublexer?
+  // we had 2 calls of TryOpenSublexer, but this first one is not needed
+  //TryOpenSubLexer;
 
   if own.SkipSpaces then
   begin
@@ -2926,13 +2927,13 @@ begin
   else
     bEnded := FPos > Length(Source);
 
+  Result := bEnded;
+  if Result then Exit;
+
   TryOpenSubLexer;
   GetOwner;
   if own=nil then
     raise EParserError.Create('GetOwner=nil');
-
-  Result := bEnded;
-  if Result then Exit;
 
   CurToken := FOwner.GetToken(Self, Source, FPos, own <> FOwner);
   if (own <> FOwner) and (CurToken.Range.StartPos < 0) then
