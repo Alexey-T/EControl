@@ -3973,6 +3973,24 @@ begin
   idx := 0;
   Result := FmtStr;
   if Range=nil then Exit;
+
+  //special handling for CSS lexer, which has rule with FmtStr='CSS'
+  if Assigned(Range.Rule) and (FmtStr='CSS') then
+  begin
+    Result := '';
+    to_idx := Range.StartPos;
+    i := to_idx;
+    repeat
+      case Buffer.FText[i] of
+        '}', '>', #10, '/': Break;
+      end;
+      Dec(i);
+      if i<1 then Break;
+    until False;
+    Result := Copy(Buffer.FText, i+1, to_idx-i);
+    Exit;
+  end;
+
   //try //Alexey: why try/except here?
 
    // HAW: obsolete -> to_idx := Length(Result);
