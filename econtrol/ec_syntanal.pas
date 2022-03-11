@@ -3996,6 +3996,11 @@ begin
           Break;
         #10:
           begin
+            // if EOL is at to_idx position, only skip it:
+            //   tagname
+            //   {
+            //   ...
+            //   }
             if i<>to_idx then
               Break;
           end;
