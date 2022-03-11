@@ -1074,7 +1074,7 @@ begin
   RE.ModifierR := False;
 end;
 
-function IsCharSurrogateHigh(ch: WideChar): boolean; inline; // Alexey
+function IsCharSurrogateHigh(ch: WideChar): boolean; inline;
 begin
   Result := (Ord(ch) >= $D800) and (Ord(ch) <= $DBFF);
 end;
@@ -3984,8 +3984,8 @@ begin
   Result := FmtStr;
   if Range=nil then Exit;
 
-  //special handling for CSS lexer, which has rule with FmtStr='CSS'
-  if Assigned(Range.Rule) and (FmtStr='CSS') then
+  //special handling for CSS lexer
+  if FmtStr='CSS' then
   begin
     Result := '';
     to_idx := Range.StartPos;
