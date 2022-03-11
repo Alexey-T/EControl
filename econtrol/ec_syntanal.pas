@@ -3769,6 +3769,16 @@ end;
 type
   TecParserLineMode = (plmNone, plmFromStart, plmToEnd, plmExplicitRange);
 
+function _IsCharSpaceOrEol(ch: WideChar): boolean; inline;
+begin
+  case ch of
+    ' ', #10:
+      Result := True;
+    else
+      Result := False;
+  end;
+end;
+
 function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
   Range: TecTextRange): ecString;
 
@@ -3993,6 +4003,11 @@ begin
       Dec(i);
       if i<1 then Break;
     until False;
+
+    // strip trailing space/EOL
+    while (to_idx>0) and _IsCharSpaceOrEol(Buffer.FText[to_idx]) do
+      Dec(to_idx);
+
     Result := Copy(Buffer.FText, i+1, to_idx-i);
     Exit;
   end;
