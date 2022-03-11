@@ -1079,6 +1079,16 @@ begin
   Result := (Ord(ch) >= $D800) and (Ord(ch) <= $DBFF);
 end;
 
+function _IsCharSpaceOrEol(ch: WideChar): boolean; inline;
+begin
+  case ch of
+    ' ', #10:
+      Result := True;
+    else
+      Result := False;
+  end;
+end;
+
 { TecParserThread }
 
 procedure TecParserThread.ThreadParseDone;
@@ -3768,16 +3778,6 @@ end;
 
 type
   TecParserLineMode = (plmNone, plmFromStart, plmToEnd, plmExplicitRange);
-
-function _IsCharSpaceOrEol(ch: WideChar): boolean; inline;
-begin
-  case ch of
-    ' ', #10:
-      Result := True;
-    else
-      Result := False;
-  end;
-end;
 
 function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
   Range: TecTextRange): ecString;
