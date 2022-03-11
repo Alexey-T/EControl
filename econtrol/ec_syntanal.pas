@@ -3982,7 +3982,13 @@ begin
     i := to_idx;
     repeat
       case Buffer.FText[i] of
-        '{', '}', '>', #10, '/': Break;
+        '{', '}', '>',  '/':
+          Break;
+        #10:
+          begin
+            if i<>to_idx then
+              Break;
+          end;
       end;
       Dec(i);
       if i<1 then Break;
