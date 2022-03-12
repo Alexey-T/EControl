@@ -3992,11 +3992,13 @@ begin
     i := to_idx;
     repeat
       case Buffer.FText[i] of
-        '{', '}', '>',  '/':
+        '{', '}',
+        '>', // support <?php> tag
+        '/': // support CSS comments, but comment must not be in the middle of node name
           Break;
         #10:
           begin
-            // if EOL is at to_idx position, only skip it:
+            // if EOL is at to_idx position, only skip it; ie support this:
             //   tagname
             //   {
             //   ...
