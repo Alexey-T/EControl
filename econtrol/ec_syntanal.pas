@@ -11,6 +11,7 @@
 { *************************************************************************** }
 
 {$mode delphi}
+{.$define debug_ExtractTag_time}
 
 unit ec_SyntAnal;
 
@@ -3469,20 +3470,19 @@ begin
     if NTemp > NPos then
       NPos := NTemp;
 
-    {$ifdef linux}
+    {$ifdef debug_ExtractTag_time}
     tick := GetTickCount64;
     {$endif}
 
     bEnded := ExtractTag(NPos, bDisableFolding);
 
-    {$ifdef linux}
+    {$ifdef debug_ExtractTag_time}
     tick := GetTickCount64-tick;
     if tick>500 then
     begin
       Writeln('Long getting: '+IntToStr(tick)+' msec for token:');
       Writeln('  str: '+TagStr[TagCount-1]);
       Writeln('  style name: '+Tags[TagCount-1].Rule.StyleName);
-      Writeln('  block name: '+Tags[TagCount-1].Rule.BlockName);
     end;
     {$endif}
 
