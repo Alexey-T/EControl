@@ -3496,6 +3496,12 @@ begin
     end
     else
     begin
+      if Application.Terminated then
+        Exit(eprAppTerminated);
+
+      if BufferInvalidated then
+        Exit(eprBufferInvalidated);
+
       //this works when parsing has reached the ed's LineBottom,
       //it updates not-complete PublicData
       UpdatePublicData(False);
