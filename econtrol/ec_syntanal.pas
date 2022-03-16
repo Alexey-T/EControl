@@ -3106,7 +3106,7 @@ end;
 
 destructor TecClientSyntAnalyzer.Destroy;
 begin
-  FBuffer.IncreaseVersion;
+  FBuffer.Valid:= false;
   ParserThread.Terminate;
   ParserThread.WaitFor;
   FreeAndNil(ParserThread);
@@ -3128,7 +3128,7 @@ procedure TecClientSyntAnalyzer.Stop;
 begin
   if not IsFinished then
   begin
-    FBuffer.IncreaseVersion;
+    FBuffer.Valid:= false;
     Sleep(15);
   end;
   FFinished := True;
