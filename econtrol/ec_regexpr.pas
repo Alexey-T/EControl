@@ -1579,7 +1579,7 @@ end;
 
 function TecRegExpr.GetModifierStr: ecString;
 const ModLet: ecString = 'irsgmx';
-var s1, s2: string;
+var s1, s2: ecString;
     i: integer;
 begin
   s1 := ''; s2 := '';
