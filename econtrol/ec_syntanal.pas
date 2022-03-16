@@ -3427,7 +3427,9 @@ var
   own: TecSyntAnalyzer;
   bSeparateBlocks: boolean;
   bDisableFolding: boolean;
+  bEnded: boolean;
   NPos, NTemp, NTagCount, iToken: integer;
+  tick: QWord;
 {
 const
   ProgressMinPos = 2000;
@@ -3467,7 +3469,19 @@ begin
     if NTemp > NPos then
       NPos := NTemp;
 
-    if ExtractTag(NPos, bDisableFolding) then
+    {$ifdef linux}
+    tick := GetTickCount64;
+    {$endif}
+
+    bEnded := ExtractTag(NPos, bDisableFolding);
+
+    {$ifdef linux}
+    tick := GetTickCount64-tick;
+    if tick>500 then
+      Writeln('Long getting: '+IntToStr(tick)+'msec for token: '+TagStr[TagCount-1]);
+    {$endif}
+
+    if bEnded then
     begin
       //all tokens found, now find blocks (if bSeparateBlocks)
       if bSeparateBlocks then
