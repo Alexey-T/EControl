@@ -3496,9 +3496,6 @@ begin
     end
     else
     begin
-      if Application.Terminated then
-        Exit(eprAppTerminated);
-
       if BufferInvalidated then
         Exit(eprBufferInvalidated);
 
