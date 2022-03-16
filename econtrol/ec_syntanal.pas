@@ -4941,20 +4941,19 @@ begin
         Exit;
       Rule := FTokenRules[i];
       if Client.IsEnabled(Rule, OnlyGlobal) then
-        with Rule do
           begin
-            if (ColumnFrom > 0) or (ColumnTo > 0) then
+            if (Rule.ColumnFrom > 0) or (Rule.ColumnTo > 0) then
               begin
                if lp = 0 then
                  lp := Client.FBuffer.OffsetToDistanceFromLineStart(APos - 1)+1;
 
-               if (ColumnFrom > 0) and (lp < ColumnFrom) or
-                  (ColumnTo > 0) and (lp > ColumnTo) then
+               if (Rule.ColumnFrom > 0) and (lp < Rule.ColumnFrom) or
+                  (Rule.ColumnTo > 0) and (lp > Rule.ColumnTo) then
                   Continue;
               end;
-            N := Match(Source, APos);
-            if Assigned(OnMatchToken) then
-              OnMatchToken(Rule, Client, Source, APos, N);
+            N := Rule.Match(Source, APos);
+            if Assigned(Rule.OnMatchToken) then
+              Rule.OnMatchToken(Rule, Client, Source, APos, N);
             if N > 0 then
               begin
                 Client.ApplyStates(Rule);
