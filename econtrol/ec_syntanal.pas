@@ -3478,7 +3478,12 @@ begin
     {$ifdef linux}
     tick := GetTickCount64-tick;
     if tick>500 then
-      Writeln('Long getting: '+IntToStr(tick)+'msec for token: '+TagStr[TagCount-1]);
+    begin
+      Writeln('Long getting: '+IntToStr(tick)+' msec for token:');
+      Writeln('  str: '+TagStr[TagCount-1]);
+      Writeln('  style name: '+Tags[TagCount-1].Rule.StyleName);
+      Writeln('  block name: '+Tags[TagCount-1].Rule.BlockName);
+    end;
     {$endif}
 
     if bEnded then
