@@ -512,7 +512,6 @@ type
     function ExtractTag(var FPos: integer; ADisableFolding: Boolean): Boolean;
     function GetTags(Index: integer): PecSyntToken;
     function GetSubLexerRangeCount: integer;
-    function BufferInvalidated: Boolean; inline;
 
     //moved to 'private' by Alexey, not needed in CudaText
     property TagCount: integer read GetTokenCount;
@@ -539,8 +538,6 @@ type
     procedure ShowTokenIndexer; //Alexey
     procedure ShowCmtIndexer; //Alexey
   public
-    BufferVersion: integer;
-
     //holds index of first token overlapping that i-th line ("overlapping" is for multi-line tokens)
     TokenIndexer: array of integer; //Alexey
     //holds booleans: first token of i-th line is a 'comment'
@@ -3075,11 +3072,6 @@ begin
    Result := 0;
 end;
 
-function TecParserResults.BufferInvalidated: Boolean; inline;
-begin
-  Result := BufferVersion <> Buffer.Version;
-end;
-
 { TecClientSyntAnalyzer }
 
 constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
@@ -3289,7 +3281,7 @@ begin
      end;
   end;
 
-  if BufferInvalidated then
+  if not FBuffer.Valid then
   begin
     FOpenedBlocks.Clear;
     Exit(False);
@@ -3437,7 +3429,7 @@ const
 }
 begin
   Result := eprNormal;
-  BufferVersion := Buffer.Version;
+  FBuffer.Valid:= true;
   FFinished := False;
   ClearDataOnChange;
 
@@ -3461,7 +3453,7 @@ begin
     if FBuffer = nil then
       Exit(eprBufferInvalidated);
 
-    if BufferInvalidated then
+    if not FBuffer.Valid then
       Exit(eprBufferInvalidated);
 
     NTemp := GetLastPos;
@@ -3485,7 +3477,7 @@ begin
           if Application.Terminated then
             Exit(eprAppTerminated);
 
-          if BufferInvalidated then
+          if not FBuffer.Valid then
             Exit(eprBufferInvalidated);
         end;
       end;
@@ -3496,7 +3488,7 @@ begin
     end
     else
     begin
-      if BufferInvalidated then
+      if not FBuffer.Valid then
         Exit(eprBufferInvalidated);
 
       //this works when parsing has reached the ed's LineBottom,
@@ -4543,7 +4535,7 @@ begin
 
   for iToken := ATokenIndexFrom to ATokenIndexTo do
   begin
-     if BufferInvalidated then
+     if not FBuffer.Valid then
        Exit(True);
 
      Token := Tags[iToken];
@@ -4588,7 +4580,7 @@ begin
 
   for i := FOpenedBlocks.Count - 1 downto 0 do
   begin
-    if BufferInvalidated then
+    if not FBuffer.Valid then
     begin
       FOpenedBlocks.Clear;
       //FRanges.Clear;
@@ -4616,7 +4608,7 @@ begin
              NIndentSize := TokenIndent(Token1);
              for iLine := NLine+1 to High(TokenIndexer) do // not FBuffer.Count-1, it can be bigger
              begin
-               if BufferInvalidated then
+               if not FBuffer.Valid then
                begin
                  FOpenedBlocks.Clear;
                  //FRanges.Clear;
@@ -4789,7 +4781,7 @@ begin
   N := Client.TagCount;
   for iRule := 0 to High(FBlockRules_Detecters) do
   begin
-    if Client.BufferInvalidated then Exit;
+    if not Client.Buffer.Valid then Exit;
 
     Rule := FBlockRules_Detecters[iRule];
     with Rule do
@@ -4839,7 +4831,7 @@ begin
 
     for i := 0 to FBlockRules.Count - 1 do
     begin
-      if Client.BufferInvalidated then Exit;
+      if not Client.Buffer.Valid then Exit;
 
       Rule := FBlockRules[i];
       if DisableFolding then
