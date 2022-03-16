@@ -437,17 +437,11 @@ begin
      k := i shl 1;
      if (Ord(FCharRanges[k]) >= Ord(C)) and
         (Ord(FCharRanges[k - 1]) <= Ord(C)) then
-      begin
-        Result := True;
-        Exit;
-      end;
+       Exit(True);
     end;
   for i := 1 to Length(FCharSets) do
    if IsInRange(FCharSets[i], C) then
-    begin
-     Result := True;
-     Exit;
-    end;
+    Exit(True);
   Result := Pos(C, FCharArray) <> 0;
 end;
 
@@ -479,10 +473,7 @@ var C: UCChar;
     b: Boolean;
 begin
   if aPos > Length(InputString) then
-    begin
-      Result := 0;
-      Exit;
-    end;
+    Exit(0);
 
   C := InputString[aPos];
   if FIgnoreCase then CharToUpCase(C);
@@ -496,10 +487,7 @@ var C: UCChar;
     b: Boolean;
 begin
   if aPos <= 1 then
-    begin
-      Result := 0;
-      Exit;
-    end;
+    Exit(0);
 
   C := InputString[aPos - 1];
   if FIgnoreCase then CharToUpCase(C);
@@ -554,10 +542,7 @@ begin
   if aPos <= 1 then
    begin
     if aPos < 1 then
-      begin
-        Result := 0;
-        Exit;
-      end;
+      Exit(0);
     C := #0;
    end
   else C := InputString[aPos - 1];
@@ -601,10 +586,7 @@ begin
   if aPos > Length(InputString) then
    begin
     if aPos - 1 > Length(InputString) then
-      begin
-        Result := 0;
-        Exit;
-      end;
+      Exit(0);
     C := #0;
    end
   else C := InputString[aPos];
@@ -1131,10 +1113,7 @@ var save, k, sv, LastSucc, total, Success: integer;
     
 begin
   if Node = nil then
-    begin
-      Result := 2;
-      Exit;
-    end;
+    Exit(2);
   Result := 0;
 
   // required minimum repeat
@@ -1242,10 +1221,7 @@ var save, k, sv, LastSucc, total, Success: integer;
 
 begin
   if Node = nil then
-    begin
-      Result := 2;
-      Exit;
-    end;
+    Exit(2);
   Result := 0;
 
   // required minimum repeat

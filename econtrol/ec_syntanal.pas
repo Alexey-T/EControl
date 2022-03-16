@@ -1344,12 +1344,10 @@ begin
     if FCondType = tcSkip then Exit;
     if not Result then
     case FCondType of
-      tcStrictMask, tcMask, tcEqual: Exit;
+      tcStrictMask, tcMask, tcEqual:
+        Exit;
       tcNotEqual:
-        begin
-          Result := True;
-          Exit;
-        end;
+        Exit(True);
     end;
    end;
   if FTagList.Count > 0 then
@@ -1393,7 +1391,9 @@ begin
        if FCondType = tcNotEqual then
          Result := not Result;
      end;
-   end else Result := FCondType <> tcNotEqual;
+   end
+  else
+    Result := FCondType <> tcNotEqual;
 end;
 
 constructor TecSingleTagCondition.Create(Collection: TCollection);
@@ -3218,8 +3218,7 @@ begin
              if Assigned(Owner.OnCloseTextRange) then
                Owner.OnCloseTextRange(Self, Range, StartIdx, EndIdx);
              FOpenedBlocks.Delete(j);
-             Result := True;
-             Exit;
+             Exit(True);
            end;
        end;
   end;
@@ -3240,10 +3239,7 @@ begin
             Dec(i);
           repeat
             if i < 0 then
-              begin
-                Result := False;
-                Exit;
-              end;
+              Exit(False);
             prn := TecTextRange(FOpenedBlocks[i]).Rule;
             Dec(i);
           until not prn.IgnoreAsParent;
@@ -5404,10 +5400,7 @@ function TecSyntAnalyzer.GetSeparateBlocks: Boolean;
     for i := 0 to List.Count - 1 do
       with TRuleCollectionItem(List.Items[i]) do
         if (StatesAdd <> 0) or (StatesRemove <> 0) then
-          begin
-            Result := True;
-            Exit;
-          end;
+          Exit(True);
     Result := False;
   end;
 
@@ -5862,10 +5855,7 @@ var
     begin
       CollectItem := Collection.Items[i];
       if (CollectItem <> Self) and ((CollectItem as TecSubAnalyzerRule).SyntAnalyzer = AAnalyzer) then
-      begin
-       Result := True;
-       Exit;
-      end;
+        Exit(True);
     end;
     Result := False;
   end;
