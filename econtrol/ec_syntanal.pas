@@ -2943,8 +2943,15 @@ begin
     raise EParserError.Create('GetOwner=nil');
 
   CurToken := FOwner.GetToken(Self, Source, FPos, own <> FOwner);
+  if not Buffer.Valid then
+    Exit;
   if (own <> FOwner) and (CurToken.Range.StartPos < 0) then
+  begin
     CurToken := own.GetToken(Self, Source, FPos, False);
+    if not Buffer.Valid then
+      Exit;
+  end;
+
   if CurToken.Range.StartPos < 0 then  // no token
    begin
      NNextPos := FPos;
@@ -4911,7 +4918,6 @@ var i, N, lp: integer;
 begin
   PntStart.X := -1;
   PntStart.Y := -1;
-  Result := TecSyntToken.Create(nil, -1, -1, PntStart, PntStart);
 
   if Assigned(FOnParseToken) then
     begin
@@ -4931,6 +4937,8 @@ begin
   lp := 0;
   for i := 0 to FTokenRules.Count - 1 do
     begin
+      if not Client.Buffer.Valid then
+        Exit;
       Rule := FTokenRules[i];
       if Client.IsEnabled(Rule, OnlyGlobal) then
         with Rule do
@@ -4972,6 +4980,8 @@ begin
               end;
           end;
     end;
+
+  Result := TecSyntToken.Create(nil, -1, -1, PntStart, PntStart);
 end;
 
 procedure TecSyntAnalyzer.FormatsChanged(Sender: TCollection; Item: TSyntCollectionItem);
