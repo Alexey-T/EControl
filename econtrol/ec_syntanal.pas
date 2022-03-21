@@ -1139,7 +1139,6 @@ var
   Res: TecParseInThreadResult;
   SavedChangeLine: integer;
 begin
-  try
     repeat
       if Terminated then Exit;
       if Application.Terminated then Exit;
@@ -1160,7 +1159,18 @@ begin
         //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
         SavedChangeLine := An.FPrevChangeLine;
         repeat
-          Res := An.ParseInThread;
+          try
+            Res := An.ParseInThread;
+          except
+            //currently we cannot avoid the 'Access violation' because sometimes
+            //we read Buffer.FText[i] with incorrect index i (we have the range check but it dont help)
+            on E: Exception do
+            begin
+              _LogException(E);
+              Res:= eprBufferInvalidated;
+            end;
+          end;
+
           if Res in [eprNormal, eprAppTerminated] then Break;
           An.FPrevChangeLine := SavedChangeLine;
         until False;
@@ -1174,11 +1184,6 @@ begin
         An.EventParseIdle.SetEvent;
       end;
     until False;
-
-  except
-    on E: Exception do
-      _LogException(E);
-  end;
 end;
 
 procedure TecParserThread.ShowDebugMsg;
