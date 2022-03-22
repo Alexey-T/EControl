@@ -753,7 +753,7 @@ type
   private
     FDeleted: Boolean; //Alexey
     FClientList: TFPList;
-    FMasters: TFPList;      // Master lexer, i.e. lexers that uses it
+    FMasters: TFPList; // master lexers, i.e. lexers that use it
     FOnChange: TNotifyEvent;
     FSampleText: TStrings;
     FFormats: TecStylesCollection;
