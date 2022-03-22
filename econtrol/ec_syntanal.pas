@@ -864,6 +864,7 @@ type
     SpecialKinds: array of boolean; //Alexey: holds True for each TokenKind for indent-based folding
     IndentBasedFolding: boolean; //Alexey
     AppliedSyntaxTheme: string; //Alexey
+    AppliedStylesMap: boolean; //Alexey
 
     CommentRangeBegin: string;
     CommentRangeEnd: string;
