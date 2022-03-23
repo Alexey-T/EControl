@@ -1140,51 +1140,51 @@ var
   Res: TecParseInThreadResult;
   SavedChangeLine: integer;
 begin
-    repeat
-      if Terminated then Exit;
-      if Application.Terminated then Exit;
+  repeat
+    if Terminated then Exit;
+    if Application.Terminated then Exit;
 
-      // set PublicData.Finished*, even if we didn't actually finished parsing,
-      // to avoid ATSynEdit.Invalidate being blocked
-      An.PublicData.Finished := True;
-      An.PublicData.FinishedPartially := True;
+    // set PublicData.Finished*, even if we didn't actually finished parsing,
+    // to avoid ATSynEdit.Invalidate being blocked
+    An.PublicData.Finished := True;
+    An.PublicData.FinishedPartially := True;
 
-      //constant in WaitFor() affects how fast 'Close all tabs' will run
-      if An.EventParseNeeded.WaitFor(100)<>wrSignaled then
-        Continue;
+    //constant in WaitFor() affects how fast 'Close all tabs' will run
+    if An.EventParseNeeded.WaitFor(100)<>wrSignaled then
+      Continue;
 
-      An.EventParseIdle.ResetEvent;
-      try
-        //Synchronize(DummyProc); //otherwise editor is not highlighted
+    An.EventParseIdle.ResetEvent;
+    try
+      //Synchronize(DummyProc); //otherwise editor is not highlighted
 
-        //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
-        SavedChangeLine := An.FPrevChangeLine;
-        repeat
-          try
-            Res := An.ParseInThread;
-          except
-            //currently we cannot avoid the 'Access violation' because sometimes
-            //we read Buffer.FText[i] with incorrect index i (we have the range check but it dont help)
-            on E: Exception do
-            begin
-              _LogException(E);
-              Res:= eprBufferInvalidated;
-            end;
+      //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
+      SavedChangeLine := An.FPrevChangeLine;
+      repeat
+        try
+          Res := An.ParseInThread;
+        except
+          //currently we cannot avoid the 'Access violation' because sometimes we read Buffer.FText[i] with incorrect index;
+          //we have the range check but it dont help - buffer is changed in another thread
+          on E: Exception do
+          begin
+            _LogException(E);
+            Res:= eprBufferInvalidated;
           end;
-
-          if Res in [eprNormal, eprAppTerminated] then Break;
-          An.FPrevChangeLine := SavedChangeLine;
-        until False;
-
-      finally
-        if not Terminated and not Application.Terminated then
-        begin
-          Synchronize(ThreadParseDone);
         end;
 
-        An.EventParseIdle.SetEvent;
+        if Res in [eprNormal, eprAppTerminated] then Break;
+        An.FPrevChangeLine := SavedChangeLine;
+      until False;
+
+    finally
+      if not Terminated and not Application.Terminated then
+      begin
+        Synchronize(ThreadParseDone);
       end;
-    until False;
+
+      An.EventParseIdle.SetEvent;
+    end;
+  until False;
 end;
 
 procedure TecParserThread.ShowDebugMsg;
