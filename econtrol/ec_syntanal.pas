@@ -1154,7 +1154,7 @@ begin
       Continue;
 
     An.EventParseIdle.ResetEvent;
-    try
+    //try
       //Synchronize(DummyProc); //otherwise editor is not highlighted
 
       //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
@@ -1176,14 +1176,14 @@ begin
         An.FPrevChangeLine := SavedChangeLine;
       until False;
 
-    finally
+    //finally
       if not Terminated and not Application.Terminated then
       begin
         Synchronize(ThreadParseDone);
       end;
 
       An.EventParseIdle.SetEvent;
-    end;
+    //end;
   until False;
 end;
 
@@ -3432,13 +3432,9 @@ var
   bDisableFolding: boolean;
   bEnded: boolean;
   NPos, NTemp, NTagCount, iToken: integer;
+  {$ifdef debug_ExtractTag_time}
   tick: QWord;
-{
-const
-  ProgressMinPos = 2000;
-  ProcessMsgStep1 = 1000; //stage1: finding tokens
-  ProcessMsgStep2 = 1000; //stage2: finding ranges
-}
+  {$endif}
 begin
   Result := eprNormal;
   FBuffer.Valid:= true;
@@ -3457,7 +3453,7 @@ begin
 
   repeat
     if FFinished then
-      Exit;
+      Exit(eprNormal);
 
     if Application.Terminated then
       Exit(eprAppTerminated);
