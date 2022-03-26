@@ -1154,36 +1154,31 @@ begin
       Continue;
 
     An.EventParseIdle.ResetEvent;
-    //try
-      //Synchronize(DummyProc); //otherwise editor is not highlighted
+    //Synchronize(DummyProc); //otherwise editor is not highlighted
 
-      //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
-      SavedChangeLine := An.FPrevChangeLine;
-      repeat
-        try
-          Res := An.ParseInThread;
-        except
-          //currently we cannot avoid the 'Access violation' because sometimes we read Buffer.FText[i] with incorrect index;
-          //we have the range check but it dont help - buffer is changed in another thread
-          on E: Exception do
-          begin
-            _LogException(E);
-            Res:= eprBufferInvalidated;
-          end;
+    //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
+    SavedChangeLine := An.FPrevChangeLine;
+    repeat
+      try
+        Res := An.ParseInThread;
+      except
+        //currently we cannot avoid the 'Access violation' because sometimes we read Buffer.FText[i] with incorrect index;
+        //we have the range check but it dont help - buffer is changed in another thread
+        on E: Exception do
+        begin
+          _LogException(E);
+          Res:= eprBufferInvalidated;
         end;
-
-        if Res in [eprNormal, eprAppTerminated] then Break;
-        An.FPrevChangeLine := SavedChangeLine;
-      until False;
-
-    //finally
-      if not Terminated and not Application.Terminated then
-      begin
-        Synchronize(ThreadParseDone);
       end;
 
-      An.EventParseIdle.SetEvent;
-    //end;
+      if Res in [eprNormal, eprAppTerminated] then Break;
+      An.FPrevChangeLine := SavedChangeLine;
+    until False;
+
+    if not Terminated and not Application.Terminated then
+      Synchronize(ThreadParseDone);
+
+    An.EventParseIdle.SetEvent;
   until False;
 end;
 
