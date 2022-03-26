@@ -564,6 +564,8 @@ type
   { TecParserThread }
 
   TecParserThread = class(TThread)
+  private
+    procedure ThreadUpdateBuffer;
   public
     An: TecClientSyntAnalyzer;
     procedure ThreadParseDone;
@@ -635,6 +637,7 @@ type
     FOnProgressFirst: TNotifyEvent;
     FOnProgressSecond: TNotifyEvent;
     FOnProgressBoth: TNotifyEvent;
+    FOnUpdateBuffer: TNotifyEvent;
 
     procedure UpdateFirstLineOfChange(var ALine: integer);
     function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
@@ -677,6 +680,7 @@ type
     property OnProgressFirst: TNotifyEvent read FOnProgressFirst write FOnProgressFirst;
     property OnProgressSecond: TNotifyEvent read FOnProgressSecond write FOnProgressSecond;
     property OnProgressBoth: TNotifyEvent read FOnProgressBoth write FOnProgressBoth;
+    property OnUpdateBuffer: TNotifyEvent read FOnUpdateBuffer write FOnUpdateBuffer;
 
     procedure DoParseDone;
     procedure DoProgressFirst;
@@ -1108,6 +1112,12 @@ begin
   An.DoProgressBoth;
 end;
 
+procedure TecParserThread.ThreadUpdateBuffer;
+begin
+  if Assigned(An.OnUpdateBuffer) then
+    An.OnUpdateBuffer(nil);
+end;
+
 procedure _LogException(E: Exception);
 var
   f: System.Text;
@@ -1150,6 +1160,8 @@ begin
     //constant in WaitFor() affects how fast 'Close all tabs' will run
     if An.EventParseNeeded.WaitFor(100)<>wrSignaled then
       Continue;
+
+    Synchronize(ThreadUpdateBuffer);
 
     An.EventParseIdle.ResetEvent;
     //Synchronize(DummyProc); //otherwise editor is not highlighted
