@@ -566,8 +566,6 @@ type
   TecParserThread = class(TThread)
   public
     An: TecClientSyntAnalyzer;
-    DebugMsg: string;
-    DebugTicks: QWord;
     procedure ThreadParseDone;
     procedure ThreadProgressFirst;
     procedure ThreadProgressSecond;
@@ -1184,13 +1182,11 @@ end;
 
 procedure TecParserThread.ShowDebugMsg;
 begin
-  Application.MainForm.Caption:= Format('%s, file %s, %dms, %d tokens, %d ranges', [
-      DebugMsg,
-      An.FileName,
-      DebugTicks,
-      An.PublicData.Tokens.Count,
-      An.PublicData.FoldRanges.Count
-      ]);
+  Application.MainForm.Caption:= Format('file "%s",  %d tokens, %d ranges', [
+    An.FileName,
+    An.PublicData.Tokens.Count,
+    An.PublicData.FoldRanges.Count
+    ]);
 end;
 
 procedure TecParserThread.DummyProc;
