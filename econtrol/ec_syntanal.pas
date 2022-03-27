@@ -1166,7 +1166,7 @@ begin
     An.EventParseIdle.ResetEvent;
     //Synchronize(DummyProc); //otherwise editor is not highlighted
 
-    //this repeat/until is needed to avoid having broken PublicData, when eprInterrupted occurs
+    //repeat/until is needed to avoid having broken PublicData, when eprBufferInvalidated occurs
     SavedChangeLine := An.FPrevChangeLine;
     repeat
       try
@@ -1177,12 +1177,20 @@ begin
         on E: Exception do
         begin
           _LogException(E);
-          Res:= eprBufferInvalidated;
+          Res := eprBufferInvalidated;
         end;
       end;
 
-      if Res in [eprNormal, eprAppTerminated] then Break;
-      An.FPrevChangeLine := SavedChangeLine;
+      case Res of
+        eprNormal,
+        eprAppTerminated:
+          Break;
+        eprBufferInvalidated:
+          begin
+            Synchronize(ThreadUpdateBuffer);
+            An.FPrevChangeLine := SavedChangeLine;
+          end;
+      end;
     until False;
 
     if not Terminated and not Application.Terminated then
