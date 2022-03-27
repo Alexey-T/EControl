@@ -1161,15 +1161,17 @@ begin
     if An.EventParseNeeded.WaitFor(100)<>wrSignaled then
       Continue;
 
-    Synchronize(ThreadUpdateBuffer);
-
     An.EventParseIdle.ResetEvent;
     //Synchronize(DummyProc); //otherwise editor is not highlighted
-
-    //repeat/until is needed to avoid having broken PublicData, when eprBufferInvalidated occurs
     SavedChangeLine := An.FPrevChangeLine;
+
     repeat
+      if Terminated then Exit;
+      if Application.Terminated then Exit;
+
       try
+        Synchronize(ThreadUpdateBuffer);
+        An.FPrevChangeLine := SavedChangeLine;
         Res := An.ParseInThread;
       except
         //currently we cannot avoid the 'Access violation' because sometimes we read Buffer.FText[i] with incorrect index;
@@ -1186,10 +1188,7 @@ begin
         eprAppTerminated:
           Break;
         eprBufferInvalidated:
-          begin
-            Synchronize(ThreadUpdateBuffer);
-            An.FPrevChangeLine := SavedChangeLine;
-          end;
+          Continue;
       end;
     until False;
 
