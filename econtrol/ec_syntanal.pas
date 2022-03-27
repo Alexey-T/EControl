@@ -1174,8 +1174,6 @@ begin
         An.FPrevChangeLine := SavedChangeLine;
         Res := An.ParseInThread;
       except
-        //currently we cannot avoid the 'Access violation' because sometimes we read Buffer.FText[i] with incorrect index;
-        //we have the range check but it dont help - buffer is changed in another thread
         on E: Exception do
         begin
           _LogException(E);
