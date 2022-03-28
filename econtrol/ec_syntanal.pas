@@ -4552,20 +4552,19 @@ end;
 
 function TecClientSyntAnalyzer.CheckBracketsAreClosed(
   ATokenIndexFrom, ATokenIndexTo: integer): boolean; // Alexey
-// CudaText issue #2773
+// the reason for this function: CudaText issue #2773
 var
   Token: PecSyntToken;
   iToken: integer;
   LevelRound, LevelSquare, LevelCurly: integer;
   NPosStart, NLen: integer;
-  ch: WideChar;
 begin
   LevelRound := 0;
   LevelSquare := 0;
   LevelCurly := 0;
   NLen := Length(FBuffer.FText);
 
-  for iToken := ATokenIndexFrom to ATokenIndexTo do
+  for iToken := ATokenIndexFrom to Min(GetTokenCount-1, ATokenIndexTo) do
   begin
      if not FBuffer.Valid then
        Exit(True);
@@ -4578,8 +4577,7 @@ begin
      if NPosStart >= NLen then
        Continue;
 
-     ch := FBuffer.FText[NPosStart+1];
-     case ch of
+     case FBuffer.FText[NPosStart+1] of
        '(':
          Inc(LevelRound);
        ')':
