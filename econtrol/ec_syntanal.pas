@@ -502,7 +502,7 @@ type
     FBuffer: TATStringBuffer;
     FOwner: TecSyntAnalyzer;
     FFinished: Boolean;
-    FPrevChangeLine: integer;
+    FPrevChangeLine: integer; //first changed line in editor; -1: not inited yet
     FSubLexerBlocks: TecSubLexerRanges;
     FTagList: TecTokenList;
     FCurState: integer;
@@ -1166,6 +1166,8 @@ begin
     //Synchronize(DummyProc); //otherwise editor is not highlighted
 
     SavedChangeLine := An.FPrevChangeLine;
+    if SavedChangeLine<0 then //FPrevChangeLine=-1 means 'not inited'
+      SavedChangeLine := 0;
 
     repeat
       if Terminated then Exit;
@@ -1187,10 +1189,7 @@ begin
       case Res of
         eprNormal:
           begin
-            if An.FPrevChangeLine<An.PublicData.LineFrom then
-            begin
-              if Res=eprNormal then ;
-            end;
+            //maybe add check here?: An.FPrevChangeLine<An.PublicData.LineFrom
             Break;
           end;
         eprAppTerminated:
