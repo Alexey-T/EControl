@@ -489,7 +489,6 @@ type
     FoldRanges: TSortedList;
     SublexRanges: TecSubLexerRanges;
     TokenIndexer: array of integer;
-    LineFrom: integer; //index of first changed line on parsing start, or -1 for all text
     LineTo: integer; //index of last parsed line (calculated from Tokens)
     Finished: boolean; //parsing is done until document end
     FinishedPartially: boolean; //parsing is done until (at least) editor's bottom line
@@ -1172,7 +1171,6 @@ begin
 
       try
         Synchronize(ThreadUpdateBuffer);
-        An.PublicData.LineFrom := An.FPrevChangeLine;
         Res := An.ParseInThread;
       except
         on E: Exception do
@@ -3334,7 +3332,6 @@ begin
     PublicData.FoldRanges.Clear;
     PublicData.SublexRanges.Clear;
     SetLength(PublicData.TokenIndexer, 0);
-    PublicData.LineFrom := -1;
     PublicData.LineTo := 0;
   finally
     CriSecForData.Leave;
