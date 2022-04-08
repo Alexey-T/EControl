@@ -1162,7 +1162,6 @@ begin
       Continue;
 
     An.EventParseIdle.ResetEvent;
-    An.FChangeOccured := False;
     //Synchronize(DummyProc); //otherwise editor is not highlighted
 
     repeat
@@ -1170,6 +1169,7 @@ begin
       if Application.Terminated then Exit;
 
       try
+        An.FChangeOccured := False;
         Synchronize(ThreadUpdateBuffer);
         Res := An.ParseInThread;
       except
@@ -1183,11 +1183,8 @@ begin
       case Res of
         eprNormal:
           begin
-            if An.FChangeOccured and (An.FPrevChangeLine>=0) then
-            begin
-              An.FChangeOccured := False;
-              Continue;
-            end
+            if An.FChangeOccured then
+              Continue
             else
               Break;
           end;
