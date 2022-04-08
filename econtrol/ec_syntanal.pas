@@ -1050,8 +1050,8 @@ function _IndentOfBuffer(S: PWideChar; Len: integer): Integer; inline; // Alexey
 var
   i: integer;
 begin
-  Result:= 0;
-  for i:= 0 to Len-1 do
+  Result := 0;
+  for i := 0 to Len-1 do
   begin
     case S^ of
       ' ':
@@ -1124,9 +1124,9 @@ var
   fn: string;
 begin
   {$ifdef windows}
-  fn:= ExtractFileDir(Application.ExeName)+'\cudatext.error';
+  fn := ExtractFileDir(Application.ExeName)+'\cudatext.error';
   {$else}
-  fn:= GetEnvironmentVariable('HOME')+'/cudatext.error';
+  fn := GetEnvironmentVariable('HOME')+'/cudatext.error';
   {$endif}
 
   AssignFile(f, fn);
@@ -1199,7 +1199,7 @@ end;
 
 procedure TecParserThread.ShowDebugMsg;
 begin
-  Application.MainForm.Caption:= Format('file "%s",  %d tokens, %d ranges', [
+  Application.MainForm.Caption := Format('file "%s",  %d tokens, %d ranges', [
     An.FileName,
     An.PublicData.Tokens.Count,
     An.PublicData.FoldRanges.Count
@@ -1452,7 +1452,7 @@ begin
   if FRegexes = nil then
   begin
     FRegexes := TFPObjectList.Create(True);
-    for i:= 0 to FTagList.Count - 1 do
+    for i := 0 to FTagList.Count - 1 do
     begin
       ReObj := TecRegExpr.Create;
       ReObj.Expression := FTagList[i];
@@ -2455,8 +2455,8 @@ begin
   Len1 := T1.Range.EndPos - St1;
   Len2 := T2.Range.EndPos - St2;
 
-  Ptr1:= @FBuffer.FText[St1+1];
-  Ptr2:= @FBuffer.FText[St2+1];
+  Ptr1 := @FBuffer.FText[St1+1];
+  Ptr2 := @FBuffer.FText[St2+1];
 
   // allow to compare "Id" with Id, and 'Id' with Id
   // ie skip quotes; needed for Bash lexer HereDoc
@@ -2785,7 +2785,7 @@ var
     own := FOwner;
     for i := FSubLexerBlocks.Count - 1 downto 0 do
      begin
-       Sub:= FSubLexerBlocks.InternalGet(i);
+       Sub := FSubLexerBlocks.InternalGet(i);
        if FPos > Sub.Range.StartPos then
         if Sub.Range.EndPos = -1 then
           begin
@@ -3121,7 +3121,7 @@ end;
 
 destructor TecClientSyntAnalyzer.Destroy;
 begin
-  FBuffer.Valid:= false;
+  FBuffer.Valid := False;
   ParserThread.Terminate;
   ParserThread.WaitFor;
   FreeAndNil(ParserThread);
@@ -3143,7 +3143,7 @@ procedure TecClientSyntAnalyzer.Stop;
 begin
   if not IsFinished then
   begin
-    FBuffer.Valid:= false;
+    FBuffer.Valid := False;
     Sleep(15);
   end;
   FFinished := True;
@@ -3445,7 +3445,7 @@ var
   {$endif}
 begin
   Result := eprNormal;
-  FBuffer.Valid:= true;
+  FBuffer.Valid := True;
   FFinished := False;
   ClearDataOnChange;
 
@@ -4380,7 +4380,7 @@ begin
   Reset(F);
   if IOResult<>0 then exit;
   {$Pop}
-  Section:= secNone;
+  Section := secNone;
   while not EOF(F) do
     begin
       Readln(F, SItem);
@@ -4482,7 +4482,7 @@ begin
   CommentRule1.BlockType := btRangeStart;
   CommentRule1.DisplayInTree := False;
   CommentRule1.NoEndRule := False;
-  CommentRule1.CollapseFmt:= '// ...';
+  CommentRule1.CollapseFmt := '// ...';
 
   CommentRule2 := BlockRules.Add;
   CommentRule2.DisplayName := 'auto_cmt_2';
@@ -4490,7 +4490,7 @@ begin
   CommentRule2.BlockType := btRangeEnd;
   CommentRule2.DisplayInTree := False;
 
-  CommentRule1.BlockEndCond:= CommentRule2;
+  CommentRule1.BlockEndCond := CommentRule2;
 end;
 
 procedure TecSyntAnalyzer.UpdateSpecialKinds; //Alexey
@@ -4662,7 +4662,7 @@ begin
                        // make it nice for Python lexer: skip ending "comment" tokens
                        repeat
                          if NTokenIndex<=0 then Break;
-                         Style:= Tags[NTokenIndex].Style;
+                         Style := Tags[NTokenIndex].Style;
                          if Style=nil then Break;
                          if Style.TokenKind<>etkComment then Break;
                          Dec(NTokenIndex);
@@ -4735,7 +4735,7 @@ begin
   FTokenRules.OnChange := nil;
   FFormats.OnChange := nil;
   FSubAnalyzers.OnChange := nil;
-  TStringList(FTokenTypeNames).OnChange:= nil;
+  TStringList(FTokenTypeNames).OnChange := nil;
   FGrammaParser.OnChange := nil;
 
   FreeAndNil(FFormats);
@@ -5493,10 +5493,10 @@ end;
 constructor TecCodeTemplate.Create(Collection: TCollection);
 begin
   inherited;
-  FName:= '';
-  FDescription:= '';
-  FAdvanced:= False;
-  FCode:= TStringList.Create;
+  FName := '';
+  FDescription := '';
+  FAdvanced := False;
+  FCode := TStringList.Create;
 end;
 
 destructor TecCodeTemplate.Destroy;
