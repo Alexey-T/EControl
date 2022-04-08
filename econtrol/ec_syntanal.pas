@@ -503,6 +503,7 @@ type
     FOwner: TecSyntAnalyzer;
     FFinished: Boolean;
     FPrevChangeLine: integer; //first changed line in editor; -1: not inited yet
+    FChangeOccured: boolean;
     FSubLexerBlocks: TecSubLexerRanges;
     FTagList: TecTokenList;
     FCurState: integer;
@@ -1147,7 +1148,6 @@ end;
 procedure TecParserThread.Execute;
 var
   Res: TecParseInThreadResult;
-  SavedChangeLine: integer;
 begin
   repeat
     if Terminated then Exit;
@@ -1163,11 +1163,8 @@ begin
       Continue;
 
     An.EventParseIdle.ResetEvent;
+    An.FChangeOccured := False;
     //Synchronize(DummyProc); //otherwise editor is not highlighted
-
-    SavedChangeLine := An.FPrevChangeLine;
-    if SavedChangeLine<0 then //FPrevChangeLine=-1 means 'not inited'
-      SavedChangeLine := 0;
 
     repeat
       if Terminated then Exit;
@@ -1175,7 +1172,6 @@ begin
 
       try
         Synchronize(ThreadUpdateBuffer);
-        An.FPrevChangeLine := SavedChangeLine;
         An.PublicData.LineFrom := An.FPrevChangeLine;
         Res := An.ParseInThread;
       except
@@ -1189,8 +1185,13 @@ begin
       case Res of
         eprNormal:
           begin
-            //maybe add check here?: An.FPrevChangeLine<An.PublicData.LineFrom
-            Break;
+            if An.FChangeOccured and (An.FPrevChangeLine>=0) then
+            begin
+              An.FChangeOccured := False;
+              Continue;
+            end
+            else
+              Break;
           end;
         eprAppTerminated:
           Break;
@@ -2356,7 +2357,7 @@ function TecParserResults.Finished: Boolean;
 begin
   Result := True;
   FFinished := True;
-  FPrevChangeLine := -1;
+  //FPrevChangeLine := -1;
 
   // Performs Gramma parsing
   //AnalyzeGramma;
@@ -4318,6 +4319,7 @@ begin
   if ALine < 0 then
     ALine := 0;
 
+  FChangeOccured := True;
   if FPrevChangeLine < 0 then
     FPrevChangeLine := ALine
   else
