@@ -501,7 +501,7 @@ type
     FBuffer: TATStringBuffer;
     FOwner: TecSyntAnalyzer;
     FFinished: Boolean;
-    FPrevChangeLine: integer; //first changed line in editor; -1: not inited yet
+    FChangeAtLine: integer; //first changed line in editor; -1: not inited yet
     FChangeOccured: boolean;
     FSubLexerBlocks: TecSubLexerRanges;
     FTagList: TecTokenList;
@@ -2325,7 +2325,7 @@ begin
   FOwner.FClientList.Add(Self);
   FCurState := 0;
   FStateChanges := TecStateChanges.Create;
-  FPrevChangeLine := -1;
+  FChangeAtLine := -1;
 end;
 
 destructor TecParserResults.Destroy;
@@ -2345,14 +2345,14 @@ begin
   FCurState := 0;
   TokenIndexer := nil;
   CmtIndexer := nil;
-  FPrevChangeLine := -1;
+  FChangeAtLine := -1;
 end;
 
 function TecParserResults.Finished: Boolean;
 begin
   Result := True;
   FFinished := True;
-  //FPrevChangeLine := -1;
+  //FChangeAtLine := -1;
 
   // Performs Gramma parsing
   //AnalyzeGramma;
@@ -3152,7 +3152,7 @@ begin
     Sleep(15);
   end;
   FFinished := True;
-  //FPrevChangeLine := -1; //this causes CudaText issue #3410
+  //FChangeAtLine := -1; //this causes CudaText issue #3410
 end;
 
 procedure TecClientSyntAnalyzer.Clear;
@@ -3691,8 +3691,8 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
 var
   NLine, NTokenIndex, NTagCount: integer;
 begin
-  if FPrevChangeLine < 0 then Exit;
-  NLine := FPrevChangeLine;
+  if FChangeAtLine < 0 then Exit;
+  NLine := FChangeAtLine;
   NTokenIndex := -1;
 
   if NLine > 0 then
@@ -4314,13 +4314,13 @@ begin
     ALine := 0;
 
   FChangeOccured := True;
-  if FPrevChangeLine < 0 then
-    FPrevChangeLine := ALine
+  if FChangeAtLine < 0 then
+    FChangeAtLine := ALine
   else
-    FPrevChangeLine := Min(FPrevChangeLine, ALine);
+    FChangeAtLine := Min(FChangeAtLine, ALine);
 
   if FBuffer.TextLength <= Owner.FullRefreshSize then
-    FPrevChangeLine := 0;
+    FChangeAtLine := 0;
 
   EventParseNeeded.SetEvent;
 
