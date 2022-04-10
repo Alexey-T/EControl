@@ -3661,7 +3661,7 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
  begin
    //delta>0 was added for Python: editing below the block end must enlarge that block to include the new text.
    //but delta>0 breaks HTML lexer: on editing in any place,
-   //            text in <p>text text</p> changes styles to "misspelled tag property".
+   //            text in '<p>texttext</p>' changes style to "misspelled tag property".
    if Owner.IndentBasedFolding then
      NDelta := 4
    else
