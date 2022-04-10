@@ -3558,6 +3558,7 @@ end;
 
 procedure TecClientSyntAnalyzer.ClearSublexerRangesFromLine(ALine: integer);
 var
+  Sub: PecSubLexerRange;
   NIndex: integer;
 begin
   if ALine = 0 then
@@ -3593,6 +3594,15 @@ begin
     end;
   end;
   *)
+
+  //test last 2..4 blocks: maybe we need to reopen them
+  for NIndex := FSubLexerBlocks.Count - 1 downto Max(0, FSubLexerBlocks.Count - 4) do
+  begin
+    Sub := FSubLexerBlocks.InternalGet(NIndex);
+    if (Sub.Range.PointStart.Y < ALine) and
+      (Sub.Range.PointEnd.Y >= ALine) then
+      Sub^.Reopen;
+  end;
 end;
 
 procedure TecClientSyntAnalyzer.UpdateFirstLineOfChange(var ALine: integer);
