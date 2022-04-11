@@ -3571,8 +3571,8 @@ begin
   if NIndex >= 0 then
     FSubLexerBlocks.ClearFromIndex(NIndex);
 
-  //test last 2..4 blocks: if ALine is inside, we need to reopen them
-  for NIndex := FSubLexerBlocks.Count - 1 downto Max(0, FSubLexerBlocks.Count - 4) do
+  //if ALine is inside a sublexer block, we need to reopen it
+  for NIndex := FSubLexerBlocks.Count - 1 downto 0 do
   begin
     Sub := FSubLexerBlocks.InternalGet(NIndex);
     if (Sub.Range.PointStart.Y < ALine) and
