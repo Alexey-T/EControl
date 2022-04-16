@@ -3571,12 +3571,10 @@ begin
   if NIndex >= 0 then
     FSubLexerBlocks.ClearFromIndex(NIndex);
 
-  //if ALine is inside a sublexer block, we need to reopen it
   for NIndex := FSubLexerBlocks.Count - 1 downto 0 do
   begin
     Sub := FSubLexerBlocks.InternalGet(NIndex);
-    if (Sub.Range.PointStart.Y < ALine) and
-      (Sub.Range.PointEnd.Y >= ALine) then
+    if Sub^.RelationToLine(ALine)=rlrTouchesLine then
       Sub^.Reopen;
   end;
 end;
