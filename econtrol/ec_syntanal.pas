@@ -2352,7 +2352,7 @@ function TecParserResults.Finished: Boolean;
 begin
   Result := True;
   FFinished := True;
-  //FChangeAtLine := -1;
+  FChangeAtLine := -1; //fix CudaText issue #4068, reset FChangeAtLine on parsing ending
 
   // Performs Gramma parsing
   //AnalyzeGramma;
