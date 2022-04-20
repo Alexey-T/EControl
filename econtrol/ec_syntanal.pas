@@ -1020,6 +1020,9 @@ uses
   SysUtils, Forms, Dialogs,
   Math;
 
+const
+  cIndentBasedFoldingGrpIndex = 20;
+
 {
 const
   SecDefaultTokenTypeNames = 'Unknown' + #10 +
@@ -3640,28 +3643,35 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
  procedure UpdateFoldRangesOnChange(ATagCount: integer);
  var
    R: TecTextRange;
-   NDelta: integer;
-   i: integer;
+   NDeltaGlobal, NDelta, NTagCountMinusDelta: integer;
+   iRange: integer;
  begin
    //delta>0 was added for Python: editing below the block end must enlarge that block to include the new text.
    //but delta>0 breaks HTML lexer: on editing in any place,
    //            text in '<p>texttext</p>' changes style to "misspelled tag property".
    if Owner.IndentBasedFolding then
-     NDelta := 4
+     NDeltaGlobal := 4
    else
-     NDelta := 0;
+     NDeltaGlobal := 0;
 
-   for i := FRanges.Count - 1 downto 0 do
+   for iRange := FRanges.Count - 1 downto 0 do
    begin
-     R := TecTextRange(FRanges[i]);
+     R := TecTextRange(FRanges[iRange]);
+
+     if R.Rule.GroupIndex = cIndentBasedFoldingGrpIndex then
+       NDelta:= NDeltaGlobal
+     else
+       NDelta:= 0;
+     NTagCountMinusDelta := Max(0, ATagCount - NDelta);
+
      if (R.FCondIndex >= ATagCount) or (R.StartIdx >= ATagCount) then
      begin
        //Writeln('del rng: '+IntToStr(FBuffer.StrToCaret(R.StartPos).Y));
-       FRanges.Delete(i);
+       FRanges.Delete(iRange);
      end
      else
-     if (R.FEndCondIndex >= ATagCount - NDelta) or
-        (R.EndIdx >= ATagCount - NDelta) then
+     if (R.FEndCondIndex >= NTagCountMinusDelta) or
+        (R.EndIdx >= NTagCountMinusDelta) then
      begin
        //makes range opened: set ending to -1, add to FOpenedBlocks
        R.EndIdx := -1;
@@ -4612,7 +4622,7 @@ begin
        ((AStartTagIdx = 0) or (Range.StartIdx >= AStartTagIdx)) then
      begin
        Range.EndIdx := NTagCount - 1;
-       if Range.Rule.GroupIndex = 20 then
+       if Range.Rule.GroupIndex = cIndentBasedFoldingGrpIndex then
        if Range.Rule.SyntOwner = Owner then
        begin
          // Alexey: indentation-based ranges
