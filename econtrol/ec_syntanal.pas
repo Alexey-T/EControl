@@ -1017,10 +1017,11 @@ var
 implementation
 
 uses
-  SysUtils, Forms, Dialogs,
-  Math;
+  SysUtils, Forms, Dialogs, Math;
 
 const
+  //all lexers which need indent-based folding, must have this value
+  //in range-rules 'Group index' field
   cIndentBasedFoldingGrpIndex = 20;
 
 {
