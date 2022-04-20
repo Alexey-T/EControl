@@ -3643,41 +3643,43 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
  procedure UpdateFoldRangesOnChange(ATagCount: integer);
  var
    R: TecTextRange;
-   NDeltaGlobal, NDelta, NTagCountMinusDelta: integer;
+   NDelta, NTagCountMinusDelta: integer;
    iRange: integer;
  begin
    //delta>0 was added for Python: editing below the block end must enlarge that block to include the new text.
    //but delta>0 breaks HTML lexer: on editing in any place,
    //            text in '<p>texttext</p>' changes style to "misspelled tag property".
    if Owner.IndentBasedFolding then
-     NDeltaGlobal := 4
+     NDelta := 4
    else
-     NDeltaGlobal := 0;
+     NDelta := 0;
 
    for iRange := FRanges.Count - 1 downto 0 do
    begin
      R := TecTextRange(FRanges[iRange]);
 
-     if R.Rule.GroupIndex = cIndentBasedFoldingGrpIndex then
-       NDelta:= NDeltaGlobal
-     else
-       NDelta:= 0;
-     NTagCountMinusDelta := Max(0, ATagCount - NDelta);
-
-     if (R.FCondIndex >= ATagCount) or (R.StartIdx >= ATagCount) then
+     if (R.FCondIndex >= ATagCount) or
+        (R.StartIdx >= ATagCount) then
      begin
        //Writeln('del rng: '+IntToStr(FBuffer.StrToCaret(R.StartPos).Y));
        FRanges.Delete(iRange);
      end
      else
-     if (R.FEndCondIndex >= NTagCountMinusDelta) or
-        (R.EndIdx >= NTagCountMinusDelta) then
      begin
-       //makes range opened: set ending to -1, add to FOpenedBlocks
-       R.EndIdx := -1;
-       R.FEndCondIndex := -1;
-       FOpenedBlocks.Add(R);
-       //Writeln('open rng: '+IntToStr(FBuffer.StrToCaret(R.StartPos).Y));
+       if R.Rule.GroupIndex = cIndentBasedFoldingGrpIndex then
+         NTagCountMinusDelta := Max(0, ATagCount - NDelta)
+       else
+         NTagCountMinusDelta := ATagCount;
+
+       if (R.FEndCondIndex >= NTagCountMinusDelta) or
+          (R.EndIdx >= NTagCountMinusDelta) then
+       begin
+         //makes range opened: set ending to -1, add to FOpenedBlocks
+         R.EndIdx := -1;
+         R.FEndCondIndex := -1;
+         FOpenedBlocks.Add(R);
+         //Writeln('open rng: '+IntToStr(FBuffer.StrToCaret(R.StartPos).Y));
+       end;
      end;
    end;
  end;
