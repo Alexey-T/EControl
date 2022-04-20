@@ -3661,7 +3661,6 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
      if (R.FCondIndex >= ATagCount) or
         (R.StartIdx >= ATagCount) then
      begin
-       //Writeln('del rng: '+IntToStr(FBuffer.StrToCaret(R.StartPos).Y));
        FRanges.Delete(iRange);
      end
      else
@@ -3676,11 +3675,10 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
        if (R.FEndCondIndex >= NTagCountMinusDelta) or
           (R.EndIdx >= NTagCountMinusDelta) then
        begin
-         //makes range opened: set ending to -1, add to FOpenedBlocks
+         //reopen range: set ending to -1, add to FOpenedBlocks
          R.EndIdx := -1;
          R.FEndCondIndex := -1;
          FOpenedBlocks.Add(R);
-         //Writeln('open rng: '+IntToStr(FBuffer.StrToCaret(R.StartPos).Y));
        end;
      end;
    end;
