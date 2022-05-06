@@ -1024,7 +1024,8 @@ uses
 const
   //all lexers which need indent-based folding, must have this value
   //in range-rules 'Group index' field
-  cIndentBasedFoldingGrpIndex = 20;
+  cIndentBasedGroup = 20;
+  cIndentBasedGroup2 = 21; //for this id, check "brackets are closed" will not be used
 
 {
 const
@@ -3671,10 +3672,13 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
      begin
        //even if lexer has indent-based folding, some ranges may be different,
        //e.g. ranges made by AutoFoldComments
-       if R.Rule.GroupIndex = cIndentBasedFoldingGrpIndex then
-         NTagCountMinusDelta := Max(0, ATagCount - NDelta)
-       else
-         NTagCountMinusDelta := ATagCount;
+       case R.Rule.GroupIndex of
+         cIndentBasedGroup,
+         cIndentBasedGroup2:
+           NTagCountMinusDelta := Max(0, ATagCount - NDelta)
+         else
+           NTagCountMinusDelta := ATagCount;
+       end;
 
        if (R.FEndCondIndex >= NTagCountMinusDelta) or
           (R.EndIdx >= NTagCountMinusDelta) then
@@ -4609,6 +4613,7 @@ var
   Range: TecTextRange;
   Token1, Token2: PecSyntToken;
   Style: TecSyntaxFormat;
+  bIndentBased, bIndentBased2: boolean;
   i, iLine: integer;
 begin
   Result := True;
@@ -4628,7 +4633,10 @@ begin
        ((AStartTagIdx = 0) or (Range.StartIdx >= AStartTagIdx)) then
      begin
        Range.EndIdx := NTagCount - 1;
-       if Range.Rule.GroupIndex = cIndentBasedFoldingGrpIndex then
+       bIndentBased := Range.Rule.GroupIndex = cIndentBasedGroup;
+       bIndentBased2 := Range.Rule.GroupIndex = cIndentBasedGroup2;
+
+       if bIndentBased or bIndentBased2 then
        if Range.Rule.SyntOwner = Owner then
        begin
          // Alexey: indentation-based ranges
@@ -4661,7 +4669,8 @@ begin
                    if TokenIndent(Token2) <= NIndentSize then
                      // also check that all brackets ()[]{} are closed at this pos,
                      // CudaText issue #2773
-                     if (not EControlOptions.IndentFolding_CheckBracketsAreClosed) or
+                     if bIndentBased2 or
+                         (not EControlOptions.IndentFolding_CheckBracketsAreClosed) or
                          CheckBracketsAreClosed(Range.StartIdx, NTokenIndex) then
                      begin
                        // close range at prev token
