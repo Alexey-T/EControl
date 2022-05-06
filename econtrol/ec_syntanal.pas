@@ -1012,6 +1012,8 @@ var
 
     //if True, several comments separated with an empty line, make several fold-ranges
     AutoFoldComments_BreakOnEmptyLine: boolean;
+
+    IndentFolding_CheckBracketsAreClosed: boolean;
   end;
 
 implementation
@@ -4659,7 +4661,8 @@ begin
                    if TokenIndent(Token2) <= NIndentSize then
                      // also check that all brackets ()[]{} are closed at this pos,
                      // CudaText issue #2773
-                     if CheckBracketsAreClosed(Range.StartIdx, NTokenIndex) then
+                     if (not EControlOptions.IndentFolding_CheckBracketsAreClosed) or
+                         CheckBracketsAreClosed(Range.StartIdx, NTokenIndex) then
                      begin
                        // close range at prev token
                        Dec(NTokenIndex);
@@ -5954,6 +5957,7 @@ initialization
     MaxLengthForSZFormat := 40;
     AutoFoldComments := 5;
     AutoFoldComments_BreakOnEmptyLine := True;
+    IndentFolding_CheckBracketsAreClosed := True;
   end;
 
 end.
