@@ -3624,21 +3624,6 @@ begin
       end;
     end;
   end;
-
-  (*
-  ////it's not needed yet, maybe later will be needed?
-  //find multi-line token at line start,
-  //if found - change ALine to the starting line of token
-  N := Buffer.CaretToStr(Point(0, ALine));
-  NTempIndex := FindTokenAt(N);
-  if NTempIndex >= 0 then
-  begin
-    Token := Tags[NTempIndex];
-    N := Token.Range.PointStart.Y;
-    if N < ALine then
-      ALine := N;
-  end;
-  *)
 end;
 
 procedure TecClientSyntAnalyzer.ClearDataOnChange;
