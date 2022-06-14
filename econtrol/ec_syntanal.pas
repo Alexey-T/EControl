@@ -5281,6 +5281,7 @@ begin
       end;
   end;
 
+  //Vue lexer must support 'dyn highlight' because its sublexer XML supports it
   if not Result then
     for i := 0 to SubAnalyzers.Count-1 do
     begin
