@@ -805,6 +805,9 @@ type
     ThemeMappingArray: array[0..40] of TThemeMappingItem;
     SubLexerNames: array[0..12] of string;
 
+    FSupportsDynamicHighlightInited: boolean;
+    FSupportsDynamicHighlight: boolean;
+
     procedure LoadExtraData(const AFileName: string);
     procedure InitCommentRules;
     procedure SetSampleText(const Value: TStrings);
@@ -890,6 +893,7 @@ type
 
     property Deleted: Boolean read FDeleted; //Alexey: used by TecLexerList and CudaText
     procedure MarkAsDeleted; //Alexey: used by TecLexerList
+    function SupportsDynamicHighlight: boolean;
 
     {
     property MarkedBlock: TecSyntaxFormat read FMarkedBlock write SetMarkedBlock;
@@ -5254,6 +5258,32 @@ begin
   FLexerName := '-'+FLexerName;
   FExtentions := '';
 end;
+
+function TecSyntAnalyzer.SupportsDynamicHighlight: boolean;
+var
+  Rule: TecTagBlockCondition;
+  i: integer;
+begin
+  if FSupportsDynamicHighlightInited then
+    Exit(FSupportsDynamicHighlight);
+
+  Result := false;
+  for i := 0 to BlockRules.Count-1 do
+  begin
+    Rule := BlockRules[i];
+    if Assigned(Rule) and
+      (Rule.HighlightPos in [cpBound, cpRange, cpOutOfRange]) and
+      (Rule.DynHighlight in [dhRange, dhRangeNoBound, dhBound]) then
+      begin
+        Result := True;
+        Break;
+      end;
+  end;
+
+  FSupportsDynamicHighlightInited:= true;
+  FSupportsDynamicHighlight:= Result;
+end;
+
 
 procedure TecSyntAnalyzer.TokenRuleChanged(Sender: TCollection;
   Item: TSyntCollectionItem);
