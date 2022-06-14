@@ -5262,12 +5262,13 @@ end;
 function TecSyntAnalyzer.SupportsDynamicHighlight: boolean;
 var
   Rule: TecTagBlockCondition;
+  SubLexer: TecSyntAnalyzer;
   i: integer;
 begin
   if FSupportsDynamicHighlightInited then
     Exit(FSupportsDynamicHighlight);
 
-  Result := false;
+  Result := False;
   for i := 0 to BlockRules.Count-1 do
   begin
     Rule := BlockRules[i];
@@ -5280,8 +5281,19 @@ begin
       end;
   end;
 
-  FSupportsDynamicHighlightInited:= true;
-  FSupportsDynamicHighlight:= Result;
+  if not Result then
+    for i := 0 to SubAnalyzers.Count-1 do
+    begin
+      SubLexer := SubAnalyzers[i].SyntAnalyzer;
+      if Assigned(SubLexer) and SubLexer.SupportsDynamicHighlight then
+      begin
+        Result := True;
+        Break;
+      end;
+    end;
+
+  FSupportsDynamicHighlightInited := True;
+  FSupportsDynamicHighlight := Result;
 end;
 
 
