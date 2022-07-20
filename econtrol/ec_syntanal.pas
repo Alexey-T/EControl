@@ -49,6 +49,7 @@ type
     const AText: ecString; var ARefIndex: integer; var Accept: Boolean) of object;
   TecBoundDefEvent = procedure(Sender: TecClientSyntAnalyzer; ARange: TecTextRange;
     var AIndexStart, AIndexEnd: integer) of object;
+  TecBlockReopenEvent = procedure(Sender: TObject; ABlockPos: TPoint) of object;
 
   TecParseInThreadResult = (
     eprNormal,
@@ -639,6 +640,7 @@ type
     FOnProgressSecond: TNotifyEvent;
     FOnProgressBoth: TNotifyEvent;
     FOnUpdateBuffer: TNotifyEvent;
+    FOnBlockReopen: TecBlockReopenEvent;
 
     procedure UpdateFirstLineOfChange(var ALine: integer);
     function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
@@ -682,6 +684,7 @@ type
     property OnProgressSecond: TNotifyEvent read FOnProgressSecond write FOnProgressSecond;
     property OnProgressBoth: TNotifyEvent read FOnProgressBoth write FOnProgressBoth;
     property OnUpdateBuffer: TNotifyEvent read FOnUpdateBuffer write FOnUpdateBuffer;
+    property OnBlockReopen: TecBlockReopenEvent read FOnBlockReopen write FOnBlockReopen;
 
     procedure DoParseDone;
     procedure DoProgressFirst;
@@ -3674,7 +3677,7 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
      end
      else
      begin
-       //even if lexer has indent-based folding, some ranges may be different,
+       //even if lexer has indent-based folding, some ranges may be not indent-based,
        //e.g. ranges made by AutoFoldComments
        case R.Rule.GroupIndex of
          cIndentBasedGroup,
@@ -3691,6 +3694,8 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
          R.EndIdx := -1;
          R.FEndCondIndex := -1;
          FOpenedBlocks.Add(R);
+         if Assigned(FOnBlockReopen) then
+           FOnBlockReopen(Self, FBuffer.StrToCaret(R.StartPos));
        end;
      end;
    end;
