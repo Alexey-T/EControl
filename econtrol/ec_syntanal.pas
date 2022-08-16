@@ -4645,10 +4645,10 @@ begin
        bIndentBased := Range.Rule.GroupIndex = cIndentBasedGroup;
        bIndentBased2 := Range.Rule.GroupIndex = cIndentBasedGroup2;
 
+       // auto-close indentation-based ranges
        if bIndentBased or bIndentBased2 then
        if Range.Rule.SyntOwner = Owner then
        begin
-         // Alexey: indentation-based ranges
          NTokenIndex := Range.StartIdx;
          if NTokenIndex >= NTagCount then Continue;
          Token1 := Tags[NTokenIndex];
