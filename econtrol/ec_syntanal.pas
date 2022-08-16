@@ -4622,7 +4622,7 @@ var
   Range: TecTextRange;
   Token1, Token2: PecSyntToken;
   Style: TecSyntaxFormat;
-  bIndentBased, bIndentBased2: boolean;
+  bIndentBased, bIndentBased2, bMovedFromEnd: boolean;
   i, iLine: integer;
 begin
   Result := True;
@@ -4671,6 +4671,25 @@ begin
                NTokenIndex := TokenIndexer[iLine];
                if (NTokenIndex >= 0) and (NTokenIndex < NTagCount) then
                begin
+                 // if block ends at the very end on 'comment', move the ending upper
+                 if NTokenIndex = NTagCount-1 then
+                 begin
+                   bMovedFromEnd := False;
+                   while (NTokenIndex > 0) do
+                   begin
+                     Style := Tags[NTokenIndex].Style;
+                     if Style=nil then Break;
+                     if Style.TokenKind<>etkComment then Break;
+                     Dec(NTokenIndex);
+                     bMovedFromEnd := True;
+                   end;
+                   if bMovedFromEnd then
+                   begin
+                     Range.EndIdx := NTokenIndex;
+                     Break;
+                   end;
+                 end;
+
                  Token2 := Tags[NTokenIndex];
                  if Token2.Rule.SyntOwner <> Owner then // check that Token2 is not from sublexer
                    Continue;
