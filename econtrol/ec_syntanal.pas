@@ -3133,17 +3133,26 @@ begin
   EventParseIdle := TEvent.Create(nil, True{ManualReset}, True{Signaled}, '');
   CriSecForData := TCriticalSection.Create;
 
-  ParserThread := TecParserThread.Create(True);
-  ParserThread.An := Self;
-  ParserThread.Start;
+  try
+    ParserThread := TecParserThread.Create(True);
+    ParserThread.An := Self;
+    ParserThread.Start;
+  except
+    //if lot of ui-tabs opened with threads (300+), Win10 may not allow to create more threads
+    ParserThread := nil;
+    raise;
+  end;
 end;
 
 destructor TecClientSyntAnalyzer.Destroy;
 begin
   FBuffer.Valid := False;
-  ParserThread.Terminate;
-  ParserThread.WaitFor;
-  FreeAndNil(ParserThread);
+  if Assigned(ParserThread) then
+  begin
+    ParserThread.Terminate;
+    ParserThread.WaitFor;
+    FreeAndNil(ParserThread);
+  end;
 
   FreeAndNil(EventParseIdle);
   FreeAndNil(EventParseNeeded);
