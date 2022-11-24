@@ -3138,7 +3138,7 @@ begin
     ParserThread.An := Self;
     ParserThread.Start;
   except
-    //if lot of ui-tabs opened with threads (300+), Win10 may not allow to create more threads
+    //if lot of ui-tabs opened with threads (350+), Win10 x32 memory is ending
     ParserThread := nil;
     raise;
   end;
