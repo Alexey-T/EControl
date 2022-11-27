@@ -3148,10 +3148,6 @@ destructor TecClientSyntAnalyzer.Destroy;
 begin
   FBuffer.Valid := False;
 
-  PublicData.Tokens.Clear;
-  PublicData.FoldRanges.Clear;
-  PublicData.SublexRanges.Clear;
-
   if Assigned(ParserThread) then
   begin
     ParserThread.Terminate;
@@ -3162,6 +3158,10 @@ begin
   FreeAndNil(EventParseIdle);
   FreeAndNil(EventParseNeeded);
   FreeAndNil(CriSecForData);
+
+  PublicData.Tokens.Clear;
+  PublicData.FoldRanges.Clear;
+  PublicData.SublexRanges.Clear;
 
   FreeAndNil(PublicData.Tokens);
   FreeAndNil(PublicData.FoldRanges);
