@@ -3167,6 +3167,7 @@ begin
   FreeAndNil(PublicData.FoldRanges);
   FreeAndNil(PublicData.SublexRanges);
 
+  FRanges.Clear;
   FreeAndNil(FRanges);
   FreeAndNil(FOpenedBlocks);
   inherited;
