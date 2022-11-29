@@ -511,6 +511,7 @@ end;
 
 destructor TSortedList.Destroy;
 begin
+  Clear;
   FreeAndNil(FList);
   inherited;
 end;
