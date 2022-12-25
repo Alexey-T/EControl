@@ -6047,7 +6047,7 @@ initialization
   begin
     MaxLinesWhenParserEnablesFolding := 10*1000;
     MaxLengthForSZFormat := 40;
-    AutoFoldComments := 5;
+    AutoFoldComments := 0;
     AutoFoldComments_BreakOnEmptyLine := True;
     IndentFolding_CheckBracketsAreClosed := True;
   end;
