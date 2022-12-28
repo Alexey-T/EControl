@@ -4167,6 +4167,7 @@ begin
            end;
          rngdir := 0;    // allow for missing <offset>
        end;
+     rngoffset := 0;
      if  not RangeNumber( Result, rngoffset )  then  begin
        if  rngdir <> 0 then
          Continue;
