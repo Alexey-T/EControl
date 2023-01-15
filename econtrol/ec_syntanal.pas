@@ -3693,6 +3693,7 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
      begin
        //even if lexer has indent-based folding, some ranges may be not indent-based,
        //e.g. ranges made by AutoFoldComments
+       if Assigned(R.Rule) then
        case R.Rule.GroupIndex of
          cIndentBasedGroup,
          cIndentBasedGroup2:
