@@ -3693,14 +3693,13 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
      begin
        //even if lexer has indent-based folding, some ranges may be not indent-based,
        //e.g. ranges made by AutoFoldComments
+       NTagCountMinusDelta:= ATagCount;
        if Assigned(R.Rule) then
-       case R.Rule.GroupIndex of
-         cIndentBasedGroup,
-         cIndentBasedGroup2:
-           NTagCountMinusDelta := Max(0, ATagCount - NDelta)
-         else
-           NTagCountMinusDelta := ATagCount;
-       end;
+         case R.Rule.GroupIndex of
+           cIndentBasedGroup,
+           cIndentBasedGroup2:
+             NTagCountMinusDelta := Max(0, ATagCount - NDelta);
+         end;
 
        if (R.FEndCondIndex >= NTagCountMinusDelta) or
           (R.EndIdx >= NTagCountMinusDelta) then
