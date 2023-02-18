@@ -855,7 +855,6 @@ type
     function GetSeparateBlocks: Boolean;
     procedure UpdateSpecialKinds; //Alexey
   protected
-    procedure LoadFromFile(const AFileName: string); override;
     function GetToken(Client: TecParserResults; const Source: ecString;
                        APos: integer; OnlyGlobal: Boolean): TecSyntToken; virtual;
     procedure HighlightKeywords(Client: TecParserResults; const Source: ecString;
@@ -884,6 +883,7 @@ type
 
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure LoadFromFile(const AFileName: string); override;
     procedure Assign(Source: TPersistent); override;
     //function AddClient(const Client: IecSyntClient; ABuffer: TATStringBuffer): TecClientSyntAnalyzer;
     procedure ClearClientContents;

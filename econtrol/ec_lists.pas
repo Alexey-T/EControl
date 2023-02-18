@@ -36,7 +36,7 @@ type
     function CompProc(ItemIndex, Key: integer): integer;
     function GetCount: integer;
     function GetItem(Index: integer): TSortedItem;
-    function QuickSearch(Key: integer; var Index: integer): Boolean;
+    function QuickSearch(Key: integer; out Index: integer): Boolean;
   public
     constructor Create(AOwnObjects: Boolean);
     destructor Destroy; override;
@@ -531,7 +531,7 @@ begin
   Result := TSortedItem(FList[ItemIndex]).GetKey - Key;
 end;
 
-function TSortedList.QuickSearch(Key: integer; var Index: integer): Boolean;
+function TSortedList.QuickSearch(Key: integer; out Index: integer): Boolean;
 var
   L, H, I, C, NCount: Integer;
 begin
