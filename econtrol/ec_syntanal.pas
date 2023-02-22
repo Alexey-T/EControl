@@ -4111,26 +4111,35 @@ begin
                                       //      negative for "..e.." clauses
      rngmax := 1000000000;            // HAW: allow a great amount of tokens
 
-     while Assigned(rng) and (UpCase(char(Result[j])) = 'P') do
+     while Assigned(rng) and (UpCase(char(Ord(Result[j]))) = 'P') do
       begin
        rng := rng.Parent;
        if (rng = nil) or (j = Length(Result)) then Continue;
        inc(j);
       end;
 
-     case UpCase(char(Result[j])) of
-       'S': idx := rng.StartIdx + rng.Rule.BlockOffset;
-       'E': begin  rngdir := -1;      // HAW: mark downwards direction
-                   if (rng.EndIdx <> -1) and Assigned(rng.Rule.BlockEndCond) then
-                     idx := rng.EndIdx + rng.Rule.BlockEndCond.BlockOffset
-                   else
-                     idx := 1000000000;
-            end;
-       else continue;
+     case UpCase(char(Ord(Result[j]))) of
+       'S':
+         begin
+           if Assigned(rng.Rule) then
+             idx := rng.StartIdx + rng.Rule.BlockOffset
+           else
+             idx := 0;
+         end;
+       'E':
+         begin
+           rngdir := -1;      // HAW: mark downwards direction
+           if (rng.EndIdx <> -1) and Assigned(rng.Rule) and Assigned(rng.Rule.BlockEndCond) then
+             idx := rng.EndIdx + rng.Rule.BlockEndCond.BlockOffset
+           else
+             idx := 1000000000;
+         end;
+       else
+         Continue;
      end;
      inc(j);
 
-     case UpCase(char(Result[j])) of // <== v2.35
+     case UpCase(char(Ord(Result[j]))) of
        'L': LineMode := plmFromStart; // from start of line
        'Z': LineMode := plmToEnd; // to end of line
        else LineMode := plmNone;
@@ -4194,14 +4203,14 @@ begin
          rngdir := 1;
          if  Result[j] <> '['   then  begin
            // to_rng := Range;  // be sure that we start with the range itself
-           while UpCase(char(Result[j])) = 'P' do
+           while UpCase(char(Ord(Result[j]))) = 'P' do
             begin
              to_rng := rng.Parent;
              if (to_rng = nil) or (j = Length(Result)) then Continue;
              inc(j);
             end;
 
-           case UpCase(char(Result[j])) of
+           case UpCase(char(Ord(Result[j]))) of
              'S': to_idx := to_rng.StartIdx + to_rng.Rule.BlockOffset;
              'E': begin
                     rngdir := -1;       // HAW: mark downwards direction
@@ -4322,12 +4331,18 @@ end;
 
 function TecClientSyntAnalyzer.GetRangeGroup(Range: TecTextRange): ecString;
 begin
-  Result := RangeFormat(Range.Rule.GroupFmt, Range);
+  if Assigned(Range.Rule) then
+    Result := RangeFormat(Range.Rule.GroupFmt, Range)
+  else
+    Result := '';
 end;
 
 function TecClientSyntAnalyzer.GetCollapsedText(Range: TecTextRange): ecString;
 begin
-  Result := RangeFormat(Range.Rule.CollapseFmt, Range);
+  if Assigned(Range.Rule) then
+    Result := RangeFormat(Range.Rule.CollapseFmt, Range)
+  else
+    Result := '';
 end;
 
 function TecClientSyntAnalyzer.IsEnabled(Rule: TRuleCollectionItem; OnlyGlobal: Boolean): Boolean;
