@@ -4653,7 +4653,7 @@ begin
     end;
 
     Range := TecTextRange(FOpenedBlocks[i]);
-    if Range.Rule.EndOfTextClose and
+    if Assigned(Range.Rule) and Range.Rule.EndOfTextClose and
        ((AStartTagIdx = 0) or (Range.StartIdx >= AStartTagIdx)) then
      begin
        Range.EndIdx := NTagCount - 1;
