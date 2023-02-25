@@ -871,7 +871,7 @@ type
 
     SpecialKinds: array of boolean; //Alexey: holds True for each TokenKind for indent-based folding
     IndentBasedFolding: boolean; //Alexey
-    AppliedSyntaxTheme: string; //Alexey
+    AppliedSyntaxTheme: string; //Alexey, for CudaText. It holds name of applied syntax-theme, e.g. 'Sub'
     AppliedStylesMap: boolean; //Alexey, for CudaLister
 
     CommentRangeBegin: string;
