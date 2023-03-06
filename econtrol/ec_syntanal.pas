@@ -4239,7 +4239,7 @@ begin
            if  rngtoken = ''  then
              continue;
            inc( j );
-           if  rngdir > 0 then  begin  // upwards search
+           if (rngdir > 0) and Assigned(rng.Rule.BlockEndCond) then begin  // upwards search
              while  to_idx <= (rng.EndIdx + rng.Rule.BlockEndCond.BlockOffset) do  begin
                if TagSameAs(to_idx, rngtoken) then  break;
                inc( to_idx );
