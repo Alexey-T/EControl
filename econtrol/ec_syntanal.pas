@@ -4079,8 +4079,6 @@ begin
     Exit;
   end;
 
-  //try //Alexey: why try/except here?
-
    // HAW: obsolete -> to_idx := Length(Result);
    //      the variable "j" is now always pointing to the next character to process.
    //      Only during numeric sub-operand scan, the "N" will keep the found digits
@@ -4164,13 +4162,13 @@ begin
          if  rngtoken = ''  then
            continue;
          inc( j );
-         if  rngdir > 0 then  begin  // upwards search
+         if (rngdir > 0) and Assigned(rng.Rule) and Assigned(rng.Rule.BlockEndCond) then  begin  // upwards search
            while  idx <= (rng.EndIdx + rng.Rule.BlockEndCond.BlockOffset) do  begin
              if TagSameAs(idx, rngtoken) then  break;
              inc( idx );
            end;
          end  else
-         if  rngdir < 0 then         // downwards search
+         if (rngdir < 0) and Assigned(rng.Rule) then         // downwards search
            while  idx >= (rng.StartIdx + rng.Rule.BlockOffset) do  begin
              if TagSameAs(idx, rngtoken) then  break;
              dec( idx );
@@ -4191,11 +4189,11 @@ begin
      if  (j < length( Result ))  and  (Result[j] = '~')  then
        // a numeric value alone sets just the maximum tokens to use
        if IsDigitChar(Result[j+1]) then  begin  // only positive values !
-         to_idx := to_rng.EndIdx + to_rng.Rule.BlockEndCond.BlockOffset;
+         if Assigned(to_rng.Rule) and Assigned(to_rng.Rule.BlockEndCond) then
+           to_idx := to_rng.EndIdx + to_rng.Rule.BlockEndCond.BlockOffset;
          LineMode := plmExplicitRange;
        end else
        begin
-
          if  LineMode <> plmNone  then  // not a good combination
            continue;
          // ... otherwise we have a real end-token clause
@@ -4211,6 +4209,7 @@ begin
              inc(j);
             end;
 
+           if Assigned(to_rng.Rule) then
            case UpCase(char(Ord(Result[j]))) of
              'S': to_idx := to_rng.StartIdx + to_rng.Rule.BlockOffset;
              'E': begin
@@ -4239,13 +4238,13 @@ begin
            if  rngtoken = ''  then
              continue;
            inc( j );
-           if (rngdir > 0) and Assigned(rng.Rule.BlockEndCond) then begin  // upwards search
+           if (rngdir > 0) and Assigned(rng.Rule) and Assigned(rng.Rule.BlockEndCond) then begin  // upwards search
              while  to_idx <= (rng.EndIdx + rng.Rule.BlockEndCond.BlockOffset) do  begin
                if TagSameAs(to_idx, rngtoken) then  break;
                inc( to_idx );
              end;
            end  else
-           if  rngdir < 0 then         // downwards search
+           if (rngdir < 0) and Assigned(rng.Rule) then // downwards search
              while  to_idx >= (rng.StartIdx + rng.Rule.BlockOffset) do  begin
                if TagSameAs(to_idx, rngtoken) then  break;
                dec( to_idx );
@@ -4316,9 +4315,6 @@ begin
       // HAW: I am currently not sure how to handle the "stylename" property here
       //      ... will be added, when available
     end;
-  //except
-  //  Result := '';
-  //end;
 end;
 
 function TecClientSyntAnalyzer.GetRangeName(Range: TecTextRange; ATags: TecTokenList): ecString;
