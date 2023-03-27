@@ -866,8 +866,8 @@ type
     procedure Change; dynamic;
     property SeparateBlockAnalysis: Boolean read GetSeparateBlocks;
   public
-    CommentRule1: TecTagBlockCondition; //Alexey
-    CommentRule2: TecTagBlockCondition; //Alexey
+    //CommentRule1: TecTagBlockCondition; //Alexey
+    //CommentRule2: TecTagBlockCondition; //Alexey
 
     SpecialKinds: array of boolean; //Alexey: holds True for each TokenKind for indent-based folding
     IndentBasedFolding: boolean; //Alexey
@@ -3238,7 +3238,10 @@ begin
 
   Range := TecTextRange.Create(AStartIdx, NStartPos);
   Range.EndIdx := AEndIdx;
+  {
+  // AutoFoldComment range has Rule=nil
   Range.Rule := Owner.CommentRule1;
+  }
   AddRange(Range);
 end;
 
@@ -4523,6 +4526,9 @@ begin
   //fixes AV in BlockRules.OnChange, on loading Python file, with thread-parser
   BlockRules.OnChange := nil;
 
+  {
+  //2023.03: commented the block, AutoFoldComment range has Rule=nil
+
   CommentRule1 := BlockRules.Add;
   CommentRule1.DisplayName := 'auto_cmt_1';
   CommentRule1.Enabled := False;
@@ -4538,6 +4544,7 @@ begin
   CommentRule2.DisplayInTree := False;
 
   CommentRule1.BlockEndCond := CommentRule2;
+  }
 end;
 
 procedure TecSyntAnalyzer.UpdateSpecialKinds; //Alexey
