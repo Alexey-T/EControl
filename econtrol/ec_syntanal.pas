@@ -2577,7 +2577,7 @@ begin
     TokenIndexer[NLine] := NTokenIndex;
     CmtIndexer[NLine] := bComment;
 
-    if EControlOptions.AutoFoldComments>1 then
+    if EControlOptions.AutoFoldComments > 1 then
     begin
       FindCommentRangeBeforeToken(Token, bComment, NCmtFrom, NCmtTo);
       if NCmtFrom >= 0 then
@@ -3127,8 +3127,7 @@ begin
   FRanges := TSortedList.Create(True);
   FOpenedBlocks := TSortedList.Create(False);
 
-  if EControlOptions.AutoFoldComments > 1 then
-    inherited OnAddRangeSimple := AddRangeSimple;
+  inherited OnAddRangeSimple := AddRangeSimple;
 
   PublicData.Tokens := TecTokenList.Create;
   PublicData.FoldRanges := TSortedList.Create(True);
