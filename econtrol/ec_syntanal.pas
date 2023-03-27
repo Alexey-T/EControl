@@ -6069,7 +6069,7 @@ initialization
   FillChar(EControlOptions, SizeOf(EControlOptions), 0);
   with EControlOptions do
   begin
-    MaxLinesWhenParserEnablesFolding := 10*1000;
+    MaxLinesWhenParserEnablesFolding := 15*1000;
     MaxLengthForSZFormat := 40;
     AutoFoldComments := 0;
     AutoFoldComments_BreakOnEmptyLine := True;
