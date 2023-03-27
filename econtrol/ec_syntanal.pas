@@ -1309,11 +1309,14 @@ end;
 constructor TecTextRange.Create(AStartIdx, AStartPos: integer);
 begin
   inherited Create;
-  StartIdx := AStartIdx;
   StartPos := AStartPos;
+  StartIdx := AStartIdx;
   EndIdx := -1;
+  IdentIdx := -1;
   FEndCondIndex := -1;
   Index := -1;
+  Rule := nil;
+  Parent := nil;
 end;
 
 procedure TecTextRange.Assign(R: TecTextRange);
