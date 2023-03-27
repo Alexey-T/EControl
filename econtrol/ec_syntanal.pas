@@ -535,8 +535,8 @@ type
     procedure SaveState;
     procedure RestoreState;
     procedure ClearTokenIndexer; //Alexey
-    procedure UpdateTokenIndexer(const Token: TecSyntToken); //Alexey
-    procedure FindCommentRangeBeforeToken(const Token: TecSyntToken;
+    procedure UpdateTokenIndexer(constref Token: TecSyntToken); //Alexey
+    procedure FindCommentRangeBeforeToken(constref Token: TecSyntToken;
       ATokenIsComment: boolean; out ALineFrom, ALineTo: integer); //Alexey
     procedure ShowTokenIndexer; //Alexey
     procedure ShowCmtIndexer; //Alexey
@@ -2540,7 +2540,7 @@ begin
   end;
 end;
 
-procedure TecParserResults.UpdateTokenIndexer(const Token: TecSyntToken);
+procedure TecParserResults.UpdateTokenIndexer(constref Token: TecSyntToken);
 var
   NNewLen, NPrevLen, NTokenIndex, NLine, NLine2: integer;
   NCmtFrom, NCmtTo: integer;
@@ -2590,7 +2590,8 @@ begin
   end;
 end;
 
-procedure TecParserResults.FindCommentRangeBeforeToken(const Token: TecSyntToken;
+procedure TecParserResults.FindCommentRangeBeforeToken(
+  constref Token: TecSyntToken;
   ATokenIsComment: boolean; out ALineFrom, ALineTo: integer);
   //
   function IsBadLine(N: integer): boolean; inline;
