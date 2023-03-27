@@ -2577,11 +2577,11 @@ begin
     TokenIndexer[NLine] := NTokenIndex;
     CmtIndexer[NLine] := bComment;
 
-    if EControlOptions.AutoFoldComments > 1 then
+    if (EControlOptions.AutoFoldComments > 1) and Assigned(FOnAddRangeSimple) then
     begin
       FindCommentRangeBeforeToken(Token, bComment, NCmtFrom, NCmtTo);
       if NCmtFrom >= 0 then
-        OnAddRangeSimple(TokenIndexer[NCmtFrom], TokenIndexer[NCmtTo]);
+        FOnAddRangeSimple(TokenIndexer[NCmtFrom], TokenIndexer[NCmtTo]);
     end;
   end;
 
