@@ -1034,7 +1034,13 @@ var Len: integer;
         if IsBack then
           Branch.Invert;
       except
-        Branch.Free;
+        on TecRegExprCompileError do
+          Branch.Free
+        else
+          begin
+            Branch.Free;
+            raise;
+          end;
       end;
     end;
 
@@ -1544,6 +1550,10 @@ begin
     if IsEmpty then
       Compile(FExpression);
   except
+    on TecRegExprCompileError do
+      begin end
+    else
+      raise;
   end;
   Result := not IsEmpty;
 end;
