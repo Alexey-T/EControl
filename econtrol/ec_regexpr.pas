@@ -17,6 +17,7 @@ unit ec_RegExpr;
 interface
 
 uses
+  SysUtils,
   Classes,
   {$IFDEF RE_DEBUG}ComCtrls,{$ENDIF}
   ec_StrUtils;
@@ -28,6 +29,9 @@ const
   MaskModG = 8;  // -"- /g
   MaskModM = 16; // -"- /m
   MaskModX = 32; // -"- /x
+
+type
+  TecRegExprCompileError = class(Exception);
 
 type
   TecRegExpr = class //(TPersistent)
@@ -108,7 +112,8 @@ procedure REDebugCompiledBuildTree(RE: TecRegExpr; TV: TTreeView);
 
 implementation
 
-uses SysUtils, Contnrs, Math;
+uses
+  Contnrs, Math;
 
 function BufferHexToInt(p: PWideChar; Len: integer): integer; //Alexey
 var
@@ -377,7 +382,7 @@ begin
     'x': begin
           inc(aPos);
           if aPos > Length(Expression) then
-             raise Exception.Create('Invalid escape char');
+             raise TecRegExprCompileError.Create('Invalid escape char');
           if Expression[aPos] = '{' then
            begin
              inc(aPos);
@@ -386,18 +391,18 @@ begin
                inc(aPos);
              N := BufferHexToInt(@Expression[strt], aPos - strt);
              if N<0 then
-               raise Exception.Create('Invalid hex digit in \x');
+               raise TecRegExprCompileError.Create('Invalid hex digit in \x');
              Result := UCChar(N);
            end else
             begin
               N := BufferHexToInt(@Expression[aPos], 2);
               if N<0 then
-                raise Exception.Create('Invalid hex digit in \x');
+                raise TecRegExprCompileError.Create('Invalid hex digit in \x');
               Result := UCChar(N);
               Inc(aPos);
             end;
           if Result = '' then
-            raise Exception.Create('Invalid hex digit in \x');
+            raise TecRegExprCompileError.Create('Invalid hex digit in \x');
          end;
   end;
 end;
@@ -853,7 +858,7 @@ var Len: integer;
        begin
          Result := #0;
          if RaiseEx then
-           raise Exception.Create(zreUnexpectedEnd);
+           raise TecRegExprCompileError.Create(zreUnexpectedEnd);
        end;
     end;
 
@@ -864,7 +869,7 @@ var Len: integer;
       while (aPos <= Len) and IsDigitChar(Expression[aPos]) do
        Inc(aPos);
       if strt = aPos then
-       raise Exception.Create('Number is expected');
+       raise TecRegExprCompileError.Create('Number is expected');
       Result := BufferStrToInt(@Expression[strt], aPos - strt);
       Dec(aPos);
     end;
@@ -888,15 +893,15 @@ var Len: integer;
                        begin
                         Node.FLoopMax := ReadNumber;
                         if SafeInc <> '}' then
-                          raise Exception.Create('There is no closing "}"');
+                          raise TecRegExprCompileError.Create('There is no closing "}"');
                        end
                      else
                        Node.FLoopMax := -1;
                 '}': Node.FLoopMax := Node.FLoopMin;
-                else raise Exception.Create('Invalid loop specifier');
+                else raise TecRegExprCompileError.Create('Invalid loop specifier');
               end;
               if (Node.FLoopMax >= 0) and (Node.FLoopMax < Node.FLoopMin) then
-                raise Exception.Create('Loop minimum must be less then loop maximum');
+                raise TecRegExprCompileError.Create('Loop minimum must be less then loop maximum');
              end;
         else begin
               Dec(aPos);
@@ -979,7 +984,7 @@ var Len: integer;
               Cstrt := '-';
              end else
              if Ord(Cend) < Ord(Cstrt) then
-              raise Exception.Create('Invalid set range') else
+              raise TecRegExprCompileError.Create('Invalid set range') else
               begin
                // Extended russian support
                cs.AddRange(Cstrt, Cend);
@@ -998,7 +1003,7 @@ var Len: integer;
     var rn: TRefNode;
     begin
       if TreRootNode(Root).FSubExpr.Count <= RefIdx then
-       raise Exception.Create('Invalid reference');
+       raise TecRegExprCompileError.Create('Invalid reference');
       rn := TRefNode.Create(Owner);
       rn.FRef := RefIdx;
       rn.FIgnoreCase := (Modifiers and MaskModI) <> 0;
@@ -1015,7 +1020,7 @@ var Len: integer;
         '!': Negative := True;
         '=': Negative := False;
         else
-          raise Exception.Create(zreInvalidZeroWidth);
+          raise TecRegExprCompileError.Create(zreInvalidZeroWidth);
       end;
       SafeInc(True);
       Branch := TreBranchNode.Create(nil);
@@ -1067,7 +1072,7 @@ begin
                 Add(sub);
                 sub.Compile(Expression, aPos, Modifiers);
                 if (aPos > Len) or (Expression[aPos] <> ')') then
-                 raise Exception.Create('Do not closed sub expression');
+                 raise TecRegExprCompileError.Create('Do not closed sub expression');
                 ReadRepeaters(sub);
               end;
             end;
@@ -1762,7 +1767,7 @@ begin
       'm','M': SetModif(MaskModM);
       'x','X': SetModif(MaskModX);
     else
-      raise Exception.Create(zreUnexpectedModifier);
+      raise TecRegExprCompileError.Create(zreUnexpectedModifier);
     end;
 end;
 
