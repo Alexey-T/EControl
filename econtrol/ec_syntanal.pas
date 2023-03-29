@@ -1394,7 +1394,7 @@ begin
        UpdateRegexes;
        SToken := Token.GetStr(Source, True); // Alexey
 
-       //try
+       //it was try/except around this block - bad! Alexey
          for i := 0 to FTagList.Count - 1 do
           begin
             ReObj := TecRegExpr(FRegexes[i]);
@@ -1410,8 +1410,6 @@ begin
 
             if Result then break;
           end;
-       //except
-       //end;
      end else
      begin
        {$ifdef EC_CUSTOM_STR_FIND}
@@ -2094,16 +2092,12 @@ end;
 
 function TecTokenRule.Match(const Source: ecString; Pos: integer): integer;
 begin
-  //try
-    FCriSec.Enter; //solve CudaText issue #3352
-    try
-      Result := FRegExpr.MatchLength(Source, Pos);
-    finally
-      FCriSec.Leave;
-    end;
-  //except
-  //  Result := 0;
-  //end;
+  FCriSec.Enter; //solve CudaText issue #3352
+  try
+    Result := FRegExpr.MatchLength(Source, Pos);
+  finally
+    FCriSec.Leave;
+  end;
 end;
 
 procedure TecTokenRule.SetColumnFrom(const Value: integer);
@@ -5942,20 +5936,12 @@ end;
 
 function TecSubAnalyzerRule.MatchStart(const Source: ecString; Pos: integer): integer;
 begin
-  //try
-    Result := FStartRegExpr.MatchLength(Source, Pos);
-  //except
-  //  Result := 0;
-  //end;
+  Result := FStartRegExpr.MatchLength(Source, Pos);
 end;
 
 function TecSubAnalyzerRule.MatchEnd(const Source: ecString; Pos: integer): integer;
 begin
-  //try
-    Result := FEndRegExpr.MatchLength(Source, Pos);
-  //except
-  //  Result := 0;
-  //end;
+  Result := FEndRegExpr.MatchLength(Source, Pos);
 end;
 
 procedure TecSubAnalyzerRule.SetEndExpression(const Value: ecString);
