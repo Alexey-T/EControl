@@ -3290,7 +3290,7 @@ begin
               Exit(False);
             prn := TecTextRange(FOpenedBlocks[i]).Rule;
             Dec(i);
-          until not prn.IgnoreAsParent;
+          until (prn = nil) or not prn.IgnoreAsParent;
           Result := prn = Parent;
         end else Result := Parent = nil;
     end
