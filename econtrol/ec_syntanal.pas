@@ -3523,7 +3523,8 @@ begin
     begin
       Writeln('Long getting: '+IntToStr(tick)+' msec for token:');
       Writeln('  str: '+TagStr[TagCount-1]);
-      Writeln('  style name: '+Tags[TagCount-1].Rule.StyleName);
+      if Assigned(Tags[TagCount-1].Rule) then
+        Writeln('  style name: '+Tags[TagCount-1].Rule.StyleName);
     end;
     {$endif}
 
@@ -4725,6 +4726,8 @@ begin
                  end;
 
                  Token2 := Tags[NTokenIndex];
+                 if Token2.Rule = nil then
+                   Continue;
                  if Token2.Rule.SyntOwner <> Owner then // check that Token2 is not from sublexer
                    Continue;
                  if Owner.SpecialKinds[Token2.TokenType] then
