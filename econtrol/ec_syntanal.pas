@@ -3470,6 +3470,7 @@ end;
 function TecClientSyntAnalyzer.ParseInThread: TecParseInThreadResult; //Alexey
 var
   own: TecSyntAnalyzer;
+  TempRule: TRuleCollectionItem;
   bSeparateBlocks: boolean;
   bDisableFolding: boolean;
   bEnded: boolean;
@@ -3535,7 +3536,9 @@ begin
 
         for iToken := FStartSepRangeAnal + 1 to NTagCount do
         begin
-          own := Tags[iToken - 1].Rule.SyntOwner;
+          TempRule := Tags[iToken - 1].Rule;
+          if TempRule = nil then Continue;
+          own := TempRule.SyntOwner;
           FOwner.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, own <> FOwner, iToken);
           if own <> FOwner then
             own.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, False, iToken);
