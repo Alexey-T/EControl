@@ -2622,6 +2622,12 @@ begin
     Dec(NLineFrom);
     Dec(NLineOld);
 
+    if NLineFrom<0 then
+    begin
+      Inc(NLineFrom);
+      Break;
+    end;
+
     //found empty line (without tokens)
     if TokenIndexer[NLineFrom]<0 then
     begin
