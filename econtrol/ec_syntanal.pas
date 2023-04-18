@@ -2646,7 +2646,11 @@ begin
     NTokenIndex2 := TokenIndexer[NLineOld];
     //allow max 1 token per line! 0 is for multi-line comments
     if (NTokenIndex1>=0) and (NTokenIndex2>=0) then
-      if NTokenIndex2-NTokenIndex1 > 1 then Break;
+      if NTokenIndex2-NTokenIndex1 > 1 then
+      begin
+        Inc(NLineFrom);
+        Break;
+      end;
   until False;
 
   //move down to 1st non-empty
