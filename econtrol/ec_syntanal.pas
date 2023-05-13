@@ -2809,7 +2809,6 @@ var
        MarkerPos: integer;
        MarkerChar: WideChar;
        MarkerStr: string;
-       bCanCloseSublexer: boolean;
    begin
     own := FOwner;
     for i := FSubLexerBlocks.Count - 1 downto 0 do
@@ -2838,20 +2837,20 @@ var
             end;
 
             // Alexey: this is for lexer MDX which has sub-lexer rule from '\{' to '\}'
-            // and we need to be sure all {} brackerts are paired
-            bCanCloseSublexer := True;
-            if (Sub.Rule.StartExpression = '\{') and (Buffer.FText[FPos] = '}') then
-              bCanCloseSublexer := CheckBracketsAreClosed(
-                FTagList.PriorAt(Sub.Range.StartPos),
-                FTagList.Count - 1,
-                1 {AFinalLevel}
-                );
-
-            //if Rule.ToTextEnd then N := 0 else
-            if bCanCloseSublexer then
-              N := Sub.Rule.MatchEnd(Source, FPos)
+            // and we need to be sure {} brackerts are paired
+            if (Sub.Rule.StartExpression = '\{') and
+              (Sub.Rule.EndExpression = '\}') then
+            begin
+              if (Buffer.FText[FPos] = '}') and CheckBracketsAreClosed(
+                 FTagList.PriorAt(Sub.Range.StartPos),
+                 FTagList.Count - 1,
+                 1 {AFinalLevel}) then
+                N := 1
+              else
+                N := 0;
+            end
             else
-              N := -1;
+              N := Sub.Rule.MatchEnd(Source, FPos);
 
             if N > 0 then
              begin
