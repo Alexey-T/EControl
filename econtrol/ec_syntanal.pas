@@ -2803,7 +2803,7 @@ var
 
    // Select current lexer
    procedure GetOwner;
-   var i, N: integer;
+   var i, NMatchPos: integer;
        Sub: PecSubLexerRange;
        AnFinal: TecSyntAnalyzer;
        MarkerPos: integer;
@@ -2845,18 +2845,18 @@ var
                  FTagList.PriorAt(Sub.Range.StartPos),
                  FTagList.Count - 1,
                  1 {AFinalLevel}) then
-                N := 1
+                NMatchPos := 1
               else
-                N := 0;
+                NMatchPos := 0;
             end
             else
-              N := Sub.Rule.MatchEnd(Source, FPos);
+              NMatchPos := Sub.Rule.MatchEnd(Source, FPos);
 
-            if N > 0 then
+            if NMatchPos > 0 then
              begin
                if Sub.Rule.IncludeBounds then
                  begin
-                   Sub.Range.EndPos := FPos - 1 + N;
+                   Sub.Range.EndPos := FPos - 1 + NMatchPos;
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
                    Sub.CondEndPos := Sub.Range.EndPos;
                    own := Sub.FinalSubAnalyzer;
@@ -2870,7 +2870,7 @@ var
                  begin
                    Sub.Range.EndPos := FPos - 1;
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
-                   Sub.CondEndPos := Sub.Range.EndPos + N;
+                   Sub.CondEndPos := Sub.Range.EndPos + NMatchPos;
                  end;
                // Close ranges which belongs to this sub-lexer range
                CloseAtEnd(FTagList.PriorAt(Sub.Range.StartPos));
