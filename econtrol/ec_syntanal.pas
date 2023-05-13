@@ -515,6 +515,7 @@ type
     function ExtractTag(var FPos: integer; ADisableFolding: Boolean): Boolean;
     function GetTags(Index: integer): PecSyntToken;
     function GetSubLexerRangeCount: integer;
+    function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo, AFinalLevel: integer): boolean; //Alexey
 
     //moved to 'private' by Alexey, not needed in CudaText
     property TagCount: integer read GetTokenCount;
@@ -643,7 +644,6 @@ type
     FOnBlockReopen: TecBlockReopenEvent;
 
     procedure UpdateFirstLineOfChange(var ALine: integer);
-    function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo: integer): boolean; //Alexey
     procedure ClearDataOnChange;
     procedure ClearSublexerRangesFromLine(ALine: integer);
     function GetDisabledFolding: boolean; //Alexey
@@ -2809,6 +2809,7 @@ var
        MarkerPos: integer;
        MarkerChar: WideChar;
        MarkerStr: string;
+       bCanCloseSublexer: boolean;
    begin
     own := FOwner;
     for i := FSubLexerBlocks.Count - 1 downto 0 do
@@ -2836,8 +2837,22 @@ var
               Sub.FinalSubAnalyzer := AnFinal;
             end;
 
+            // Alexey: this is for lexer MDX which has sub-lexer rule from '\{' to '\}'
+            // and we need to be sure all {} brackerts are paired
+            bCanCloseSublexer := True;
+            if Sub.Rule.StartExpression = '\{' then
+              bCanCloseSublexer := CheckBracketsAreClosed(
+                FTagList.PriorAt(Sub.Range.StartPos),
+                FTagList.Count - 1,
+                1 {AFinalLevel}
+                );
+
             //if Rule.ToTextEnd then N := 0 else
-            N := Sub.Rule.MatchEnd(Source, FPos);
+            if bCanCloseSublexer then
+              N := Sub.Rule.MatchEnd(Source, FPos)
+            else
+              N := -1;
+
             if N > 0 then
              begin
                if Sub.Rule.IncludeBounds then
@@ -4614,8 +4629,8 @@ begin
   end;
 end;
 
-function TecClientSyntAnalyzer.CheckBracketsAreClosed(
-  ATokenIndexFrom, ATokenIndexTo: integer): boolean; // Alexey
+function TecParserResults.CheckBracketsAreClosed(
+  ATokenIndexFrom, ATokenIndexTo, AFinalLevel: integer): boolean; // Alexey
 // the reason for this function: CudaText issue #2773
 var
   Token: PecSyntToken;
@@ -4657,7 +4672,10 @@ begin
      end;
   end;
 
-  Result := (LevelRound <= 0) and (LevelSquare <= 0) and (LevelCurly <= 0);
+  Result :=
+    (LevelRound <= AFinalLevel) and
+    (LevelSquare <= AFinalLevel) and
+    (LevelCurly <= AFinalLevel);
 end;
 
 function TecClientSyntAnalyzer.CloseAtEnd(AStartTagIdx: integer): Boolean;
@@ -4746,7 +4764,7 @@ begin
                      // CudaText issue #2773
                      if bIndentBased2 or
                          (not EControlOptions.IndentFolding_CheckBracketsAreClosed) or
-                         CheckBracketsAreClosed(Range.StartIdx, NTokenIndex) then
+                         CheckBracketsAreClosed(Range.StartIdx, NTokenIndex, 0) then
                      begin
                        // close range at prev token
                        Dec(NTokenIndex);
