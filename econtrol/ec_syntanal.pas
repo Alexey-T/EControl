@@ -2837,7 +2837,7 @@ var
             end;
 
             // Alexey: this is for lexer MDX which has sub-lexer rule from '\{' to '\}'
-            // and we need to be sure {} brackerts are paired
+            // and we need to be sure {} brackets are paired
             if (Sub.Rule.StartExpression = '\{') and
               (Sub.Rule.EndExpression = '\}') then
             begin
