@@ -2840,7 +2840,7 @@ var
             // Alexey: this is for lexer MDX which has sub-lexer rule from '\{' to '\}'
             // and we need to be sure all {} brackerts are paired
             bCanCloseSublexer := True;
-            if Sub.Rule.StartExpression = '\{' then
+            if (Sub.Rule.StartExpression = '\{') and (Buffer.FText[FPos] = '}') then
               bCanCloseSublexer := CheckBracketsAreClosed(
                 FTagList.PriorAt(Sub.Range.StartPos),
                 FTagList.Count - 1,
