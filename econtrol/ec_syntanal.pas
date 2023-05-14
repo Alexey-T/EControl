@@ -2846,7 +2846,7 @@ var
                  FTagList.PriorAt(Sub.Range.StartPos),
                  FTagList.Count - 1,
                  1 {AFinalLevel}) then
-                NMatchPos := 1
+                NMatchPos := 2
               else
                 NMatchPos := 0;
             end
@@ -2858,7 +2858,7 @@ var
                  FTagList.PriorAt(Sub.Range.StartPos),
                  FTagList.Count - 1,
                  1 {AFinalLevel}) then
-                NMatchPos := 1
+                NMatchPos := 2
               else
                 NMatchPos := 0;
             end
