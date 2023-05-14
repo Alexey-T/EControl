@@ -516,6 +516,7 @@ type
     function GetTags(Index: integer): PecSyntToken;
     function GetSubLexerRangeCount: integer;
     function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo, AFinalLevel: integer): boolean; //Alexey
+    function CheckAngleBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo, AFinalLevel: integer): boolean; //Alexey
 
     //moved to 'private' by Alexey, not needed in CudaText
     property TagCount: integer read GetTokenCount;
@@ -2850,6 +2851,18 @@ var
                 NMatchPos := 0;
             end
             else
+            if (Sub.Rule.StartExpression = '<') and
+              (Sub.Rule.EndExpression = '>') then
+            begin
+              if (Buffer.FText[FPos] = '>') and CheckAngleBracketsAreClosed(
+                 FTagList.PriorAt(Sub.Range.StartPos),
+                 FTagList.Count - 1,
+                 1 {AFinalLevel}) then
+                NMatchPos := 1
+              else
+                NMatchPos := 0;
+            end
+            else
               NMatchPos := Sub.Rule.MatchEnd(Source, FPos);
 
             if NMatchPos > 0 then
@@ -4675,6 +4688,42 @@ begin
     (LevelRound <= AFinalLevel) and
     (LevelSquare <= AFinalLevel) and
     (LevelCurly <= AFinalLevel);
+end;
+
+function TecParserResults.CheckAngleBracketsAreClosed(
+  ATokenIndexFrom, ATokenIndexTo, AFinalLevel: integer): boolean; // Alexey
+var
+  Token: PecSyntToken;
+  iToken: integer;
+  Level: integer;
+  NPosStart, NLen: integer;
+begin
+  Level := 0;
+  NLen := Length(FBuffer.FText);
+
+  for iToken := ATokenIndexFrom to Min(GetTokenCount-1, ATokenIndexTo) do
+  begin
+     if not FBuffer.Valid then
+       Exit(True);
+
+     Token := Tags[iToken];
+     // count only tokens of length=1
+     NPosStart := Token.Range.StartPos;
+     if Token.Range.EndPos <> NPosStart+1 then
+       Continue;
+     if NPosStart >= NLen then
+       Continue;
+
+     case FBuffer.FText[NPosStart+1] of
+       '<':
+         Inc(Level);
+       '>':
+         Dec(Level);
+     end;
+  end;
+
+  Result :=
+    (Level <= AFinalLevel);
 end;
 
 function TecClientSyntAnalyzer.CloseAtEnd(AStartTagIdx: integer): Boolean;
