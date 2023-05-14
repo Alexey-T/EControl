@@ -515,8 +515,10 @@ type
     function ExtractTag(var FPos: integer; ADisableFolding: Boolean): Boolean;
     function GetTags(Index: integer): PecSyntToken;
     function GetSubLexerRangeCount: integer;
-    function CheckBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo, AFinalLevel: integer): boolean; //Alexey
-    function CheckAngleBracketsAreClosed(ATokenIndexFrom, ATokenIndexTo, AFinalLevel: integer): boolean; //Alexey
+
+    function CheckBracketsClosed(ATokenIndexFrom, ATokenIndexTo, AFinalLevel: integer): boolean; //Alexey
+    function CheckBracketsClosed_Curly(ATokenIndexFrom, ATokenIndexTo, AFinalLevel: integer): boolean; //Alexey
+    function CheckBracketsClosed_Angle(ATokenIndexFrom, ATokenIndexTo, AFinalLevel: integer): boolean; //Alexey
 
     //moved to 'private' by Alexey, not needed in CudaText
     property TagCount: integer read GetTokenCount;
@@ -2842,7 +2844,7 @@ var
             if (Sub.Rule.StartExpression = '\{') and
               (Sub.Rule.EndExpression = '\}') then
             begin
-              if (Buffer.FText[FPos] = '}') and CheckBracketsAreClosed(
+              if (Buffer.FText[FPos] = '}') and CheckBracketsClosed_Curly(
                  FTagList.PriorAt(Sub.Range.StartPos),
                  FTagList.Count - 1,
                  1 {AFinalLevel}) then
@@ -2854,7 +2856,7 @@ var
             if (Sub.Rule.StartExpression = '<') and
               (Sub.Rule.EndExpression = '>') then
             begin
-              if (Buffer.FText[FPos] = '>') and CheckAngleBracketsAreClosed(
+              if (Buffer.FText[FPos] = '>') and CheckBracketsClosed_Angle(
                  FTagList.PriorAt(Sub.Range.StartPos),
                  FTagList.Count - 1,
                  1 {AFinalLevel}) then
@@ -4641,7 +4643,7 @@ begin
   end;
 end;
 
-function TecParserResults.CheckBracketsAreClosed(
+function TecParserResults.CheckBracketsClosed(
   ATokenIndexFrom, ATokenIndexTo, AFinalLevel: integer): boolean; // Alexey
 // the reason for this function: CudaText issue #2773
 var
@@ -4690,7 +4692,43 @@ begin
     (LevelCurly <= AFinalLevel);
 end;
 
-function TecParserResults.CheckAngleBracketsAreClosed(
+function TecParserResults.CheckBracketsClosed_Curly(
+  ATokenIndexFrom, ATokenIndexTo, AFinalLevel: integer): boolean; // Alexey
+var
+  Token: PecSyntToken;
+  iToken: integer;
+  LevelCurly: integer;
+  NPosStart, NLen: integer;
+begin
+  LevelCurly := 0;
+  NLen := Length(FBuffer.FText);
+
+  for iToken := ATokenIndexFrom to Min(GetTokenCount-1, ATokenIndexTo) do
+  begin
+     if not FBuffer.Valid then
+       Exit(True);
+
+     Token := Tags[iToken];
+     // count only tokens of length=1
+     NPosStart := Token.Range.StartPos;
+     if Token.Range.EndPos <> NPosStart+1 then
+       Continue;
+     if NPosStart >= NLen then
+       Continue;
+
+     case FBuffer.FText[NPosStart+1] of
+       '{':
+         Inc(LevelCurly);
+       '}':
+         Dec(LevelCurly);
+     end;
+  end;
+
+  Result :=
+    (LevelCurly <= AFinalLevel);
+end;
+
+function TecParserResults.CheckBracketsClosed_Angle(
   ATokenIndexFrom, ATokenIndexTo, AFinalLevel: integer): boolean; // Alexey
 var
   Token: PecSyntToken;
@@ -4812,7 +4850,7 @@ begin
                      // CudaText issue #2773
                      if bIndentBased2 or
                          (not EControlOptions.IndentFolding_CheckBracketsAreClosed) or
-                         CheckBracketsAreClosed(Range.StartIdx, NTokenIndex, 0) then
+                         CheckBracketsClosed(Range.StartIdx, NTokenIndex, 0) then
                      begin
                        // close range at prev token
                        Dec(NTokenIndex);
