@@ -2860,7 +2860,20 @@ var
                  FTagList.PriorAt(Sub.Range.StartPos),
                  FTagList.Count - 1,
                  1 {AFinalLevel}) then
-                NMatchPos := 2
+                begin
+                  { dirty hack to make MDX lexer highlighting ok with nearest HTML blocks:
+print(1);
+# head
+<div className="note"><div className="note">
+<div className="note">
+<div className="note">
+<div className="note">
+                  }
+                  if Buffer.FText[FPos+1] = #10 then
+                    NMatchPos := 1
+                  else
+                    NMatchPos := 2;
+                end
               else
                 NMatchPos := 0;
             end
