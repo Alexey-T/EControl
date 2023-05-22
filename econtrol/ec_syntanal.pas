@@ -2861,13 +2861,20 @@ var
                  FTagList.Count - 1,
                  1 {AFinalLevel}) then
                 begin
-                  { dirty hack to make MDX lexer highlighting ok with nearest HTML blocks:
+                  {
+                  dirty hack to make MDX lexer highlighting better with <...> JSX blocks:
 print(1);
 # head
 <div className="note"><div className="note">
 <div className="note">
 <div className="note">
 <div className="note">
+
+                  NMatchPos:=1 must be enough, but due to some EControl parser
+                  bug it's not enough, so we assign 2 in some cases.
+                  EControl bug is: for closing token '>' of sublexer range, parser
+                  parses this token '>' using MDX main lexer instead of sublexer.
+                  it's visible on the above snippet.
                   }
                   if Buffer.FText[FPos+1] = #10 then
                     NMatchPos := 1
