@@ -126,8 +126,11 @@ begin
     L.Free;
   end;
 
+  //note: all-files mask must be '*.*' on Windows, to fix the bug:
+  //dialog gives final filename 'new.lua.yml' if DefaultExt='yml'
   if AllFilesText<>'' then
-    Result+= AllFilesText+'|'+AllFilesMask+'|';
+    Result+= AllFilesText+'|'+
+             {$ifdef windows}'*.*'{$else}'*'{$endif}+'|';
 end;
 
 function Lexer_GetDefaultExtension(an: TecSyntAnalyzer): string;
