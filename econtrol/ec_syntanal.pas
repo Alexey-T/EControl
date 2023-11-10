@@ -4870,7 +4870,7 @@ begin
                      // CudaText issue #2773
                      if bIndentBased2 or
                          (not EControlOptions.IndentFolding_CheckBracketsAreClosed) or
-                         CheckBracketsClosed(Range.StartIdx, NTokenIndex, 0) then
+                         CheckBracketsClosed(Range.StartIdx, NTokenIndex-1, 0) then
                      begin
                        // close range at prev token
                        Dec(NTokenIndex);
