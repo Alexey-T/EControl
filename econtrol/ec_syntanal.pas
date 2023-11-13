@@ -1036,7 +1036,7 @@ const
   //all lexers which need indent-based folding, must have this value
   //in range-rules 'Group index' field
   cIndentBasedGroup = 20;
-  cIndentBasedGroup2 = 21; //for this id, check "brackets are closed" will not be used
+  cIndentBasedGroup2 = 21; //for this id, check "brackets ()[]{} are closed" will not be used
 
 {
 const
