@@ -3757,7 +3757,7 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
      begin
        //even if lexer has indent-based folding, some ranges may be not indent-based,
        //e.g. ranges made by AutoFoldComments
-       NTagCountMinusDelta := ATagCount + 1; //+1 to fix CudaText issue #5270
+       NTagCountMinusDelta := ATagCount;
        if Assigned(R.Rule) then
          case R.Rule.GroupIndex of
            cIndentBasedGroup,
