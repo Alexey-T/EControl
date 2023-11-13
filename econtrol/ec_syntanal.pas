@@ -3767,7 +3767,9 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
              end;
          end;
 
-       if (R.FEndCondIndex >= NTagCountMinusDelta) or
+       //1st condition is commented to fix issue in Markdown: editing of header unfolds previous folded block;
+       //seems it is still OK in Markdown and C/C++ and Python
+       if //(R.FEndCondIndex >= NTagCountMinusDelta) or
           (R.EndIdx >= NTagCountMinusDelta) then
        begin
          //reopen range: set ending to -1, add to FOpenedBlocks
