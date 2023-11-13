@@ -3757,24 +3757,26 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
      begin
        //even if lexer has indent-based folding, some ranges may be not indent-based,
        //e.g. ranges made by AutoFoldComments
+       NTagCountMinusDelta := ATagCount + 1; //+1 to fix CudaText issue #5270
        if Assigned(R.Rule) then
          case R.Rule.GroupIndex of
            cIndentBasedGroup,
            cIndentBasedGroup2:
              begin
                NTagCountMinusDelta := Max(0, ATagCount - NDelta);
-               if (R.FEndCondIndex >= NTagCountMinusDelta) or
-                  (R.EndIdx >= NTagCountMinusDelta) then
-               begin
-                 //reopen range: set ending to -1, add to FOpenedBlocks
-                 R.EndIdx := -1;
-                 R.FEndCondIndex := -1;
-                 FOpenedBlocks.Add(R);
-                 if Assigned(FOnBlockReopen) then
-                   FOnBlockReopen(Self, FBuffer.StrToCaret(R.StartPos));
-               end;
              end;
          end;
+
+       if (R.FEndCondIndex >= NTagCountMinusDelta) or
+          (R.EndIdx >= NTagCountMinusDelta) then
+       begin
+         //reopen range: set ending to -1, add to FOpenedBlocks
+         R.EndIdx := -1;
+         R.FEndCondIndex := -1;
+         FOpenedBlocks.Add(R);
+         if Assigned(FOnBlockReopen) then
+           FOnBlockReopen(Self, FBuffer.StrToCaret(R.StartPos));
+       end;
      end;
    end;
  end;
