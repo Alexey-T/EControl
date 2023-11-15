@@ -3776,7 +3776,6 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
            {
              x
            }
-       add 'x' below the 1st 'x'-> lexer must auto-adjust the folding to include all 'x's.
        *)
        //1st condition is commented to fix issue in Markdown: editing of 2nd header unfolds previous folded block.
        if //(R.FEndCondIndex >= NTagCountMinusDelta) or
