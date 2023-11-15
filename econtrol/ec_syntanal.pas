@@ -3767,8 +3767,19 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
              end;
          end;
 
+       (*
+       how to test for regressions: make Python code:
+           if a:
+               pass
+       then type additional 'pass' below the 1st 'pass'-> lexer must auto-adjust the folding block to include previous 'pass'.
+       do the same with C lexer:
+           {
+             op;
+           }
+       and type "op" below the 1st "op"-> lexer must auto-adjust the folding to include all "op"s.
+       *)
        //1st condition is commented to fix issue in Markdown: editing of header unfolds previous folded block;
-       //seems it is still OK in Markdown and C/C++ and Python
+       //seems it is still OK in Markdown and C/C++ and Python.
        if //(R.FEndCondIndex >= NTagCountMinusDelta) or
           (R.EndIdx >= NTagCountMinusDelta) then
        begin
