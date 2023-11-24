@@ -3477,6 +3477,9 @@ begin
   bNeedUpdate := True;
   bNeedUpdate2 := PublicDataNeedTo2>0;
 
+  TagPtr := nil;
+  NLastParsedLine := 0;
+
   if AParseFinished then
   begin
     PublicData.Finished := True;
