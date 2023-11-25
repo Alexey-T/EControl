@@ -3742,7 +3742,7 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
    //but delta>0 breaks HTML lexer: on editing in any place,
    //            text in '<p>texttext</p>' changes style to "misspelled tag property".
    if Owner.IndentBasedFolding then
-     NDelta := 4
+     NDelta := 1
    else
      NDelta := 0;
 
