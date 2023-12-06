@@ -547,6 +547,7 @@ type
   public
     //holds index of first token overlapping that i-th line ("overlapping" is for multi-line tokens)
     TokenIndexer: array of integer; //Alexey
+
     //holds booleans: first token of i-th line is a 'comment'
     CmtIndexer: packed array of boolean; //Alexey
 
@@ -2595,6 +2596,7 @@ procedure TecParserResults.FindCommentRangeBeforeToken(
   ATokenIsComment: boolean; out ALineFrom, ALineTo: integer);
   //
   function IsBadLine(N: integer): boolean; inline;
+  //returns True if line begin with _not_ a comment, it uses CmtIndexer array to detect it fast
   begin
     Result := (TokenIndexer[N]>=0) and (not CmtIndexer[N]);
   end;
