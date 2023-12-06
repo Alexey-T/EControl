@@ -2598,9 +2598,9 @@ procedure TecParserResults.FindCommentRangeBeforeToken(
   out ALineFrom, ALineTo: integer);
   //
   function IsBadLine(N: integer): boolean; inline;
-  //returns True if line begin with _not_ a comment, it uses CmtIndexer array to detect it fast
   begin
-    Result := (TokenIndexer[N]>=0) and (CmtIndexer[N] <> etkComment);
+    //uses CmtIndexer array to detect fast
+    Result := (TokenIndexer[N]>=0) and ((CmtIndexer[N]<>ATokenKind) or (CmtIndexer[N]=etkOther));
   end;
   //
 var
@@ -2610,7 +2610,7 @@ begin
   ALineFrom := -1; //-1 means that we found nothing
   ALineTo := Token.Range.PointStart.Y; //it's always set
 
-  if EControlOptions.AutoFoldComments_BreakOnEmptyLine or (ATokenKind<>etkComment) then
+  if {EControlOptions.AutoFoldComments_BreakOnEmptyLine or} (ATokenKind=etkOther) then
     Dec(ALineTo);
 
   //skip empty lines
@@ -3374,7 +3374,7 @@ var
 begin
   ////Debugging only!
   //ShowTokenIndexer;
-  //ShowCmtIndexer;
+  //TecParserThread.Synchronize(ParserThread, ShowCmtIndexer);
 
   Result := True;
   if FFinished then Exit;
