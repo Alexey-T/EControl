@@ -542,7 +542,7 @@ type
     procedure ClearTokenIndexer; //Alexey
     procedure UpdateTokenIndexer(constref Token: TecSyntToken); //Alexey
     procedure FindCommentRangeBeforeToken(constref Token: TecSyntToken;
-      ATokenIsComment: boolean; out ALineFrom, ALineTo: integer); //Alexey
+      ATokenKind: TecTokenKind; out ALineFrom, ALineTo: integer); //Alexey
     procedure ShowTokenIndexer; //Alexey
     procedure ShowCmtIndexer; //Alexey
   public
@@ -2546,9 +2546,7 @@ procedure TecParserResults.UpdateTokenIndexer(constref Token: TecSyntToken);
 var
   NNewLen, NPrevLen, NTokenIndex, NLine, NLine2: integer;
   NCmtFrom, NCmtTo: integer;
-  Style: TecSyntaxFormat;
   NKind: TecTokenKind;
-  bComment: boolean;
   i: integer;
 begin
   NNewLen := FBuffer.Count;
@@ -2572,19 +2570,15 @@ begin
   NTokenIndex := FTagList.Count-1;
   if (TokenIndexer[NLine] < 0) or (NTokenIndex < TokenIndexer[NLine]) then
   begin
-    Style := Token.Style;
-    if Assigned(Style) then
-      NKind := Style.TokenKind
-    else
-      NKind := etkOther;
-    bComment := NKind = etkComment;
+    if Assigned(Token.Style) then
+      NKind := Token.Style.TokenKind;
 
     TokenIndexer[NLine] := NTokenIndex;
     CmtIndexer[NLine] := NKind;
 
     if (EControlOptions.AutoFoldComments > 1) and Assigned(FOnAddRangeSimple) then
     begin
-      FindCommentRangeBeforeToken(Token, bComment, NCmtFrom, NCmtTo);
+      FindCommentRangeBeforeToken(Token, NKind, NCmtFrom, NCmtTo);
       if NCmtFrom >= 0 then
         FOnAddRangeSimple(TokenIndexer[NCmtFrom], TokenIndexer[NCmtTo]);
     end;
@@ -2600,7 +2594,8 @@ end;
 
 procedure TecParserResults.FindCommentRangeBeforeToken(
   constref Token: TecSyntToken;
-  ATokenIsComment: boolean; out ALineFrom, ALineTo: integer);
+  ATokenKind: TecTokenKind;
+  out ALineFrom, ALineTo: integer);
   //
   function IsBadLine(N: integer): boolean; inline;
   //returns True if line begin with _not_ a comment, it uses CmtIndexer array to detect it fast
@@ -2615,8 +2610,7 @@ begin
   ALineFrom := -1; //-1 means that we found nothing
   ALineTo := Token.Range.PointStart.Y; //it's always set
 
-  if EControlOptions.AutoFoldComments_BreakOnEmptyLine or
-     not ATokenIsComment then
+  if EControlOptions.AutoFoldComments_BreakOnEmptyLine or (ATokenKind<>etkComment) then
     Dec(ALineTo);
 
   //skip empty lines
