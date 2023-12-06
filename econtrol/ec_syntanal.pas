@@ -11,6 +11,7 @@
 { *************************************************************************** }
 
 {$mode delphi}
+{$MinEnumSize 1}
 {.$define debug_ExtractTag_time}
 
 unit ec_SyntAnal;
@@ -549,7 +550,7 @@ type
     TokenIndexer: array of integer; //Alexey
 
     //holds booleans: first token of i-th line is a 'comment'
-    CmtIndexer: packed array of boolean; //Alexey
+    CmtIndexer: packed array of TecTokenKind; //Alexey
 
     constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
     destructor Destroy; override;
@@ -2537,7 +2538,7 @@ begin
   for i := NLastLine + 1 to High(TokenIndexer) do
   begin
     TokenIndexer[i] := -1;
-    CmtIndexer[i] := False;
+    CmtIndexer[i] := etkOther;
   end;
 end;
 
@@ -2546,6 +2547,7 @@ var
   NNewLen, NPrevLen, NTokenIndex, NLine, NLine2: integer;
   NCmtFrom, NCmtTo: integer;
   Style: TecSyntaxFormat;
+  NKind: TecTokenKind;
   bComment: boolean;
   i: integer;
 begin
@@ -2558,22 +2560,27 @@ begin
     for i := NPrevLen to NNewLen - 1 do
     begin
       TokenIndexer[i] := -1;
-      CmtIndexer[i] := False;
+      CmtIndexer[i] := etkOther;
     end;
   end;
 
   NLine := Token.Range.PointStart.Y;
   NLine2 := Token.Range.PointEnd.Y;
   if NLine >= NNewLen then Exit;
+  NKind := etkOther;
 
   NTokenIndex := FTagList.Count-1;
   if (TokenIndexer[NLine] < 0) or (NTokenIndex < TokenIndexer[NLine]) then
   begin
     Style := Token.Style;
-    bComment := Assigned(Style) and (Style.TokenKind = etkComment);
+    if Assigned(Style) then
+      NKind := Style.TokenKind
+    else
+      NKind := etkOther;
+    bComment := NKind = etkComment;
 
     TokenIndexer[NLine] := NTokenIndex;
-    CmtIndexer[NLine] := bComment;
+    CmtIndexer[NLine] := NKind;
 
     if (EControlOptions.AutoFoldComments > 1) and Assigned(FOnAddRangeSimple) then
     begin
@@ -2587,7 +2594,7 @@ begin
   for i := NLine + 1 to NLine2 do
   begin
     TokenIndexer[i] := NTokenIndex;
-    CmtIndexer[i] := bComment;
+    CmtIndexer[i] := NKind;
   end;
 end;
 
@@ -2598,7 +2605,7 @@ procedure TecParserResults.FindCommentRangeBeforeToken(
   function IsBadLine(N: integer): boolean; inline;
   //returns True if line begin with _not_ a comment, it uses CmtIndexer array to detect it fast
   begin
-    Result := (TokenIndexer[N]>=0) and (not CmtIndexer[N]);
+    Result := (TokenIndexer[N]>=0) and (CmtIndexer[N] <> etkComment);
   end;
   //
 var
@@ -2688,14 +2695,14 @@ end;
 
 procedure TecParserResults.ShowCmtIndexer;
 const
-  strs: array[boolean] of char = ('0', '1');
+  cKind: array[TecTokenKind] of char = ('?', 'C', 'S');
 var
   S: string;
   i: integer;
 begin
   S := '';
   for i := 0 to High(CmtIndexer) do
-    S += IntToStr(i) + ':' + strs[CmtIndexer[i]]+' ';
+    S += IntToStr(i) + ':' + cKind[CmtIndexer[i]]+' ';
   Application.MainForm.Caption := S;
 end;
 
