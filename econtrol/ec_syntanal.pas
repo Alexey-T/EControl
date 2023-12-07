@@ -546,11 +546,11 @@ type
     procedure ShowTokenIndexer; //Alexey
     procedure ShowCmtIndexer; //Alexey
   public
-    //holds index of first token overlapping that i-th line ("overlapping" is for multi-line tokens)
+    //holds indexes of first token overlapping that i-th line ("overlapping" is for multi-line tokens)
     TokenIndexer: array of integer; //Alexey
 
-    //holds booleans: first token of i-th line is a 'comment'
-    CmtIndexer: packed array of TecTokenKind; //Alexey
+    //holds enums: first token-kind of i-th line
+    KindIndexer: packed array of TecTokenKind; //Alexey
 
     constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
     destructor Destroy; override;
@@ -2361,7 +2361,7 @@ begin
   FStateChanges.Clear;
   FCurState := 0;
   TokenIndexer := nil;
-  CmtIndexer := nil;
+  KindIndexer := nil;
   FChangeAtLine := -1;
 end;
 
@@ -2538,7 +2538,7 @@ begin
   for i := NLastLine + 1 to High(TokenIndexer) do
   begin
     TokenIndexer[i] := -1;
-    CmtIndexer[i] := etkOther;
+    KindIndexer[i] := etkOther;
   end;
 end;
 
@@ -2554,11 +2554,11 @@ begin
   if NPrevLen <> NNewLen then
   begin
     SetLength(TokenIndexer, NNewLen);
-    SetLength(CmtIndexer, NNewLen);
+    SetLength(KindIndexer, NNewLen);
     for i := NPrevLen to NNewLen - 1 do
     begin
       TokenIndexer[i] := -1;
-      CmtIndexer[i] := etkOther;
+      KindIndexer[i] := etkOther;
     end;
   end;
 
@@ -2576,7 +2576,7 @@ begin
     for i := NLine to NLine2 do
     begin
       TokenIndexer[i] := NTokenIndex;
-      CmtIndexer[i] := NKind;
+      KindIndexer[i] := NKind;
     end;
 
     if (EControlOptions.AutoFoldComments > 1) and Assigned(FOnAddRangeSimple) then
@@ -2591,7 +2591,7 @@ begin
   for i := NLine + 1 to NLine2 do
   begin
     TokenIndexer[i] := NTokenIndex;
-    CmtIndexer[i] := NKind;
+    KindIndexer[i] := NKind;
   end;
 end;
 
@@ -2602,8 +2602,8 @@ procedure TecParserResults.FindCommentRangeBeforeToken(
   //
   function IsBadLine(N: integer): boolean; inline;
   begin
-    //uses CmtIndexer array to detect fast
-    Result := (TokenIndexer[N]>=0) and ((CmtIndexer[N]<>ATokenKind) or (CmtIndexer[N]=etkOther));
+    //uses KindIndexer array to detect fast
+    Result := (TokenIndexer[N]>=0) and ((KindIndexer[N]<>ATokenKind) or (KindIndexer[N]=etkOther));
   end;
   //
 var
@@ -2698,8 +2698,8 @@ var
   i: integer;
 begin
   S := '';
-  for i := 0 to High(CmtIndexer) do
-    S += IntToStr(i) + ':' + cKind[CmtIndexer[i]]+' ';
+  for i := 0 to High(KindIndexer) do
+    S += IntToStr(i) + ':' + cKind[KindIndexer[i]]+' ';
   Application.MainForm.Caption := S;
 end;
 
@@ -3256,7 +3256,7 @@ begin
   FRanges.Clear;
   FOpenedBlocks.Clear;
   TokenIndexer := nil;
-  CmtIndexer := nil;
+  KindIndexer := nil;
 
   FFinished := False;
   FLastAnalPos := 0;
