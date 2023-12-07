@@ -2573,8 +2573,11 @@ begin
     if Assigned(Token.Style) then
       NKind := Token.Style.TokenKind;
 
-    TokenIndexer[NLine] := NTokenIndex;
-    CmtIndexer[NLine] := NKind;
+    for i := NLine to NLine2 do
+    begin
+      TokenIndexer[i] := NTokenIndex;
+      CmtIndexer[i] := NKind;
+    end;
 
     if (EControlOptions.AutoFoldComments > 1) and Assigned(FOnAddRangeSimple) then
     begin
@@ -2582,8 +2585,8 @@ begin
       if NCmtFrom >= 0 then
         FOnAddRangeSimple(TokenIndexer[NCmtFrom], TokenIndexer[NCmtTo]);
     end;
-  end;
-
+  end
+  else
   //handle multi-line tokens
   for i := NLine + 1 to NLine2 do
   begin
@@ -2608,7 +2611,7 @@ var
   NTokenIndex1, NTokenIndex2: integer;
 begin
   ALineFrom := -1; //-1 means that we found nothing
-  ALineTo := Token.Range.PointStart.Y; //it's always set
+  ALineTo := Token.Range.PointEnd.Y; //it's always set
 
   if {EControlOptions.AutoFoldComments_BreakOnEmptyLine or} (ATokenKind=etkOther) then
     Dec(ALineTo);
