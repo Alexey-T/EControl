@@ -543,8 +543,8 @@ type
     procedure UpdateTokenIndexer(constref Token: TecSyntToken); //Alexey
     procedure FindCommentRangeBeforeToken(constref Token: TecSyntToken;
       ATokenKind: TecTokenKind; out ALineFrom, ALineTo: integer); //Alexey
-    procedure ShowTokenIndexer; //Alexey
-    procedure ShowCmtIndexer; //Alexey
+    procedure DebugTokenIndexer; //Alexey
+    procedure DebugKindIndexer; //Alexey
   public
     //holds indexes of first token overlapping that i-th line ("overlapping" is for multi-line tokens)
     TokenIndexer: array of integer; //Alexey
@@ -2679,7 +2679,7 @@ begin
   end;
 end;
 
-procedure TecParserResults.ShowTokenIndexer;
+procedure TecParserResults.DebugTokenIndexer;
 var
   S: string;
   i: integer;
@@ -2690,7 +2690,7 @@ begin
   Application.MainForm.Caption := S;
 end;
 
-procedure TecParserResults.ShowCmtIndexer;
+procedure TecParserResults.DebugKindIndexer;
 const
   cKind: array[TecTokenKind] of char = ('?', 'C', 'S');
 var
@@ -3376,8 +3376,8 @@ var
   i: integer;
 begin
   ////Debugging only!
-  //ShowTokenIndexer;
-  //TecParserThread.Synchronize(ParserThread, ShowCmtIndexer);
+  //DebugTokenIndexer;
+  //TecParserThread.Synchronize(ParserThread, DebugKindIndexer);
 
   Result := True;
   if FFinished then Exit;
