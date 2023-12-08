@@ -2580,7 +2580,7 @@ begin
       KindIndexer[i] := NKind;
     end;
 
-    if NKind<>etkOther then
+    if (NKind <> etkOther) and (KindIndexer[Token.Range.PointStart.Y] <> etkOther) then
       if (EControlOptions.AutoFoldComments > 1) and Assigned(FOnAddRangeSimple) then
         FindAutoFoldRange(Token, NKind);
   end
