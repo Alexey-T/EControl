@@ -2577,8 +2577,9 @@ begin
       KindIndexer[i] := NKind;
     end;
 
-    if (EControlOptions.AutoFoldComments > 1) and Assigned(FOnAddRangeSimple) then
-      FindAutoFoldRange(Token, NKind);
+    if NKind<>etkOther then
+      if (EControlOptions.AutoFoldComments > 1) and Assigned(FOnAddRangeSimple) then
+        FindAutoFoldRange(Token, NKind);
   end
   else
   //handle multi-line tokens
