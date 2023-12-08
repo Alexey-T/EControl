@@ -2570,8 +2570,10 @@ begin
     NKind := etkOther;
 
   NTokenIndex := FTagList.Count-1;
+  //token is first on the line?
   if (TokenIndexer[NLine] < 0) or (NTokenIndex < TokenIndexer[NLine]) then
   begin
+    //for all lines of multi-line token
     for i := NLine to NLine2 do
     begin
       TokenIndexer[i] := NTokenIndex;
@@ -2583,7 +2585,7 @@ begin
         FindAutoFoldRange(Token, NKind);
   end
   else
-  //handle multi-line tokens
+  //for next lines of multi-line token
   for i := NLine + 1 to NLine2 do
   begin
     TokenIndexer[i] := NTokenIndex;
