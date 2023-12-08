@@ -2674,11 +2674,14 @@ begin
       PrevFrom := NLineFrom-1;
       while (PrevFrom>0) and (TokenIndexer[PrevFrom]<0) do
         Dec(PrevFrom);
-      PrevTo := PrevFrom;
-      while (PrevFrom>0) and (TokenIndexer[PrevFrom-1]>=0) and not IsBadLine(PrevFrom-1) do
-        Dec(PrevFrom);
-      if (PrevTo-PrevFrom+1 >= EControlOptions.AutoFoldComments) then
-        FOnAddRangeSimple(TokenIndexer[PrevFrom], TokenIndexer[PrevTo]);
+      if not IsBadLine(PrevFrom) then
+      begin
+        PrevTo := PrevFrom;
+        while (PrevFrom>0) and (TokenIndexer[PrevFrom-1]>=0) and not IsBadLine(PrevFrom-1) do
+          Dec(PrevFrom);
+        if (PrevTo-PrevFrom+1 >= EControlOptions.AutoFoldComments) then
+          FOnAddRangeSimple(TokenIndexer[PrevFrom], TokenIndexer[PrevTo]);
+      end;
     end;
 
     LastFrom := NLineFrom;
