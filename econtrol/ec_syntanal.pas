@@ -2563,14 +2563,15 @@ begin
   NLine := Token.Range.PointStart.Y;
   NLine2 := Token.Range.PointEnd.Y;
   if NLine >= NNewLen then Exit;
-  NKind := etkOther;
+
+  if Assigned(Token.Style) then
+    NKind := Token.Style.TokenKind
+  else
+    NKind := etkOther;
 
   NTokenIndex := FTagList.Count-1;
   if (TokenIndexer[NLine] < 0) or (NTokenIndex < TokenIndexer[NLine]) then
   begin
-    if Assigned(Token.Style) then
-      NKind := Token.Style.TokenKind;
-
     for i := NLine to NLine2 do
     begin
       TokenIndexer[i] := NTokenIndex;
