@@ -2679,15 +2679,19 @@ begin
     if NLineFrom>0 then
     begin
       PrevFrom := NLineFrom-1;
-      while (PrevFrom>0) and (TokenIndexer[PrevFrom]<0) do
-        Dec(PrevFrom);
-      if IsGoodLine(PrevFrom) then
+      //scan up only if this line empty, to speedup (to not scan up often)
+      if TokenIndexer[PrevFrom]<0 then
       begin
-        PrevTo := PrevFrom;
-        while (PrevFrom>0) and IsGoodLine(PrevFrom-1) do
+        while (PrevFrom>0) and (TokenIndexer[PrevFrom]<0) do
           Dec(PrevFrom);
-        if PrevTo-PrevFrom+1 >= EControlOptions.AutoFoldComments then
-          FOnAddRangeSimple(TokenIndexer[PrevFrom], TokenIndexer[PrevTo]);
+        if IsGoodLine(PrevFrom) then
+        begin
+          PrevTo := PrevFrom;
+          while (PrevFrom>0) and IsGoodLine(PrevFrom-1) do
+            Dec(PrevFrom);
+          if PrevTo-PrevFrom+1 >= EControlOptions.AutoFoldComments then
+            FOnAddRangeSimple(TokenIndexer[PrevFrom], TokenIndexer[PrevTo]);
+        end;
       end;
     end;
 
