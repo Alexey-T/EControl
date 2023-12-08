@@ -2591,10 +2591,16 @@ end;
 
 procedure TecParserResults.FindAutoFoldRange(constref Token: TecSyntToken; ATokenKind: TecTokenKind);
   //
+  //returns False for good line and for empty line
   function IsBadLine(N: integer): boolean; inline;
   begin
-    //uses KindIndexer array to detect fast
     Result := (TokenIndexer[N]>=0) and ((KindIndexer[N]<>ATokenKind) or (KindIndexer[N]=etkOther));
+  end;
+  //
+  //returns True only for good (non empty) line
+  function IsGoodLine(N: integer): boolean; inline;
+  begin
+    Result := (TokenIndexer[N]>=0) and (KindIndexer[N]=ATokenKind);
   end;
   //
 var
@@ -2665,19 +2671,20 @@ begin
   while (TokenIndexer[NLineFrom]<0) and (NLineFrom<LastTo) do
     Inc(NLineFrom);
 
-  if (TokenIndexer[LastTo]>=0) and not IsBadLine(LastTo) then
+  if IsGoodLine(LastTo) then
   begin
-    //find begin/end of previous AutoFold range; we need to find it additionally,
-    //on pressing Enter in the middle of big range
+    //find begin/end of previous AutoFold range;
+    //we need to find it additionally, for pressing Enter in the middle of big range;
+    //and even if LastFrom...LastTo is too small to make a range
     if NLineFrom>0 then
     begin
       PrevFrom := NLineFrom-1;
       while (PrevFrom>0) and (TokenIndexer[PrevFrom]<0) do
         Dec(PrevFrom);
-      if not IsBadLine(PrevFrom) then
+      if IsGoodLine(PrevFrom) then
       begin
         PrevTo := PrevFrom;
-        while (PrevFrom>0) and (TokenIndexer[PrevFrom-1]>=0) and not IsBadLine(PrevFrom-1) do
+        while (PrevFrom>0) and IsGoodLine(PrevFrom-1) do
           Dec(PrevFrom);
         if PrevTo-PrevFrom+1 >= EControlOptions.AutoFoldComments then
           FOnAddRangeSimple(TokenIndexer[PrevFrom], TokenIndexer[PrevTo]);
