@@ -2679,7 +2679,7 @@ begin
     if NLineFrom>0 then
     begin
       PrevFrom := NLineFrom-1;
-      //scan up only if this line empty, to speedup (to not scan up often)
+      //scan up only if line before Token is empty (do not scan up often)
       if TokenIndexer[PrevFrom]<0 then
       begin
         while (PrevFrom>0) and (TokenIndexer[PrevFrom]<0) do
