@@ -541,8 +541,7 @@ type
     procedure RestoreState;
     procedure ClearTokenIndexer; //Alexey
     procedure UpdateTokenIndexer(constref Token: TecSyntToken); //Alexey
-    procedure FindCommentRangeBeforeToken(constref Token: TecSyntToken;
-      ATokenKind: TecTokenKind; out ALineFrom, ALineTo: integer); //Alexey
+    procedure FindAutoFoldRange(constref Token: TecSyntToken; ATokenKind: TecTokenKind); //Alexey
     procedure DebugTokenIndexer; //Alexey
     procedure DebugKindIndexer; //Alexey
   public
@@ -2545,7 +2544,6 @@ end;
 procedure TecParserResults.UpdateTokenIndexer(constref Token: TecSyntToken);
 var
   NNewLen, NPrevLen, NTokenIndex, NLine, NLine2: integer;
-  NCmtFrom, NCmtTo: integer;
   NKind: TecTokenKind;
   i: integer;
 begin
@@ -2580,11 +2578,7 @@ begin
     end;
 
     if (EControlOptions.AutoFoldComments > 1) and Assigned(FOnAddRangeSimple) then
-    begin
-      FindCommentRangeBeforeToken(Token, NKind, NCmtFrom, NCmtTo);
-      if NCmtFrom >= 0 then
-        FOnAddRangeSimple(TokenIndexer[NCmtFrom], TokenIndexer[NCmtTo]);
-    end;
+      FindAutoFoldRange(Token, NKind);
   end
   else
   //handle multi-line tokens
@@ -2595,10 +2589,7 @@ begin
   end;
 end;
 
-procedure TecParserResults.FindCommentRangeBeforeToken(
-  constref Token: TecSyntToken;
-  ATokenKind: TecTokenKind;
-  out ALineFrom, ALineTo: integer);
+procedure TecParserResults.FindAutoFoldRange(constref Token: TecSyntToken; ATokenKind: TecTokenKind);
   //
   function IsBadLine(N: integer): boolean; inline;
   begin
@@ -2609,22 +2600,24 @@ procedure TecParserResults.FindCommentRangeBeforeToken(
 var
   NLineFrom, NLineOld: integer;
   NTokenIndex1, NTokenIndex2: integer;
+  LastFrom, LastTo: integer;
+  PrevFrom, PrevTo: integer;
 begin
-  ALineFrom := -1; //-1 means that we found nothing
-  ALineTo := Token.Range.PointEnd.Y; //it's always set
+  LastFrom := -1;
+  LastTo := Token.Range.PointEnd.Y;
 
   if {EControlOptions.AutoFoldComments_BreakOnEmptyLine or} (ATokenKind=etkOther) then
-    Dec(ALineTo);
+    Dec(LastTo);
 
   //skip empty lines
-  while (ALineTo>0) and (TokenIndexer[ALineTo]<0) do
-    Dec(ALineTo);
+  while (LastTo>0) and (TokenIndexer[LastTo]<0) do
+    Dec(LastTo);
 
-  if ALineTo < EControlOptions.AutoFoldComments-1 then exit;
+  if LastTo < EControlOptions.AutoFoldComments-1 then exit;
 
-  if IsBadLine(ALineTo) then exit;
+  if IsBadLine(LastTo) then exit;
 
-  NLineFrom := ALineTo+1;
+  NLineFrom := LastTo+1;
   NLineOld := NLineFrom+1;
 
   repeat
@@ -2669,13 +2662,28 @@ begin
   until False;
 
   //move down to 1st non-empty
-  while (TokenIndexer[NLineFrom]<0) and (NLineFrom<ALineTo) do
+  while (TokenIndexer[NLineFrom]<0) and (NLineFrom<LastTo) do
     Inc(NLineFrom);
 
-  if ALineTo-NLineFrom+1 >= EControlOptions.AutoFoldComments then
+  if LastTo-NLineFrom+1 >= EControlOptions.AutoFoldComments then
   begin
-    ALineFrom := NLineFrom;
-    //ShowMessage(Format('rng %d..%d', [ALineFrom+1, ALineTo+1]));
+    //find begin/end of previous AutoFold range; we need to find it additionally,
+    //on pressing Enter in the middle of big range
+    if NLineFrom>0 then
+    begin
+      PrevFrom := NLineFrom-1;
+      while (PrevFrom>0) and (TokenIndexer[PrevFrom]<0) do
+        Dec(PrevFrom);
+      PrevTo := PrevFrom;
+      while (PrevFrom>0) and (TokenIndexer[PrevFrom-1]>=0) and not IsBadLine(PrevFrom-1) do
+        Dec(PrevFrom);
+      if (PrevTo-PrevFrom+1 >= EControlOptions.AutoFoldComments) then
+        FOnAddRangeSimple(TokenIndexer[PrevFrom], TokenIndexer[PrevTo]);
+    end;
+
+    LastFrom := NLineFrom;
+    FOnAddRangeSimple(TokenIndexer[LastFrom], TokenIndexer[LastTo]);
+    //ShowMessage(Format('rng %d..%d', [LastFrom+1, LastTo+1]));
   end;
 end;
 
@@ -3376,7 +3384,7 @@ var
   i: integer;
 begin
   ////Debugging only!
-  //DebugTokenIndexer;
+  //TecParserThread.Synchronize(ParserThread, DebugTokenIndexer);
   //TecParserThread.Synchronize(ParserThread, DebugKindIndexer);
 
   Result := True;
