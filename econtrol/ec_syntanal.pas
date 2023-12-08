@@ -2665,7 +2665,7 @@ begin
   while (TokenIndexer[NLineFrom]<0) and (NLineFrom<LastTo) do
     Inc(NLineFrom);
 
-  if LastTo-NLineFrom+1 >= EControlOptions.AutoFoldComments then
+  if (TokenIndexer[LastTo]>=0) and not IsBadLine(LastTo) then
   begin
     //find begin/end of previous AutoFold range; we need to find it additionally,
     //on pressing Enter in the middle of big range
@@ -2679,13 +2679,14 @@ begin
         PrevTo := PrevFrom;
         while (PrevFrom>0) and (TokenIndexer[PrevFrom-1]>=0) and not IsBadLine(PrevFrom-1) do
           Dec(PrevFrom);
-        if (PrevTo-PrevFrom+1 >= EControlOptions.AutoFoldComments) then
+        if PrevTo-PrevFrom+1 >= EControlOptions.AutoFoldComments then
           FOnAddRangeSimple(TokenIndexer[PrevFrom], TokenIndexer[PrevTo]);
       end;
     end;
 
     LastFrom := NLineFrom;
-    FOnAddRangeSimple(TokenIndexer[LastFrom], TokenIndexer[LastTo]);
+    if LastTo-LastFrom+1 >= EControlOptions.AutoFoldComments then
+      FOnAddRangeSimple(TokenIndexer[LastFrom], TokenIndexer[LastTo]);
     //ShowMessage(Format('rng %d..%d', [LastFrom+1, LastTo+1]));
   end;
 end;
