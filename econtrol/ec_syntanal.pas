@@ -878,6 +878,7 @@ type
     AppliedSyntaxTheme: string; //Alexey, for CudaText; name of applied syntax-theme, e.g. 'Sub'
     AppliedStylesMap: boolean; //Alexey, for CudaLister
     AskedToApplyLexerMap: boolean; //Alexey, for CudaText
+    DisableAutoFold: boolean; //Alexey, disables AutoFolding for comments/strings
 
     CommentRangeBegin: string;
     CommentRangeEnd: string;
@@ -2582,7 +2583,8 @@ begin
 
     if (NKind <> etkOther) then
       if (EControlOptions.AutoFoldComments > 1) and Assigned(FOnAddRangeSimple) then
-        FindAutoFoldRange(Token, NKind);
+        if not Owner.DisableAutoFold then
+          FindAutoFoldRange(Token, NKind);
   end
   else
   //for next lines of multi-line token
@@ -4581,7 +4583,8 @@ begin
             if SKey='full1' then CommentFullLinesBegin := SValue else
             if SKey='full2' then CommentFullLinesEnd := SValue else
             if SKey='styles_cmt' then StylesOfComments := SValue else
-            if SKey='styles_str' then StylesOfStrings := SValue;
+            if SKey='styles_str' then StylesOfStrings := SValue else
+            if SKey='autofold' then DisableAutoFold := (SValue='0');
           end;
         secMap:
           begin
