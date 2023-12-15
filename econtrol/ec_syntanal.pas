@@ -4586,7 +4586,7 @@ begin
             if SKey='styles_cmt' then StylesOfComments := SValue else
             if SKey='styles_str' then StylesOfStrings := SValue else
             if SKey='autofold' then DisableAutoFold := (SValue='0') else
-            if SKey='fold_exclude_line' then FoldingExcludesLastLine:= true;
+            if SKey='fold_exclude_line' then FoldingExcludesLastLine := (SValue='1');
           end;
         secMap:
           begin
