@@ -4584,12 +4584,23 @@ begin
       case Section of
         secComments:
           begin
-            if SKey='str1' then CommentRangeBegin := SValue else
-            if SKey='str2' then CommentRangeEnd := SValue else
-            if SKey='full1' then CommentFullLinesBegin := SValue else
-            if SKey='full2' then CommentFullLinesEnd := SValue else
-            if SKey='styles_cmt' then StylesOfComments := SValue else
-            if SKey='styles_str' then StylesOfStrings := SValue;
+            if SKey='str1' then
+              CommentRangeBegin := SValue
+            else
+            if SKey='str2' then
+              CommentRangeEnd := SValue
+            else
+            if SKey='full1' then
+              CommentFullLinesBegin := SValue
+            else
+            if SKey='full2' then
+              CommentFullLinesEnd := SValue
+            else
+            if SKey='styles_cmt' then
+              StylesOfComments := SValue
+            else
+            if SKey='styles_str' then
+              StylesOfStrings := SValue;
           end;
         secMap:
           begin
@@ -4608,8 +4619,11 @@ begin
           end;
         secOptions:
           begin
-            if SKey='auto_fold' then DisableAutoFold := (SValue<>'1') else
-            if SKey='fold_exclude_line' then FoldingExcludesLastLine := (SValue='1');
+            if SKey='auto_fold' then
+              DisableAutoFold := (SValue<>'1')
+            else
+            if SKey='fold_exclude_line' then
+              FoldingExcludesLastLine := (SValue='1');
           end;
         secNone:
           begin
