@@ -4531,7 +4531,7 @@ const
 var
   F: TextFile;
   SItem, SKey, SValue: string;
-  Section: (secNone, secComments, secMap, secRef);
+  Section: (secNone, secComments, secMap, secRef, secOptions);
   N: integer;
 begin
   {$Push}
@@ -4569,6 +4569,11 @@ begin
         Section := secRef;
         Continue;
       end;
+      if SItem='[op]' then
+      begin
+        Section := secOptions;
+        Continue;
+      end;
       if SItem[1]='[' then
       begin
         Section := secNone;
@@ -4585,8 +4590,6 @@ begin
             if SKey='full2' then CommentFullLinesEnd := SValue else
             if SKey='styles_cmt' then StylesOfComments := SValue else
             if SKey='styles_str' then StylesOfStrings := SValue else
-            if SKey='autofold' then DisableAutoFold := (SValue='0') else
-            if SKey='fold_exclude_line' then FoldingExcludesLastLine := (SValue='1');
           end;
         secMap:
           begin
@@ -4602,6 +4605,11 @@ begin
             N := StrToIntDef(SKey, -1);
             if (N>=0) and (N<=High(SubLexerNames)) then
              SubLexerNames[N] := SValue;
+          end;
+        secOptions:
+          begin
+            if SKey='auto_fold' then DisableAutoFold := (SValue<>'1') else
+            if SKey='fold_exclude_line' then FoldingExcludesLastLine := (SValue='1');
           end;
         secNone:
           begin
