@@ -4589,7 +4589,7 @@ begin
             if SKey='full1' then CommentFullLinesBegin := SValue else
             if SKey='full2' then CommentFullLinesEnd := SValue else
             if SKey='styles_cmt' then StylesOfComments := SValue else
-            if SKey='styles_str' then StylesOfStrings := SValue else
+            if SKey='styles_str' then StylesOfStrings := SValue;
           end;
         secMap:
           begin
