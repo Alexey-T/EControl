@@ -804,8 +804,6 @@ type
     FAlwaysSyncBlockAnal: Boolean;   // Indicates that blocks analysis may after tokens
     FOnGetCollapseRange: TecBoundDefEvent;
     FOnCloseTextRange: TecBoundDefEvent;
-    FIdleAppendDelayInit: Cardinal;
-    FIdleAppendDelay: Cardinal;
     FOnParseToken: TecParseTokenEvent;
 
     ThemeMappingCount: integer;
@@ -954,8 +952,6 @@ type
     property LineComment: ecString read FLineComment write FLineComment;
     property Charset: TFontCharSet read FCharset write FCharset; // Alexey
     property AlwaysSyncBlockAnal: Boolean read FAlwaysSyncBlockAnal write SetAlwaysSyncBlockAnal default False;
-    property IdleAppendDelay: Cardinal read FIdleAppendDelay write FIdleAppendDelay default 200;
-    property IdleAppendDelayInit: Cardinal read FIdleAppendDelayInit write FIdleAppendDelayInit default 50;
   end;
 
   TLibSyntAnalyzer = class(TecSyntAnalyzer)
@@ -5015,8 +5011,10 @@ begin
   FGrammaParser := TGrammaAnalyzer.Create;
   FGrammaParser.OnChange := GrammaChanged;
 
+  {
   FIdleAppendDelayInit := 50;
   FIdleAppendDelay := 200;
+  }
 end;
 
 destructor TecSyntAnalyzer.Destroy;
@@ -5069,7 +5067,7 @@ begin
     TokenRules := Src.TokenRules;
     CodeTemplates := Src.CodeTemplates;
     SubAnalyzers := Src.SubAnalyzers;
-//    DefaultStyle := Src.DefaultStyle;
+    //DefaultStyle := Src.DefaultStyle;
     TokenTypeNames := Src.TokenTypeNames;
     Notes := Src.Notes;
     Internal := Src.Internal;
@@ -5077,8 +5075,8 @@ begin
     RestartFromLineStart := Src.RestartFromLineStart;
     ParseEndOfLine := Src.ParseEndOfLine;
     LineComment := Src.LineComment;
-    FIdleAppendDelayInit := Src.FIdleAppendDelayInit;
-    FIdleAppendDelay := Src.FIdleAppendDelay;
+    //FIdleAppendDelayInit := Src.FIdleAppendDelayInit;
+    //FIdleAppendDelay := Src.FIdleAppendDelay;
     for i := 0 to BlockRules.Count - 1 do
      begin
        BlockRules[i].BlockEnd := Src.BlockRules[i].BlockEnd;
