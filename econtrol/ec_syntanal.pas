@@ -1438,9 +1438,7 @@ begin
   inherited;
   FCondType := tcEqual;
   FTagList := TStringList.Create;
-  {$if FPC_FULLVERSION>=30200}
   TStringList(FTagList).UseLocale := False; //Alexey, makes Find() faster by 30%
-  {$endif}
   TStringList(FTagList).Sorted := True;
   TStringList(FTagList).Delimiter := ' ';
   TStringList(FTagList).Duplicates := dupIgnore;
