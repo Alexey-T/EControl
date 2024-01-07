@@ -3454,6 +3454,9 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.UpdatePublicDataCore;
+//updating of data for 400Kb file 'torrent.cpp' takes 3-4ms on Alexey's PC,
+//so nothing to optimize here,
+//CriticalSection is not bad
 var
   TagPtr: PecSyntToken;
   NCount, NLastParsedLine: integer;
