@@ -4511,10 +4511,11 @@ end;
 procedure TecClientSyntAnalyzer.CopyRangesFold(L: TSortedList);
 var
   R, RR: TecTextRange;
-  i: integer;
+  NCount, i: integer;
 begin
   L.Clear;
-  for i := 0 to FRanges.Count-1 do
+  NCount := FRanges.Count;
+  for i := 0 to NCount-1 do
   begin
     R := TecTextRange(FRanges[i]);
     RR := TecTextRange.Create(0, 0);
