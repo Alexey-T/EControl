@@ -3460,6 +3460,7 @@ procedure TecClientSyntAnalyzer.UpdatePublicDataCore;
 var
   TagPtr: PecSyntToken;
   NCount, NLastParsedLine: integer;
+  //tick: QWord;
 begin
   NCount := FTagList.Count;
   if NCount=0 then
@@ -3467,6 +3468,8 @@ begin
     ClearPublicData;
     Exit;
   end;
+
+  //tick:= GetTickCount64;
 
   CriSecForData.Enter;
   try
@@ -3481,6 +3484,9 @@ begin
   finally
     CriSecForData.Leave;
   end;
+
+  //tick:= GetTickCount64-tick;
+  //Writeln('UpData: ', IntToStr(tick));
 end;
 
 procedure TecClientSyntAnalyzer.UpdatePublicDataOnTextChange;
