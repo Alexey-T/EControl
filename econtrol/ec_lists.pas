@@ -83,9 +83,9 @@ type
     procedure ClearFromLine(ALine: integer);
     function InternalGet(AIndex: integer): PGRange; inline;
     // At position or next
-    function NextAt(APos: integer): integer;
+    function FindNextAt(APos: integer): integer;
     // At position or prior
-    function PriorAt(APos: integer): integer;
+    function FindPriorAt(APos: integer): integer;
     function PriorAtLine(ALine: integer): integer;
     // At position exactly, -1 if pos between tokens
     function FindAt(APos: integer): integer;
@@ -179,7 +179,7 @@ begin
   end
   else
   begin
-    Result := PriorAt(_Range.StartPos);
+    Result := FindPriorAt(_Range.StartPos);
     Inc(Result);
     if Result = Count then
       inherited Add(Range)
@@ -189,9 +189,9 @@ begin
 end;
 *)
 
-function GRangeList<GRange>.NextAt(APos: integer): integer;
+function GRangeList<GRange>.FindNextAt(APos: integer): integer;
 begin
-  Result := PriorAt(APos);
+  Result := FindPriorAt(APos);
   if Result = -1 then
    begin
      if Count > 0 then Result := 0
@@ -254,7 +254,7 @@ begin
 end;
 
 
-function GRangeList<GRange>.PriorAt(APos: integer): integer;
+function GRangeList<GRange>.FindPriorAt(APos: integer): integer;
 var
   H, I, Diff, NCount: Integer;
 begin

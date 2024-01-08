@@ -2881,7 +2881,7 @@ var
               (Sub.Rule.EndExpression = '\}') then
             begin
               if (Buffer.FText[FPos] = '}') and CheckBracketsClosed_Curly(
-                 FTagList.PriorAt(Sub.Range.StartPos),
+                 FTagList.FindPriorAt(Sub.Range.StartPos),
                  FTagList.Count - 1,
                  1 {AFinalLevel}) then
                 NMatchPos := 2
@@ -2893,7 +2893,7 @@ var
               (Sub.Rule.EndExpression = '>') then
             begin
               if (Buffer.FText[FPos] = '>') and CheckBracketsClosed_Angle(
-                 FTagList.PriorAt(Sub.Range.StartPos),
+                 FTagList.FindPriorAt(Sub.Range.StartPos),
                  FTagList.Count - 1,
                  1 {AFinalLevel}) then
                 begin
@@ -2944,7 +2944,7 @@ print(1);
                    Sub.CondEndPos := Sub.Range.EndPos + NMatchPos;
                  end;
                // Close ranges which belongs to this sub-lexer range
-               CloseAtEnd(FTagList.PriorAt(Sub.Range.StartPos));
+               CloseAtEnd(FTagList.FindPriorAt(Sub.Range.StartPos));
              end else
              begin
                own := Sub.FinalSubAnalyzer;
@@ -3127,7 +3127,7 @@ var
 begin
   Result := FOwner;
   if APos < 0 then Exit;
-  N := ABlocks.PriorAt(APos);
+  N := ABlocks.FindPriorAt(APos);
   if N < 0 then Exit;
   Sub := ABlocks.InternalGet(N);
   if (Sub.Range.StartPos <= APos) and
@@ -3905,7 +3905,7 @@ end;
 
 function TecClientSyntAnalyzer.PriorTokenAt(Pos: integer): integer;
 begin
-  Result := FTagList.PriorAt(Pos);
+  Result := FTagList.FindPriorAt(Pos);
 end;
 
 function TecClientSyntAnalyzer.FindTokenAt(Pos: integer): integer;
