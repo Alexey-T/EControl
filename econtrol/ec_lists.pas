@@ -44,7 +44,7 @@ type
     function Add(Item: TSortedItem): integer;
     procedure Delete(Index: integer);
     procedure Clear;
-    function PriorAt(Pos: integer): integer;
+    function FindPriorAt(Pos: integer): integer;
 
     property Items[Index: integer]: TSortedItem read GetItem; default;
     property Count: integer read GetCount;
@@ -470,7 +470,7 @@ begin
     FList.Add(Item);
   end else
   begin
-    Result := PriorAt(Item.GetKey);
+    Result := FindPriorAt(Item.GetKey);
     Inc(Result);
     if Result = Count then
       FList.Add(Item)
@@ -568,7 +568,7 @@ begin
       Dec(Index);
 end;
 
-function TSortedList.PriorAt(Pos: integer): integer;
+function TSortedList.FindPriorAt(Pos: integer): integer;
 begin
   QuickSearch(Pos, Result);
 end;
