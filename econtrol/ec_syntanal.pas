@@ -499,6 +499,7 @@ type
     FinishedPartially: boolean; //parsing is done until (at least) editor's bottom line
     constructor Create;
     destructor Destroy; override;
+    procedure Clear;
   end;
 
   { TecParserResults }
@@ -3436,19 +3437,20 @@ begin
 end;
 
 procedure TecClientSyntAnalyzer.ClearPublicData;
+var
+  OldData, NewData: TecPublicData;
 begin
+  OldData := PublicData;
+  NewData := TecPublicData.Create;
+
   CriSecForData.Enter;
   try
-    PublicData.Finished := False;
-    PublicData.FinishedPartially := False;
-    PublicData.Tokens.Clear;
-    PublicData.FoldRanges.Clear;
-    PublicData.SublexRanges.Clear;
-    SetLength(PublicData.TokenIndexer, 0);
-    PublicData.LineTo := 0;
+    PublicData := NewData;
   finally
     CriSecForData.Leave;
   end;
+
+  FreeAndNil(OldData);
 end;
 
 procedure TecClientSyntAnalyzer.UpdatePublicDataCore;
@@ -3458,6 +3460,7 @@ procedure TecClientSyntAnalyzer.UpdatePublicDataCore;
 var
   TagPtr: PecSyntToken;
   NCount, NLastParsedLine: integer;
+  OldData, NewData: TecPublicData;
   //tick: QWord;
 begin
   NCount := FTagList.Count;
@@ -3469,19 +3472,29 @@ begin
 
   //tick:= GetTickCount64;
 
+  TagPtr := FTagList._GetItemPtr(NCount-1);
+  NLastParsedLine := TagPtr^.Range.PointStart.Y;
+
+  OldData := PublicData;
+
+  NewData := TecPublicData.Create;
+  NewData.Tokens.Assign(FTagList);
+  CopyRangesFold(NewData.FoldRanges);
+  NewData.SublexRanges.Assign(FSubLexerBlocks);
+  NewData.TokenIndexer := TokenIndexer;
+  NewData.LineTo := NLastParsedLine;
+
+  //code in CriticalSection is minimal, it only changes pointer;
+  //the filling (of NewData) is done before;
+  //the freeing is done after
   CriSecForData.Enter;
   try
-    TagPtr := FTagList._GetItemPtr(NCount-1);
-    NLastParsedLine := TagPtr^.Range.PointStart.Y;
-
-    PublicData.Tokens.Assign(FTagList);
-    CopyRangesFold(PublicData.FoldRanges);
-    PublicData.SublexRanges.Assign(FSubLexerBlocks);
-    PublicData.TokenIndexer := TokenIndexer;
-    PublicData.LineTo := NLastParsedLine;
+    PublicData := NewData;
   finally
     CriSecForData.Leave;
   end;
+
+  FreeAndNil(OldData);
 
   //tick:= GetTickCount64-tick;
   //Writeln('UpData: ', IntToStr(tick));
@@ -5874,14 +5887,23 @@ end;
 
 destructor TecPublicData.Destroy;
 begin
-  Tokens.Clear;
-  FoldRanges.Clear;
-  SublexRanges.Clear;
-  TokenIndexer := nil;
+  Clear;
   FreeAndNil(Tokens);
   FreeAndNil(FoldRanges);
   FreeAndNil(SublexRanges);
   inherited Destroy;
+end;
+
+procedure TecPublicData.Clear;
+begin
+  Tokens.Clear;
+  FoldRanges.Clear;
+  SublexRanges.Clear;
+  TokenIndexer := nil;
+
+  Finished := False;
+  FinishedPartially := False;
+  LineTo := 0;
 end;
 
 { TecSyntaxManager }
