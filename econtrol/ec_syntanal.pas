@@ -486,7 +486,10 @@ type
 
   TecOnAddRangeSimple = procedure(AStartIdx, AEndIdx: integer) of object;
 
-  TecPublicData = record
+  { TecPublicData }
+
+  TecPublicData = class
+  public
     Tokens: TecTokenList;
     FoldRanges: TSortedList;
     SublexRanges: TecSubLexerRanges;
@@ -494,6 +497,8 @@ type
     LineTo: integer; //index of last parsed line (calculated from Tokens)
     Finished: boolean; //parsing is done until document end
     FinishedPartially: boolean; //parsing is done until (at least) editor's bottom line
+    constructor Create;
+    destructor Destroy; override;
   end;
 
   { TecParserResults }
@@ -3212,9 +3217,7 @@ begin
 
   inherited OnAddRangeSimple := AddRangeSimple;
 
-  PublicData.Tokens := TecTokenList.Create;
-  PublicData.FoldRanges := TSortedList.Create(True);
-  PublicData.SublexRanges := TecSubLexerRanges.Create;
+  PublicData := TecPublicData.Create;
 
   EventParseNeeded := TEvent.Create(nil, False, False, '');
   EventParseIdle := TEvent.Create(nil, True{ManualReset}, True{Signaled}, '');
@@ -3246,13 +3249,8 @@ begin
   FreeAndNil(EventParseNeeded);
   FreeAndNil(CriSecForData);
 
-  PublicData.Tokens.Clear;
-  PublicData.FoldRanges.Clear;
-  PublicData.SublexRanges.Clear;
-
-  FreeAndNil(PublicData.Tokens);
-  FreeAndNil(PublicData.FoldRanges);
-  FreeAndNil(PublicData.SublexRanges);
+  if Assigned(PublicData) then
+    FreeAndNil(PublicData);
 
   FreeAndNil(FRanges);
   FreeAndNil(FOpenedBlocks);
@@ -5863,6 +5861,27 @@ end;
 function TecCodeTemplates.GetItem(Index: integer): TecCodeTemplate;
 begin
   Result := TecCodeTemplate(inherited Items[Index]);
+end;
+
+{ TecPublicData }
+
+constructor TecPublicData.Create;
+begin
+  Tokens := TecTokenList.Create;
+  FoldRanges := TSortedList.Create(True);
+  SublexRanges := TecSubLexerRanges.Create;
+end;
+
+destructor TecPublicData.Destroy;
+begin
+  Tokens.Clear;
+  FoldRanges.Clear;
+  SublexRanges.Clear;
+  TokenIndexer := nil;
+  FreeAndNil(Tokens);
+  FreeAndNil(FoldRanges);
+  FreeAndNil(SublexRanges);
+  inherited Destroy;
 end;
 
 { TecSyntaxManager }
