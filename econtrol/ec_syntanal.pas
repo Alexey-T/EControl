@@ -121,28 +121,33 @@ type
     class operator =(const A, B: TecSyntToken): boolean;
   end;
 
-  { TecTextRange }
+  { TecFoldRange }
 
-  TecTextRange = class(TSortedItem)
-  private
+  PecFoldRange = ^TecFoldRange;
+  TecFoldRange = record
     FCondIndex: integer;
     FEndCondIndex: integer;
-    function GetLevel: integer;
-    function GetIsClosed: Boolean;
-  protected
-    function GetKey: integer; override;
-  public
     StartPos: integer;
     StartIdx, EndIdx: integer;
     IdentIdx: integer;
     Rule: TecTagBlockCondition;
-    Parent: TecTextRange;
+    Parent: PecFoldRange;
     Index: integer;
-
-    constructor Create(AStartIdx, AStartPos: integer);
+    function GetLevel: integer;
+    function GetIsClosed: Boolean;
+    property GetKey: integer read StartPos;
     property Level: integer read GetLevel;
     property IsClosed: Boolean read GetIsClosed;
-    procedure Assign(R: TecTextRange);
+    procedure Assign(constref R: TecFoldRange);
+  end;
+
+  { TecTextRange }
+
+  TecTextRange = class(TSortedItem)
+  public
+    Data: TecFoldRange;
+    function GetKey: integer; override;
+    constructor Create(AStartIdx, AStartPos: integer);
   end;
 
   { TecSubLexerRange }
@@ -701,10 +706,10 @@ type
     procedure DoProgressSecond;
     procedure DoProgressBoth;
 
-    function RangeFormat(const FmtStr: ecString; Range: TecTextRange): ecString;
-    function GetRangeName(Range: TecTextRange; ATags: TecTokenList): ecString;
-    function GetRangeGroup(Range: TecTextRange): ecString;
-    function GetCollapsedText(Range: TecTextRange): ecString;
+    function RangeFormat(const FmtStr: ecString; Range: PecFoldRange): ecString;
+    function GetRangeName(Range: PecFoldRange; ATags: TecTokenList): ecString;
+    function GetRangeGroup(Range: PecFoldRange): ecString;
+    function GetCollapsedText(Range: PecFoldRange): ecString;
     procedure Stop;
 
     procedure TextChangedOnLine(ALine: integer);
@@ -1314,20 +1319,25 @@ end;
 
 { TecTextRange }
 
+function TecTextRange.GetKey: integer;
+begin
+  Result := Data.GetKey;
+end;
+
 constructor TecTextRange.Create(AStartIdx, AStartPos: integer);
 begin
   inherited Create;
-  StartPos := AStartPos;
-  StartIdx := AStartIdx;
-  EndIdx := -1;
-  IdentIdx := -1;
-  FEndCondIndex := -1;
-  Index := -1;
-  Rule := nil;
-  Parent := nil;
+  Data.StartPos := AStartPos;
+  Data.StartIdx := AStartIdx;
+  Data.EndIdx := -1;
+  Data.IdentIdx := -1;
+  Data.FEndCondIndex := -1;
+  Data.Index := -1;
+  Data.Rule := nil;
+  Data.Parent := nil;
 end;
 
-procedure TecTextRange.Assign(R: TecTextRange);
+procedure TecFoldRange.Assign(constref R: TecFoldRange);
 begin
   StartPos := R.StartPos;
   StartIdx := R.StartIdx;
@@ -1340,18 +1350,14 @@ begin
   FEndCondIndex := R.FEndCondIndex;
 end;
 
-function TecTextRange.GetIsClosed: Boolean;
+function TecFoldRange.GetIsClosed: Boolean;
 begin
   Result := EndIdx <> -1;
 end;
 
-function TecTextRange.GetKey: integer;
-begin
-  Result := StartPos;
-end;
-
-function TecTextRange.GetLevel: integer;
-var prn: TecTextRange;
+function TecFoldRange.GetLevel: integer;
+var
+  prn: PecFoldRange;
 begin
   prn := Parent;
   Result := 0;
@@ -3290,11 +3296,11 @@ end;
 
 procedure TecClientSyntAnalyzer.AddRange(Range: TecTextRange);
 begin
-  Range.Index := FRanges.Count;
+  Range.Data.Index := FRanges.Count;
   FRanges.Add(Range);
   if FOpenedBlocks.Count > 0 then
-    Range.Parent := TecTextRange(FOpenedBlocks[FOpenedBlocks.Count - 1]);
-  if Range.EndIdx = -1 then
+    Range.Data.Parent := @TecTextRange(FOpenedBlocks[FOpenedBlocks.Count - 1]).Data;
+  if Range.Data.EndIdx = -1 then
     FOpenedBlocks.Add(Range);
 end;
 
@@ -3309,9 +3315,9 @@ begin
   if NCount>0 then
   begin
     Range := TecTextRange(FRanges[NCount-1]);
-    if Range.StartIdx = AStartIdx then
+    if Range.Data.StartIdx = AStartIdx then
     begin
-      Range.EndIdx := AEndIdx;
+      Range.Data.EndIdx := AEndIdx;
       exit;
     end;
   end;
@@ -3321,7 +3327,7 @@ begin
   NStartPos := TokenPtr^.Range.StartPos;
 
   Range := TecTextRange.Create(AStartIdx, NStartPos);
-  Range.EndIdx := AEndIdx;
+  Range.Data.EndIdx := AEndIdx;
   {
   // AutoFoldComment range has Rule=nil
   Range.Rule := Owner.CommentRule1;
@@ -3338,7 +3344,7 @@ begin
   for j := FOpenedBlocks.Count - 1 downto 0 do
   begin
    Range := TecTextRange(FOpenedBlocks[j]);
-   with Range do
+   with Range.Data do
      if Assigned(Rule) then
        begin
          if Cond.BlockType = btRangeStart then
@@ -3370,13 +3376,13 @@ begin
       if FOpenedBlocks.Count > 0 then
         begin
           i := FOpenedBlocks.Count - 1;
-          prn := TecTextRange(FOpenedBlocks[i]).Rule;
+          prn := TecTextRange(FOpenedBlocks[i]).Data.Rule;
           if (Rule is TecTagBlockCondition) and TecTagBlockCondition(Rule).SelfClose and (prn = Rule) then
             Dec(i);
           repeat
             if i < 0 then
               Exit(False);
-            prn := TecTextRange(FOpenedBlocks[i]).Rule;
+            prn := TecTextRange(FOpenedBlocks[i]).Data.Rule;
             Dec(i);
           until (prn = nil) or not prn.IgnoreAsParent;
           Result := prn = Parent;
@@ -3387,7 +3393,7 @@ begin
       Result := True;
       if Parent = nil then Exit;
       for i := FOpenedBlocks.Count - 1 downto 0 do
-        if TecTextRange(FOpenedBlocks[i]).Rule = Parent then
+        if TecTextRange(FOpenedBlocks[i]).Data.Rule = Parent then
           Exit;
       Result := False;
     end;
@@ -3770,12 +3776,12 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
  //
  procedure CleanRangeList(List: TSortedList; IsClosed: Boolean; ATagCount: integer);
  var
-   R: TecTextRange;
+   R: PecFoldRange;
    i: integer;
  begin
    for i := List.Count - 1 downto 0 do
    begin
-     R := TecTextRange(List[i]);
+     R := @(TecTextRange(List[i]).Data);
      if (R.FCondIndex >= ATagCount) or (R.StartIdx >= ATagCount) or R.IsClosed and
         ((R.FEndCondIndex >= ATagCount) or (R.EndIdx >= ATagCount)) then
        List.Delete(i);
@@ -3784,7 +3790,8 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
  //
  procedure UpdateFoldRangesOnChange(ATagCount: integer);
  var
-   R: TecTextRange;
+   Rng: TecTextRange;
+   R: PecFoldRange;
    NDelta, NTagCountMinusDelta: integer;
    iRange: integer;
  begin
@@ -3798,7 +3805,8 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
 
    for iRange := FRanges.Count - 1 downto 0 do
    begin
-     R := TecTextRange(FRanges[iRange]);
+     Rng := TecTextRange(FRanges[iRange]);
+     R := @Rng.Data;
 
      if (R.FCondIndex >= ATagCount) or
         (R.StartIdx >= ATagCount) then
@@ -3836,7 +3844,7 @@ procedure TecClientSyntAnalyzer.ClearDataOnChange;
          //reopen range: set ending to -1, add to FOpenedBlocks
          R.EndIdx := -1;
          R.FEndCondIndex := -1;
-         FOpenedBlocks.Add(R);
+         FOpenedBlocks.Add(Rng);
          if Assigned(FOnBlockReopen) then
            FOnBlockReopen(Self, FBuffer.StrToCaret(R.StartPos));
        end;
@@ -3968,7 +3976,7 @@ type
   TecParserLineMode = (plmNone, plmFromStart, plmToEnd, plmExplicitRange);
 
 function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
-  Range: TecTextRange): ecString;
+  Range: PecFoldRange): ecString;
 
 { HAW: hans@werschner.de [Oct'07] ......... additions to formatting token parts ......
 
@@ -4162,11 +4170,10 @@ var
 
 var
   i, idx, to_idx: integer;
-  rng: TecTextRange;
+  rng, to_rng: PecFoldRange;
   LineMode: TecParserLineMode;
   rngtoken, rngResult: ecString;
   swp_idx, rngdir, rngoffset, rngmax: integer;
-  to_rng: TecTextRange;
 begin
   idx := 0;
   Result := FmtStr;
@@ -4445,7 +4452,7 @@ begin
     end;
 end;
 
-function TecClientSyntAnalyzer.GetRangeName(Range: TecTextRange; ATags: TecTokenList): ecString;
+function TecClientSyntAnalyzer.GetRangeName(Range: PecFoldRange; ATags: TecTokenList): ecString;
 begin
   Result := '';
   if Assigned(Range.Rule) and (Range.Rule.NameFmt <> '') then
@@ -4454,7 +4461,7 @@ begin
     Result := GetTokenStrEx(Range.IdentIdx, ATags);
 end;
 
-function TecClientSyntAnalyzer.GetRangeGroup(Range: TecTextRange): ecString;
+function TecClientSyntAnalyzer.GetRangeGroup(Range: PecFoldRange): ecString;
 begin
   if Assigned(Range.Rule) then
     Result := RangeFormat(Range.Rule.GroupFmt, Range)
@@ -4462,7 +4469,7 @@ begin
     Result := '';
 end;
 
-function TecClientSyntAnalyzer.GetCollapsedText(Range: TecTextRange): ecString;
+function TecClientSyntAnalyzer.GetCollapsedText(Range: PecFoldRange): ecString;
 begin
   if Assigned(Range.Rule) then
     Result := RangeFormat(Range.Rule.CollapseFmt, Range)
@@ -4530,7 +4537,7 @@ begin
   begin
     R := TecTextRange(FRanges[i]);
     RR := TecTextRange.Create(0, 0);
-    RR.Assign(R);
+    RR.Data.Assign(R.Data);
     L.Add(RR);
   end;
 end;
@@ -4878,7 +4885,8 @@ function TecClientSyntAnalyzer.CloseAtEnd(AStartTagIdx: integer): Boolean;
 var
   NTagCount: integer;
   NIndentSize, NLine, NTokenIndex: integer;
-  Range: TecTextRange;
+  RangeObj: TecTextRange;
+  Range: PecFoldRange;
   Token1, Token2: PecSyntToken;
   Style: TecSyntaxFormat;
   bIndentBased, bIndentBased2, bMovedFromEnd: boolean;
@@ -4896,7 +4904,8 @@ begin
       Exit(False);
     end;
 
-    Range := TecTextRange(FOpenedBlocks[i]);
+    RangeObj := TecTextRange(FOpenedBlocks[i]);
+    Range := @RangeObj.Data;
     if Assigned(Range.Rule) and Range.Rule.EndOfTextClose and
        ((AStartTagIdx = 0) or (Range.StartIdx >= AStartTagIdx)) then
      begin
@@ -5149,7 +5158,8 @@ procedure TecSyntAnalyzer.SelectTokenFormat(Client: TecParserResults;
             const Source: ecString;
             DisableFolding, OnlyGlobal: Boolean; ATokenIndex: integer);
 var i, li, ki, strt, RefIdx: integer;
-    Range: TecTextRange;
+    Range: PecFoldRange;
+    RangeObj: TecTextRange;
     Accept: Boolean;
     RClient: TecClientSyntAnalyzer;
     Rule: TecTagBlockCondition;
@@ -5208,7 +5218,8 @@ begin
                   li := strt - BlockOffset;
                   if CheckIndex(li) then
                    begin
-                    Range := TecTextRange.Create(li, RClient.Tags[li].Range.StartPos);
+                    RangeObj := TecTextRange.Create(li, RClient.Tags[li].Range.StartPos);
+                    Range := @RangeObj.Data;
                     Range.IdentIdx := ki;
                     Range.Rule := Rule;
                     Range.FCondIndex := ATokenIndex - 1;
@@ -5218,7 +5229,7 @@ begin
                       Range.FEndCondIndex := ATokenIndex - 1;
                       Range.StartIdx := RefIdx - BlockOffset;
                      end;
-                    RClient.AddRange(Range);
+                    RClient.AddRange(RangeObj);
                    end;
                 end;
                btRangeEnd:  // End of block
