@@ -20,8 +20,8 @@
     </CompilerOptions>
     <Description Value="Core of EControl Syntax Editor SDK. Contains parser (syntax analyzer) of source codes."/>
     <License Value="Licensed for open-source only. See readme.txt."/>
-    <Version Major="2" Minor="4"/>
-    <Files Count="12">
+    <Version Major="2" Minor="3"/>
+    <Files Count="11">
       <Item1>
         <Filename Value="ec_gramma.pas"/>
         <UnitName Value="ec_Gramma"/>
@@ -66,10 +66,6 @@
         <Filename Value="ec_syntax_format.pas"/>
         <UnitName Value="ec_syntax_format"/>
       </Item11>
-      <Item12>
-        <Filename Value="ec_proc_sortedrange.pas"/>
-        <UnitName Value="ec_proc_SortedRange"/>
-      </Item12>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="3">
