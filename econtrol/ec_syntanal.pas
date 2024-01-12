@@ -668,8 +668,8 @@ type
   protected
     procedure AddRange(Range: TecTextRange);
     procedure AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
-    function HasOpened(Rule: TRuleCollectionItem; Parent: TecTagBlockCondition; Strict: Boolean): Boolean;
-    function IsEnabled(Rule: TRuleCollectionItem; OnlyGlobal: Boolean): Boolean; override;
+    function HasOpened(ARule: TRuleCollectionItem; AParent: TecTagBlockCondition; AStrict: Boolean): Boolean;
+    function IsEnabled(ARule: TRuleCollectionItem; AOnlyGlobal: Boolean): Boolean; override;
     function Finished: Boolean; override;
     function CloseAtEnd(AStartTagIdx: integer): Boolean; override;
   public
@@ -713,8 +713,8 @@ type
     function ParseInThread: TecParseInThreadResult;
     //procedure CompleteAnalysis;
 
-    function CloseRange(Cond: TecTagBlockCondition; RefTag: integer): Boolean;
-    function DetectTag(Rule: TecTagBlockCondition; RefTag: integer): Boolean;
+    function CloseRange(ACond: TecTagBlockCondition; ARefTag: integer): Boolean;
+    function DetectTag(ARule: TecTagBlockCondition; ARefTag: integer): Boolean;
 
     //property OpenCount: integer read GetOpenedCount;
     //property Opened[Index: integer]: TecTextRange read GetOpened;
@@ -3330,7 +3330,7 @@ begin
 end;
 
 
-function TecClientSyntAnalyzer.CloseRange(Cond: TecTagBlockCondition; RefTag: integer): Boolean;
+function TecClientSyntAnalyzer.CloseRange(ACond: TecTagBlockCondition; ARefTag: integer): Boolean;
 var j: integer;
     b: boolean;
     Range: TecTextRange;
@@ -3341,16 +3341,16 @@ begin
    with Range do
      if Assigned(Rule) then
        begin
-         if Cond.BlockType = btRangeStart then
-           b := Cond.SelfClose and (Rule = Cond)
+         if ACond.BlockType = btRangeStart then
+           b := ACond.SelfClose and (Rule = ACond)
          else
-           b := (Rule.FBlockEndCond = Cond) or (Rule = Cond.FBlockEndCond);
+           b := (Rule.FBlockEndCond = ACond) or (Rule = ACond.FBlockEndCond);
          if b then
            begin
-             if Cond.SameIdent and not TagsSame(RefTag - Cond.IdentIndex, IdentIdx) then Continue;
-             EndIdx := RefTag - Cond.BlockOffset;
-             if (Rule = Cond) and (EndIdx > 0) then Dec(EndIdx); // for self closing
-             FEndCondIndex := RefTag;
+             if ACond.SameIdent and not TagsSame(ARefTag - ACond.IdentIndex, IdentIdx) then Continue;
+             EndIdx := ARefTag - ACond.BlockOffset;
+             if (Rule = ACond) and (EndIdx > 0) then Dec(EndIdx); // for self closing
+             FEndCondIndex := ARefTag;
              if Assigned(Owner.OnCloseTextRange) then
                Owner.OnCloseTextRange(Self, Range, StartIdx, EndIdx);
              FOpenedBlocks.Delete(j);
@@ -3361,17 +3361,17 @@ begin
   Result := False;
 end;
 
-function TecClientSyntAnalyzer.HasOpened(Rule: TRuleCollectionItem; Parent: TecTagBlockCondition; Strict: Boolean): Boolean;
+function TecClientSyntAnalyzer.HasOpened(ARule: TRuleCollectionItem; AParent: TecTagBlockCondition; AStrict: Boolean): Boolean;
 var i: integer;
     prn: TecTagBlockCondition;
 begin
-  if Strict then
+  if AStrict then
     begin
       if FOpenedBlocks.Count > 0 then
         begin
           i := FOpenedBlocks.Count - 1;
           prn := TecTextRange(FOpenedBlocks[i]).Rule;
-          if (Rule is TecTagBlockCondition) and TecTagBlockCondition(Rule).SelfClose and (prn = Rule) then
+          if (ARule is TecTagBlockCondition) and TecTagBlockCondition(ARule).SelfClose and (prn = ARule) then
             Dec(i);
           repeat
             if i < 0 then
@@ -3379,15 +3379,15 @@ begin
             prn := TecTextRange(FOpenedBlocks[i]).Rule;
             Dec(i);
           until (prn = nil) or not prn.IgnoreAsParent;
-          Result := prn = Parent;
-        end else Result := Parent = nil;
+          Result := prn = AParent;
+        end else Result := AParent = nil;
     end
   else
     begin
       Result := True;
-      if Parent = nil then Exit;
+      if AParent = nil then Exit;
       for i := FOpenedBlocks.Count - 1 downto 0 do
-        if TecTextRange(FOpenedBlocks[i]).Rule = Parent then
+        if TecTextRange(FOpenedBlocks[i]).Rule = AParent then
           Exit;
       Result := False;
     end;
@@ -4470,10 +4470,10 @@ begin
     Result := '';
 end;
 
-function TecClientSyntAnalyzer.IsEnabled(Rule: TRuleCollectionItem; OnlyGlobal: Boolean): Boolean;
+function TecClientSyntAnalyzer.IsEnabled(ARule: TRuleCollectionItem; AOnlyGlobal: Boolean): Boolean;
 begin
-  Result := inherited IsEnabled(Rule, OnlyGlobal) and
-      (HasOpened(Rule, Rule.Block, Rule.StrictParent) xor Rule.NotParent);
+  Result := inherited IsEnabled(ARule, AOnlyGlobal) and
+      (HasOpened(ARule, ARule.Block, ARule.StrictParent) xor ARule.NotParent);
 end;
 
 procedure TecClientSyntAnalyzer.TextChangedOnLine(ALine: integer);
@@ -4506,16 +4506,16 @@ begin
   Result := FOpenedBlocks.Count;
 end;
 
-function TecClientSyntAnalyzer.DetectTag(Rule: TecTagBlockCondition;
-  RefTag: integer): Boolean;
+function TecClientSyntAnalyzer.DetectTag(ARule: TecTagBlockCondition;
+  ARefTag: integer): Boolean;
 var
   Tag: PecSyntToken;
 begin
-  Tag := Tags[RefTag];
-  Tag.Rule := Rule;
-  if Rule.TokenType >= 0 then
-    Tag.TokenType := Rule.TokenType;
-  //Tags[RefTag] := Tag; //Alexey: no need with pointer
+  Tag := Tags[ARefTag];
+  Tag.Rule := ARule;
+  if ARule.TokenType >= 0 then
+    Tag.TokenType := ARule.TokenType;
+  //Tags[ARefTag] := Tag; //Alexey: no need with pointer
   Result := True;
 end;
 
