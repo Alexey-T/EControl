@@ -759,6 +759,8 @@ type
 
   TecSeparateBlocksMode = (sbmUnknown, sbmEnabled, sbmDisabled);
 
+  TecTripleState = (etsStateNone, etsStateFalse, etsStateTrue);
+
   { TecSyntAnalyzer }
 
   TecSyntAnalyzer = class(TLoadableComponent)
@@ -818,6 +820,7 @@ type
 
     FSupportsDynamicHighlightInited: boolean;
     FSupportsDynamicHighlight: boolean;
+    FCurlyBrackets: TecTripleState;
 
     procedure LoadExtraData(const AFileName: string);
     procedure InitCommentRules;
@@ -908,6 +911,7 @@ type
     property Deleted: Boolean read FDeleted; //Alexey: used by TecLexerList and CudaText
     procedure MarkAsDeleted; //Alexey: used by TecLexerList
     function SupportsDynamicHighlight: boolean;
+    function SupportsCurlyBrackets: boolean; //Alexey: for CudaText
 
     {
     property MarkedBlock: TecSyntaxFormat read FMarkedBlock write SetMarkedBlock;
@@ -5586,6 +5590,27 @@ begin
   FSupportsDynamicHighlight := Result;
 end;
 
+function TecSyntAnalyzer.SupportsCurlyBrackets: boolean;
+var
+  Rule: TecTagBlockCondition;
+  i: Integer;
+begin
+  if FCurlyBrackets = etsStateNone then
+  begin
+    FCurlyBrackets := etsStateFalse;
+    for i := 0 to BlockRules.Count - 1 do
+    begin
+      Rule := BlockRules[i];
+      if (Rule.DisplayName = '{') and (Rule.BlockEnd = '}') then
+      begin
+        FCurlyBrackets := etsStateTrue;
+        Break;
+      end;
+    end;
+  end;
+
+  Result := FCurlyBrackets = etsStateTrue;
+end;
 
 procedure TecSyntAnalyzer.TokenRuleChanged(Sender: TCollection;
   Item: TSyntCollectionItem);
