@@ -886,7 +886,6 @@ type
     AppliedStylesMap: boolean; //Alexey, for CudaLister
     AskedToApplyLexerMap: boolean; //Alexey, for CudaText
     DisableAutoFold: boolean; //Alexey, disables AutoFolding for comments/strings
-    FoldingExcludesLastLine: boolean; //Alexey, needed for JSON lexer: folding of block can exclude last block line
 
     CommentRangeBegin: string;
     CommentRangeEnd: string;
@@ -4639,10 +4638,7 @@ begin
         secOptions:
           begin
             if SKey='auto_fold' then
-              DisableAutoFold := (SValue<>'1')
-            else
-            if SKey='fold_exclude_line' then
-              FoldingExcludesLastLine := (SValue='1');
+              DisableAutoFold := (SValue<>'1');
           end;
         secNone:
           begin
