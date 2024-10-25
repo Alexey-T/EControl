@@ -58,6 +58,7 @@ type
     PointStart, PointEnd: TPoint;
     constructor Create(AStartPos, AEndPos: integer);
     constructor Create(AStartPos, AEndPos: integer; const APointStart, APointEnd: TPoint);
+    function Length: integer;
     class operator=(const a, b: TRange): boolean;
   end;
 
@@ -136,6 +137,11 @@ begin
   PointStart.Y := -1;
   PointEnd.X := -1;
   PointEnd.Y := -1;
+end;
+
+function TRange.Length: integer;
+begin
+  Result := EndPos - StartPos;
 end;
 
 class operator TRange.=(const a,b: TRange):boolean;
