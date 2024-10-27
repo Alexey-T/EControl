@@ -1423,17 +1423,8 @@ begin
           end;
      end else
      begin
-       {$ifdef EC_CUSTOM_STR_FIND}
-       // gives almost no speedup, max 1-5%
-       Result := StringList_FindWideBuffer(
-         TStringList(FTagList),
-         @Source[Token.Range.StartPos + 1],
-         Token.Range.EndPos - Token.Range.StartPos,
-         N);
-       {$else}
        SToken := Token.GetStr(Source, True);
        Result := (FTagList as TStringList).Find(SToken, N);
-       {$endif}
        if FCondType = tcNotEqual then
          Result := not Result;
      end;
