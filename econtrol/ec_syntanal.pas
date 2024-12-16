@@ -4957,11 +4957,11 @@ begin
                        Dec(NTokenIndex);
                        // make it nice for Python lexer: skip ending "comment" tokens
                        repeat
-                         if NTokenIndex<=0 then Break;
+                         if NTokenIndex <= 0 then Break;
                          Style := Tags[NTokenIndex].Style;
                          if Style=nil then Break;
-                         if Style.TokenKind<>etkComment then Break;
-                         //skip token only if it starts on separate line (CudaText issue #5785)
+                         if Style.TokenKind <> etkComment then Break;
+                         // skip token only if it starts on separate line (CudaText issue #5785)
                          if Tags[NTokenIndex].Range.PointStart.Y > Tags[NTokenIndex-1].Range.PointStart.Y then
                            Dec(NTokenIndex)
                          else
