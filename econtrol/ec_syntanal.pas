@@ -4961,7 +4961,11 @@ begin
                          Style := Tags[NTokenIndex].Style;
                          if Style=nil then Break;
                          if Style.TokenKind<>etkComment then Break;
-                         Dec(NTokenIndex);
+                         //skip token only if it starts on separate line (CudaText issue #5785)
+                         if Tags[NTokenIndex].Range.PointStart.Y > Tags[NTokenIndex-1].Range.PointStart.Y then
+                           Dec(NTokenIndex)
+                         else
+                           Break;
                        until False;
                        Range.EndIdx := NTokenIndex;
                        Break
