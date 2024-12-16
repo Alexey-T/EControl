@@ -4931,7 +4931,9 @@ begin
                      if Style=nil then Break;
                      if Style.TokenKind<>etkComment then Break;
                      if Tags[NTokenIndex].Range.PointStart.Y =
-                        Tags[NTokenIndex-1].Range.PointStart.Y then Break; // fix bug similar to CudaText issue #5785, but at the end of file
+                        Tags[NTokenIndex-1].Range.PointStart.Y then Break;
+                        // fix bug similar to CudaText issue #5785, but at the end of file
+                        // see also another place for #5785
                      Dec(NTokenIndex);
                      bMovedFromEnd := True;
                    end;
@@ -4963,11 +4965,11 @@ begin
                          Style := Tags[NTokenIndex].Style;
                          if Style=nil then Break;
                          if Style.TokenKind <> etkComment then Break;
-                         // skip token only if it starts on separate line (CudaText issue #5785)
-                         if Tags[NTokenIndex].Range.PointStart.Y > Tags[NTokenIndex-1].Range.PointStart.Y then
-                           Dec(NTokenIndex)
-                         else
-                           Break;
+                         // skip token only if it starts on separate line, CudaText issue #5785
+                         // see also another place for #5785
+                         if Tags[NTokenIndex].Range.PointStart.Y =
+                            Tags[NTokenIndex-1].Range.PointStart.Y then Break;
+                         Dec(NTokenIndex)
                        until False;
                        Range.EndIdx := NTokenIndex;
                        Break
