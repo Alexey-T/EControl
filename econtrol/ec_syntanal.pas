@@ -4930,6 +4930,8 @@ begin
                      Style := Tags[NTokenIndex].Style;
                      if Style=nil then Break;
                      if Style.TokenKind<>etkComment then Break;
+                     if Tags[NTokenIndex].Range.PointStart.Y =
+                        Tags[NTokenIndex-1].Range.PointStart.Y then Break; // fix bug similar to CudaText issue #5785, but at the end of file
                      Dec(NTokenIndex);
                      bMovedFromEnd := True;
                    end;
