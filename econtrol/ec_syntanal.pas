@@ -4158,7 +4158,7 @@ var
     while iChar <= NLen do
     begin
       ch := FmtStrNumber[iChar];
-      if (ch >= '0') and (ch <= '9') then begin
+      if IsDigitChar(ch) then begin
         NResult := NResult * 10 + (Ord(ch) - Ord('0'));
         inc(NDigits);
         inc(iChar);
