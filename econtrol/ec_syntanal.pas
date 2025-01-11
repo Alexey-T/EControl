@@ -4132,30 +4132,52 @@ function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
 }
 
 var
-  j, N: integer;
+  j: integer;
 
   function RangeNumber( const FmtStrNumber: ecString; var NumValue: integer ): boolean;
+  //optimized by Alexey to avoid StrToIntDef call
   var
+    NLen, iChar: SizeInt;
+    NDigits, NResult: integer;
     ch: ecChar;
+    bPlus, bMinus: boolean;
   begin
-    N := 0;
     Result := False;
-    while (j + N) <= length( FmtStrNumber ) do
+    NLen := length(FmtStrNumber);
+    NDigits := 0;
+    NResult := 0;
+    bPlus := False;
+    bMinus := False;
+    iChar := j;
+    ch := FmtStrNumber[iChar];
+    bPlus := ch = '+';
+    bMinus := ch = '-';
+    if bPlus or bMinus then
+      inc(iChar);
+
+    while iChar <= NLen do
     begin
-      ch := FmtStrNumber[j + N];
-      if IsDigitChar(ch) or (N = 0) and
-         ((ch = '+') or (ch = '-'))
-         then inc(N) else Break;
+      ch := FmtStrNumber[iChar];
+      if (ch >= '0') and (ch <= '9') then begin
+        NResult := NResult * 10 + (Ord(ch) - Ord('0'));
+        inc(NDigits);
+        inc(iChar);
+      end
+      else
+        Break;
     end;
-    if  N > 0  then  begin
-      NumValue := StrToIntDef( copy( FmtStrNumber, j, N ), 0 );
-      inc( j, N );
+
+    if NDigits > 0 then begin
+      if bMinus then
+        NResult := -NResult;
+      NumValue := NResult;
+      j := iChar;
       Result := True;
     end;
   end;
 
 var
-  i, idx, to_idx: integer;
+  N, i, idx, to_idx: integer;
   rng: TecTextRange;
   LineMode: TecParserLineMode;
   rngtoken, rngResult: ecString;
