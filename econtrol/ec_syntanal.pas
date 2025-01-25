@@ -1169,7 +1169,7 @@ begin
   Close(f);
   {$Pop}
 
-  EditorAdapterExceptionMessage:= 'Exception: '+E.ClassName+', message: '+E.Message;
+  EditorParserExceptionMessage:= 'Exception: '+E.ClassName+', message: '+E.Message;
 end;
 
 procedure TecParserThread.Execute;
@@ -1200,7 +1200,7 @@ begin
         An.FChangeOccured := False;
         Synchronize(ThreadUpdateBuffer);
         Res := An.ParseInThread;
-        EditorAdapterExceptionMessage:= '';
+        EditorParserExceptionMessage:= '';
       except
         on E: Exception do
         begin
