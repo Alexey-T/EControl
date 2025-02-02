@@ -75,11 +75,10 @@ type
     function CompProcForLine(AValuePtr: PRange; ALine: integer): integer;
     function CompLines(AItemIndex, ALine: integer): integer;
   public
+    Modified: Boolean;
     constructor Create(UnionSiblings: Boolean = True);
-    //destructor Destroy; override;
     function IsIndexValid(AIndex: integer): boolean;
-    //property Sorted: boolean read FSorted write FSorted;
-    function Add(const Range: GRange): integer; virtual;
+    function Add(const Range: GRange): integer;
     procedure ClearFromIndex(AIndex: integer);
     procedure ClearFromLine(ALine: integer);
     function InternalGet(AIndex: integer): PGRange; inline;
@@ -171,6 +170,7 @@ function GRangeList<GRange>.Add(const Range: GRange): integer;
 begin
   Result := Count;
   inherited Add(Range);
+  Modified := True;
 end;
 
 (*
@@ -441,7 +441,10 @@ end;
 procedure GRangeList<GRange>.ClearFromIndex(AIndex: integer); inline;
 begin
   if AIndex >= 0 then
+  begin
     DeleteRange(AIndex, Count-1);
+    Modified := True;
+  end;
 end;
 
 
@@ -459,6 +462,7 @@ begin
     else
       ClearFromIndex(idx);
   end;
+  Modified := True;
 end;
 
 function GRangeList<GRange>.InternalGet(AIndex: integer): PGRange;
