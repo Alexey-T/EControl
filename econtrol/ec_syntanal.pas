@@ -6362,7 +6362,7 @@ initialization
   with EControlOptions do
   begin
     MaxLinesWhenParserEnablesFolding := 15*1000;
-    MaxLengthForSZFormat := 40;
+    MaxLengthForSZFormat := 100;
     AutoFoldComments := 0;
     AutoFoldComments_BreakOnEmptyLine := True;
     IndentFolding_CheckBracketsAreClosed := True;
