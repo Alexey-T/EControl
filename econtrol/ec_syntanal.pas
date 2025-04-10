@@ -4146,12 +4146,13 @@ var
     bPlus, bMinus: boolean;
   begin
     Result := False;
-    NLen := length(FmtStrNumber);
+    NLen := Length(FmtStrNumber);
     NDigits := 0;
     NResult := 0;
     bPlus := False;
     bMinus := False;
     iChar := j;
+    if (iChar <= 0) or (iChar > NLen) then Exit;
     ch := FmtStrNumber[iChar];
     bPlus := ch = '+';
     bMinus := ch = '-';
