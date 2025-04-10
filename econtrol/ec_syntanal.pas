@@ -3961,8 +3961,8 @@ begin
     end;
 end;
 
-function RangeNumber(var APos: integer; const FmtStrNumber: ecString; var NumValue: integer): boolean;
-{ by Alexey:
+function RangeNumber(var APos: SizeInt; const FmtStrNumber: ecString; var NumValue: integer): boolean;
+{ changes by Alexey:
 optimized to avoid StrToIntDef call.
 moved out of RangeFormat() scope.
 }
@@ -4180,7 +4180,8 @@ function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
 }
 
 var
-  N, i, j, idx, to_idx: integer;
+  N, i, j, to_idx: SizeInt;
+  idx: integer;
   rng: TecTextRange;
   LineMode: TecParserLineMode;
   rngtoken, rngResult: ecString;
