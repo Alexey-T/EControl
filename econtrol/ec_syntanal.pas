@@ -3961,6 +3961,51 @@ begin
     end;
 end;
 
+function RangeNumber(var APos: integer; const FmtStrNumber: ecString; var NumValue: integer): boolean;
+{ by Alexey:
+optimized to avoid StrToIntDef call.
+moved out of RangeFormat() scope.
+}
+var
+  NLen, iChar: SizeInt;
+  NDigits, NResult: integer;
+  ch: ecChar;
+  bPlus, bMinus: boolean;
+begin
+  Result := False;
+  NLen := Length(FmtStrNumber);
+  NDigits := 0;
+  NResult := 0;
+  bPlus := False;
+  bMinus := False;
+  iChar := APos;
+  if (iChar <= 0) or (iChar > NLen) then Exit;
+  ch := FmtStrNumber[iChar];
+  bPlus := ch = '+';
+  bMinus := ch = '-';
+  if bPlus or bMinus then
+    inc(iChar);
+
+  while iChar <= NLen do begin
+    ch := FmtStrNumber[iChar];
+    if IsDigitChar(ch) then begin
+      NResult := NResult * 10 + (Ord(ch) - Ord('0'));
+      inc(NDigits);
+      inc(iChar);
+    end
+    else
+      Break;
+  end;
+
+  if NDigits > 0 then begin
+    if bMinus then
+      NResult := -NResult;
+    NumValue := NResult;
+    APos := iChar;
+    Result := True;
+  end;
+end;
+
 type
   TecParserLineMode = (plmNone, plmFromStart, plmToEnd, plmExplicitRange);
 
@@ -4135,53 +4180,7 @@ function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
 }
 
 var
-  j: integer;
-
-  function RangeNumber( const FmtStrNumber: ecString; var NumValue: integer ): boolean;
-  //optimized by Alexey to avoid StrToIntDef call
-  var
-    NLen, iChar: SizeInt;
-    NDigits, NResult: integer;
-    ch: ecChar;
-    bPlus, bMinus: boolean;
-  begin
-    Result := False;
-    NLen := Length(FmtStrNumber);
-    NDigits := 0;
-    NResult := 0;
-    bPlus := False;
-    bMinus := False;
-    iChar := j;
-    if (iChar <= 0) or (iChar > NLen) then Exit;
-    ch := FmtStrNumber[iChar];
-    bPlus := ch = '+';
-    bMinus := ch = '-';
-    if bPlus or bMinus then
-      inc(iChar);
-
-    while iChar <= NLen do
-    begin
-      ch := FmtStrNumber[iChar];
-      if IsDigitChar(ch) then begin
-        NResult := NResult * 10 + (Ord(ch) - Ord('0'));
-        inc(NDigits);
-        inc(iChar);
-      end
-      else
-        Break;
-    end;
-
-    if NDigits > 0 then begin
-      if bMinus then
-        NResult := -NResult;
-      NumValue := NResult;
-      j := iChar;
-      Result := True;
-    end;
-  end;
-
-var
-  N, i, idx, to_idx: integer;
+  N, i, j, idx, to_idx: integer;
   rng: TecTextRange;
   LineMode: TecParserLineMode;
   rngtoken, rngResult: ecString;
@@ -4324,7 +4323,7 @@ begin
          rngdir := 0;    // allow for missing <offset>
        end;
      rngoffset := 0;
-     if  not RangeNumber( Result, rngoffset )  then  begin
+     if not RangeNumber(j, Result, rngoffset)  then  begin
        if  rngdir <> 0 then
          Continue;
      end  else
@@ -4399,7 +4398,7 @@ begin
              end;
            rngdir := 0;  // allow for missing <offset>
          end;
-         if  not RangeNumber( Result, rngoffset )  then  begin
+         if not RangeNumber(j, Result, rngoffset)  then  begin
            if  rngdir <> 0 then
              Continue;
          end  else
@@ -4413,7 +4412,7 @@ begin
          IsDigitChar(Result[j+1]) // only positive values !
      then  begin  // we hav a "maximum" range value attached
        inc( j );
-       if  not RangeNumber( Result, rngmax ) then
+       if not RangeNumber(j, Result, rngmax) then
          Continue;
      end;
      // HAW: ... end of added range checking ,
