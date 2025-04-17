@@ -5300,7 +5300,7 @@ begin
             if (Rule.ColumnFrom > 0) or (Rule.ColumnTo > 0) then
               begin
                if lp = 0 then
-                 lp := Client.FBuffer.OffsetToDistanceFromLineStart(APos - 1)+1;
+                 lp := Client.FBuffer.StrToCaret(APos - 1).X + 1;
 
                if (Rule.ColumnFrom > 0) and (lp < Rule.ColumnFrom) or
                   (Rule.ColumnTo > 0) and (lp > Rule.ColumnTo) then
