@@ -1150,6 +1150,8 @@ var
   f: System.Text;
   fn: string;
 begin
+  EditorParserExceptionMessage:= 'Exception: '+E.ClassName+', message: '+E.Message;
+
   {$ifdef windows}
   fn := ExtractFileDir(Application.ExeName)+'\cudatext.error';
   {$else}
@@ -1166,10 +1168,8 @@ begin
   Writeln(f, 'Date: '+DateTimeToStr(Now));
   Writeln(f, 'Exception: '+E.ClassName+', message: '+E.Message);
   DumpExceptionBacktrace(f);
-  Close(f);
+  CloseFile(f);
   {$Pop}
-
-  EditorParserExceptionMessage:= 'Exception: '+E.ClassName+', message: '+E.Message;
 end;
 
 procedure TecParserThread.Execute;
@@ -1205,7 +1205,7 @@ begin
         on E: Exception do
         begin
           _LogException(E);
-          Res := eprBufferInvalidated;
+          Res := eprAppTerminated;
         end;
       end;
 
