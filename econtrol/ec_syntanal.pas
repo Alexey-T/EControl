@@ -19,7 +19,7 @@ unit ec_SyntAnal;
 interface
 
 uses
-  Classes, Graphics, Controls,
+  SysUtils, Classes, Graphics, Controls,
   Contnrs, syncobjs,
   ec_RegExpr,
   ec_StrUtils,
@@ -1035,10 +1035,13 @@ var
     IndentFolding_CheckBracketsAreClosed: boolean;
   end;
 
+procedure AppLogException(E: Exception);
+
+
 implementation
 
 uses
-  SysUtils, Forms, Dialogs, Math;
+  Forms, Dialogs, Math;
 
 const
   //all lexers which need indent-based folding, must have this value
@@ -1145,17 +1148,17 @@ begin
     An.OnUpdateBuffer(nil);
 end;
 
-procedure _LogException(E: Exception);
+procedure AppLogException(E: Exception);
+const
+  cLogFilename = 'cudatext.error';
 var
   f: System.Text;
   fn: string;
 begin
-  EditorParserExceptionMessage:= 'Exception: '+E.ClassName+', message: '+E.Message;
-
   {$ifdef windows}
-  fn := ExtractFileDir(Application.ExeName)+'\cudatext.error';
+  fn := ExtractFileDir(Application.ExeName)+DirectorySeparator+cLogFilename;
   {$else}
-  fn := GetEnvironmentVariable('HOME')+'/cudatext.error';
+  fn := GetEnvironmentVariable('HOME')+DirectorySeparator+cLogFilename;
   {$endif}
 
   AssignFile(f, fn);
@@ -1204,7 +1207,8 @@ begin
       except
         on E: Exception do
         begin
-          _LogException(E);
+          EditorParserExceptionMessage:= 'Exception: '+E.ClassName+', message: '+E.Message;
+          AppLogException(E);
           Res := eprAppTerminated;
         end;
       end;
