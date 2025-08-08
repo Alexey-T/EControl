@@ -1037,6 +1037,9 @@ var
 
 procedure AppLogException(E: Exception);
 
+var
+  EControlErrorLogFilename: string = 'cudatext.error';
+
 
 implementation
 
@@ -1149,16 +1152,14 @@ begin
 end;
 
 procedure AppLogException(E: Exception);
-const
-  cLogFilename = 'cudatext.error';
 var
   f: System.Text;
   fn: string;
 begin
   {$ifdef windows}
-  fn := ExtractFileDir(Application.ExeName)+DirectorySeparator+cLogFilename;
+  fn := ExtractFileDir(Application.ExeName)+DirectorySeparator+EControlErrorLogFilename;
   {$else}
-  fn := GetEnvironmentVariable('HOME')+DirectorySeparator+cLogFilename;
+  fn := GetEnvironmentVariable('HOME')+DirectorySeparator+EControlErrorLogFilename;
   {$endif}
 
   AssignFile(f, fn);
