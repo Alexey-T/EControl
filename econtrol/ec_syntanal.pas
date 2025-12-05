@@ -51,6 +51,7 @@ type
   TecBoundDefEvent = procedure(Sender: TecClientSyntAnalyzer; ARange: TecTextRange;
     var AIndexStart, AIndexEnd: integer) of object;
   TecBlockReopenEvent = procedure(Sender: TObject; ABlockPos: TPoint) of object;
+  TecParseDoneEvent = procedure(Sender: TObject; ATime: integer) of object;
 
   TecParseInThreadResult = (
     eprNormal,
@@ -578,6 +579,8 @@ type
 
   TecParserThread = class(TThread)
   private
+    FTickParseBegin: QWord;
+    FTickParseEnd: QWord;
     procedure ThreadUpdateBuffer;
   public
     An: TecClientSyntAnalyzer;
@@ -646,7 +649,7 @@ type
 
     FStartSepRangeAnal: integer;
     FRepeateAnalysis: Boolean;
-    FOnParseDone: TNotifyEvent;
+    FOnParseDone: TecParseDoneEvent;
     FOnProgressFirst: TNotifyEvent;
     FOnProgressSecond: TNotifyEvent;
     FOnProgressBoth: TNotifyEvent;
@@ -689,14 +692,14 @@ type
     function PriorTokenAt(Pos: integer): integer;
     function FindTokenAt(Pos: integer): integer;
 
-    property OnParseDone: TNotifyEvent read FOnParseDone write FOnParseDone;
+    property OnParseDone: TecParseDoneEvent read FOnParseDone write FOnParseDone;
     property OnProgressFirst: TNotifyEvent read FOnProgressFirst write FOnProgressFirst;
     property OnProgressSecond: TNotifyEvent read FOnProgressSecond write FOnProgressSecond;
     property OnProgressBoth: TNotifyEvent read FOnProgressBoth write FOnProgressBoth;
     property OnUpdateBuffer: TNotifyEvent read FOnUpdateBuffer write FOnUpdateBuffer;
     property OnBlockReopen: TecBlockReopenEvent read FOnBlockReopen write FOnBlockReopen;
 
-    procedure DoParseDone;
+    procedure DoParseDone(ATime: integer);
     procedure DoProgressFirst;
     procedure DoProgressSecond;
     procedure DoProgressBoth;
@@ -1127,7 +1130,7 @@ end;
 
 procedure TecParserThread.ThreadParseDone;
 begin
-  An.DoParseDone;
+  An.DoParseDone(FTickParseEnd-FTickParseBegin);
 end;
 
 procedure TecParserThread.ThreadProgressFirst;
@@ -1195,6 +1198,7 @@ begin
 
     An.EventParseIdle.ResetEvent;
     //Synchronize(DummyProc); //otherwise editor is not highlighted
+    FTickParseBegin:= GetTickCount64;
 
     repeat
       if Terminated then Exit;
@@ -1229,6 +1233,7 @@ begin
       end;
     until False;
 
+    FTickParseEnd:= GetTickCount64;
     if not Terminated and not Application.Terminated then
       Synchronize(ThreadParseDone);
 
@@ -3915,10 +3920,10 @@ begin
   Result := FTagList.FindAt(Pos);
 end;
 
-procedure TecClientSyntAnalyzer.DoParseDone;
+procedure TecClientSyntAnalyzer.DoParseDone(ATime: integer);
 begin
   if Assigned(FOnParseDone) then
-    FOnParseDone(Self);
+    FOnParseDone(Self, ATime);
 end;
 
 procedure TecClientSyntAnalyzer.DoProgressFirst;
