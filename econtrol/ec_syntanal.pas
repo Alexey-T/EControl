@@ -2840,16 +2840,16 @@ begin
   SetString(Result, ResultBuf, PosEnd-APos);
 end;
 
-// True if end of the text
 function TecParserResults.ExtractTag(var FPos: integer; ADisableFolding: Boolean): Boolean;
+// Function returns True if end of the text is reached
 var
   Source: ecString;
   CurToken: TecSyntToken;
   own: TecSyntAnalyzer;
   bTokenExtracted: boolean;
 
-   // Select current lexer
    procedure GetOwner;
+   // Gets current lexer into 'own' variable
    var i, NMatchPos: integer;
        Sub: PecSubLexerRange;
        AnFinal: TecSyntAnalyzer;
