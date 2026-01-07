@@ -2957,7 +2957,7 @@ print(1);
                    //   css`text
                    //   json`text`
                    // Test condition length = 1, otherwise it will be regression: badly parsed Markdown text
-                   if (NMatchLen = 1) then
+                   if (NMatchLen = 1) and (Buffer.FText[FPos] = '`') then
                    begin
                      {
                      // This block was suggested by AI (which? user sent it.) but code makes CurToken of length=0! Invisible token.
