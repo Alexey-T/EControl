@@ -2951,23 +2951,31 @@ print(1);
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
                    Sub.CondEndPos := Sub.Range.EndPos + NMatchPos;
 
-                   // Create a token for the EndExpression so it is styled
-                   // and doesn't get parsed by the parent lexer.
-                   CurToken := TecSyntToken.Create(Sub.Rule,
-                     FPos, FPos + NMatchPos - 1,
-                     FBuffer.StrToCaret(FPos),
-                     FBuffer.StrToCaret(FPos + NMatchPos - 1));
+                   // The following block is needed for lexer JavaScript, for sub-lexer rules:
+                   //   html`text`
+                   //   css`text
+                   //   json`text`
+                   // Test condition length = 1, otherwise it will be regression: badly parsed Markdown text
+                   if (NMatchPos = 1) then
+                   begin
+                     // Create a token for the EndExpression so it is styled
+                     // and doesn't get parsed by the parent lexer.
+                     CurToken := TecSyntToken.Create(Sub.Rule,
+                       FPos, FPos + NMatchPos - 1,
+                       FBuffer.StrToCaret(FPos),
+                       FBuffer.StrToCaret(FPos + NMatchPos - 1));
 
-                   FTagList.Add(CurToken);
-                   UpdateTokenIndexer(CurToken);
+                     FTagList.Add(CurToken);
+                     UpdateTokenIndexer(CurToken);
 
-                   // Advance position past the EndExpression
-                   FPos := FPos + NMatchPos;
-                   FLastAnalPos := FPos;
+                     // Advance position past the EndExpression
+                     FPos := FPos + NMatchPos;
+                     FLastAnalPos := FPos;
 
-                   // Signal that we extracted a token and should return
-                   bTokenExtracted := True;
-                   Exit;
+                     // Signal that we extracted a token and should return
+                     bTokenExtracted := True;
+                     Exit;
+                   end;
                  end;
                // Close ranges which belongs to this sub-lexer range
                CloseAtEnd(FTagList.FindPriorAt(Sub.Range.StartPos));
