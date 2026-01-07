@@ -2846,6 +2846,7 @@ var
   Source: ecString;
   CurToken: TecSyntToken;
   own: TecSyntAnalyzer;
+  bTokenExtracted: boolean;
 
    // Select current lexer
    procedure GetOwner;
@@ -2949,6 +2950,24 @@ print(1);
                    Sub.Range.EndPos := FPos - 1;
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
                    Sub.CondEndPos := Sub.Range.EndPos + NMatchPos;
+
+                   // Create a token for the EndExpression so it is styled
+                   // and doesn't get parsed by the parent lexer.
+                   CurToken := TecSyntToken.Create(Sub.Rule,
+                     FPos, FPos + NMatchPos - 1,
+                     FBuffer.StrToCaret(FPos),
+                     FBuffer.StrToCaret(FPos + NMatchPos - 1));
+
+                   FTagList.Add(CurToken);
+                   UpdateTokenIndexer(CurToken);
+
+                   // Advance position past the EndExpression
+                   FPos := FPos + NMatchPos;
+                   FLastAnalPos := FPos;
+
+                   // Signal that we extracted a token and should return
+                   bTokenExtracted := True;
+                   Exit;
                  end;
                // Close ranges which belongs to this sub-lexer range
                CloseAtEnd(FTagList.FindPriorAt(Sub.Range.StartPos));
@@ -3051,8 +3070,10 @@ var
   bEnded: boolean;
   NNextPos: integer;
 begin
+  bTokenExtracted := False;
   Source := FBuffer.FText;
   GetOwner;
+  if bTokenExtracted then Exit(False);
   if own=nil then
     raise EParserError.Create('GetOwner=nil');
 
@@ -3074,6 +3095,9 @@ begin
 
   TryOpenSubLexer;
   GetOwner;
+
+  if bTokenExtracted then Exit(False);
+
   if own=nil then
     raise EParserError.Create('GetOwner=nil');
 
