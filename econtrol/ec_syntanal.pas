@@ -2851,7 +2851,7 @@ var
    procedure GetOwner;
    // Gets current lexer into 'own' variable
    var
-       iSubLexer, NMatchPos: integer;
+       iSubLexer, NMatchLen: integer;
        Sub: PecSubLexerRange;
        AnFinal: TecSyntAnalyzer;
        MarkerPos: integer;
@@ -2893,9 +2893,9 @@ var
                  FTagList.FindPriorAt(Sub.Range.StartPos),
                  FTagList.Count - 1,
                  1 {AFinalLevel}) then
-                NMatchPos := 2
+                NMatchLen := 2
               else
-                NMatchPos := 0;
+                NMatchLen := 0;
             end
             else
             if (Sub.Rule.StartExpression = '<') and
@@ -2915,28 +2915,28 @@ print(1);
 <div className="note">
 <div className="note">
 
-                  NMatchPos:=1 must be enough, but due to some EControl parser
+                  NMatchLen:=1 must be enough, but due to some EControl parser
                   bug it's not enough, so we assign 2 in some cases.
                   EControl bug is: for closing token '>' of sublexer range, parser
                   parses this token '>' using MDX main lexer instead of sublexer.
                   it's visible on the above snippet.
                   }
                   if Buffer.FText[FPos+1] = #10 then
-                    NMatchPos := 1
+                    NMatchLen := 1
                   else
-                    NMatchPos := 2;
+                    NMatchLen := 2;
                 end
               else
-                NMatchPos := 0;
+                NMatchLen := 0;
             end
             else
-              NMatchPos := Sub.Rule.MatchEnd(Source, FPos);
+              NMatchLen := Sub.Rule.MatchEnd(Source, FPos);
 
-            if NMatchPos > 0 then
+            if NMatchLen > 0 then
              begin
                if Sub.Rule.IncludeBounds then
                  begin
-                   Sub.Range.EndPos := FPos - 1 + NMatchPos;
+                   Sub.Range.EndPos := FPos - 1 + NMatchLen;
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
                    Sub.CondEndPos := Sub.Range.EndPos;
                    own := Sub.FinalSubAnalyzer;
@@ -2950,14 +2950,14 @@ print(1);
                  begin
                    Sub.Range.EndPos := FPos - 1;
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
-                   Sub.CondEndPos := Sub.Range.EndPos + NMatchPos;
+                   Sub.CondEndPos := Sub.Range.EndPos + NMatchLen;
 
                    // The following block is needed for lexer JavaScript, for sub-lexer rules:
                    //   html`text`
                    //   css`text
                    //   json`text`
                    // Test condition length = 1, otherwise it will be regression: badly parsed Markdown text
-                   if (NMatchPos = 1) then
+                   if (NMatchLen = 1) then
                    begin
                      {
                      // This block was suggested by AI (which? user sent it.) but code makes CurToken of length=0! Invisible token.
@@ -2965,9 +2965,9 @@ print(1);
                      // Create a token for the EndExpression so it is styled and doesn't get parsed by the parent lexer
                      CurToken := TecSyntToken.Create(Sub.Rule,
                        FPos,
-                       FPos + NMatchPos - 1,
+                       FPos + NMatchLen - 1,
                        FBuffer.StrToCaret(FPos),
-                       FBuffer.StrToCaret(FPos + NMatchPos - 1)
+                       FBuffer.StrToCaret(FPos + NMatchLen - 1)
                        );
 
                      FTagList.Add(CurToken);
@@ -2975,7 +2975,7 @@ print(1);
                      }
 
                      // Advance position past the EndExpression
-                     Inc(FPos, NMatchPos);
+                     Inc(FPos, NMatchLen);
                      FLastAnalPos := FPos;
 
                      // Signal that we extracted a token and should return
