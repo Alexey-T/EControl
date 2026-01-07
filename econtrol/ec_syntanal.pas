@@ -2850,7 +2850,8 @@ var
 
    procedure GetOwner;
    // Gets current lexer into 'own' variable
-   var i, NMatchPos: integer;
+   var
+       i, NMatchPos: integer;
        Sub: PecSubLexerRange;
        AnFinal: TecSyntAnalyzer;
        MarkerPos: integer;
@@ -2958,18 +2959,23 @@ print(1);
                    // Test condition length = 1, otherwise it will be regression: badly parsed Markdown text
                    if (NMatchPos = 1) then
                    begin
-                     // Create a token for the EndExpression so it is styled
-                     // and doesn't get parsed by the parent lexer.
+                     {
+                     // This block was suggested by AI (which? user sent it.) but code makes CurToken of length=0! Invisible token.
+
+                     // Create a token for the EndExpression so it is styled and doesn't get parsed by the parent lexer
                      CurToken := TecSyntToken.Create(Sub.Rule,
-                       FPos, FPos + NMatchPos - 1,
+                       FPos,
+                       FPos + NMatchPos - 1,
                        FBuffer.StrToCaret(FPos),
-                       FBuffer.StrToCaret(FPos + NMatchPos - 1));
+                       FBuffer.StrToCaret(FPos + NMatchPos - 1)
+                       );
 
                      FTagList.Add(CurToken);
                      UpdateTokenIndexer(CurToken);
+                     }
 
                      // Advance position past the EndExpression
-                     FPos := FPos + NMatchPos;
+                     Inc(FPos, NMatchPos);
                      FLastAnalPos := FPos;
 
                      // Signal that we extracted a token and should return
