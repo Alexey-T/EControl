@@ -2851,7 +2851,7 @@ var
    procedure GetOwner;
    // Gets current lexer into 'own' variable
    var
-       i, NMatchPos: integer;
+       iSubLexer, NMatchPos: integer;
        Sub: PecSubLexerRange;
        AnFinal: TecSyntAnalyzer;
        MarkerPos: integer;
@@ -2859,9 +2859,9 @@ var
        MarkerStr: string;
    begin
     own := FOwner;
-    for i := FSubLexerBlocks.Count - 1 downto 0 do
+    for iSubLexer := FSubLexerBlocks.Count - 1 downto 0 do
      begin
-       Sub := FSubLexerBlocks.InternalGet(i);
+       Sub := FSubLexerBlocks.InternalGet(iSubLexer);
        if FPos > Sub.Range.StartPos then
         if Sub.Range.EndPos = -1 then
           begin
