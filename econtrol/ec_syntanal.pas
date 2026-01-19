@@ -5084,11 +5084,6 @@ begin
 
   FGrammaParser := TGrammaAnalyzer.Create;
   FGrammaParser.OnChange := GrammaChanged;
-
-  {
-  FIdleAppendDelayInit := 50;
-  FIdleAppendDelay := 200;
-  }
 end;
 
 destructor TecSyntAnalyzer.Destroy;
@@ -5149,8 +5144,6 @@ begin
     RestartFromLineStart := Src.RestartFromLineStart;
     ParseEndOfLine := Src.ParseEndOfLine;
     LineComment := Src.LineComment;
-    //FIdleAppendDelayInit := Src.FIdleAppendDelayInit;
-    //FIdleAppendDelay := Src.FIdleAppendDelay;
     for i := 0 to BlockRules.Count - 1 do
      begin
        BlockRules[i].BlockEnd := Src.BlockRules[i].BlockEnd;
