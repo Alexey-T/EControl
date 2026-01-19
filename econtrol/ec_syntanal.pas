@@ -880,15 +880,13 @@ type
     procedure Change; dynamic;
     property SeparateBlockAnalysis: Boolean read GetSeparateBlocks;
   public
-    //CommentRule1: TecTagBlockCondition; //Alexey
-    //CommentRule2: TecTagBlockCondition; //Alexey
-
     SpecialKinds: array of boolean; //Alexey: holds True for each TokenKind for indent-based folding
     IndentBasedFolding: boolean; //Alexey
     AppliedSyntaxTheme: string; //Alexey, for CudaText; name of applied syntax-theme, e.g. 'Sub'
     AppliedStylesMap: boolean; //Alexey, for CudaLister
     AskedToApplyLexerMap: boolean; //Alexey, for CudaText
     DisableAutoFold: boolean; //Alexey, disables AutoFolding for comments/strings
+    DecrementFolding: boolean; //auto-exclude last line from folding-range, when more tokens exist on that line
 
     CommentRangeBegin: string;
     CommentRangeEnd: string;
@@ -4617,6 +4615,8 @@ var
   Section: (secNone, secComments, secMap, secRef, secOptions);
   N: integer;
 begin
+  DecrementFolding := True;
+
   {$Push}
   {$IOChecks off}
   AssignFile(F, AFileName);
@@ -4704,6 +4704,8 @@ begin
           begin
             if SKey='auto_fold' then
               DisableAutoFold := (SValue<>'1');
+            if SKey='decrement_fold' then
+              DecrementFolding := (SValue='1');
           end;
         secNone:
           begin
@@ -4739,26 +4741,6 @@ procedure TecSyntAnalyzer.InitCommentRules;
 begin
   //fixes AV in BlockRules.OnChange, on loading Python file, with thread-parser
   BlockRules.OnChange := nil;
-
-  {
-  //2023.03: commented the block, AutoFoldComment range has Rule=nil
-
-  CommentRule1 := BlockRules.Add;
-  CommentRule1.DisplayName := 'auto_cmt_1';
-  CommentRule1.Enabled := False;
-  CommentRule1.BlockType := btRangeStart;
-  CommentRule1.DisplayInTree := False;
-  CommentRule1.NoEndRule := False;
-  CommentRule1.CollapseFmt := '// ...';
-
-  CommentRule2 := BlockRules.Add;
-  CommentRule2.DisplayName := 'auto_cmt_2';
-  CommentRule2.Enabled := False;
-  CommentRule2.BlockType := btRangeEnd;
-  CommentRule2.DisplayInTree := False;
-
-  CommentRule1.BlockEndCond := CommentRule2;
-  }
 end;
 
 procedure TecSyntAnalyzer.UpdateSpecialKinds; //Alexey
