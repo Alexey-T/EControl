@@ -886,7 +886,7 @@ type
     AppliedStylesMap: boolean; //Alexey, for CudaLister
     AskedToApplyLexerMap: boolean; //Alexey, for CudaText
     DisableAutoFold: boolean; //Alexey, disables AutoFolding for comments/strings
-    DecrementFolding: boolean; //auto-exclude last line from folding-range, when more tokens exist on that line
+    FoldingExcludeLastLine: boolean; //auto-exclude last line from folding-range, when more tokens exist on that line
 
     CommentRangeBegin: string;
     CommentRangeEnd: string;
@@ -4615,7 +4615,7 @@ var
   Section: (secNone, secComments, secMap, secRef, secOptions);
   N: integer;
 begin
-  DecrementFolding := True;
+  FoldingExcludeLastLine := True;
 
   {$Push}
   {$IOChecks off}
@@ -4704,8 +4704,8 @@ begin
           begin
             if SKey='auto_fold' then
               DisableAutoFold := (SValue<>'1');
-            if SKey='decrement_fold' then
-              DecrementFolding := (SValue='1');
+            if SKey='fold_exclude_line' then
+              FoldingExcludeLastLine := (SValue='1');
           end;
         secNone:
           begin
