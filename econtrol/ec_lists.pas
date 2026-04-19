@@ -399,6 +399,9 @@ begin
     else
     if Diff = 0 then
     begin
+      //fix bug when not _all_ ranges containing line was removed in TecClientSyntAnalyzer.ClearSublexerRangesFromLine
+      while (I > 0) and (PRange(InternalItems[I - 1])^.PointStart.Y = ALine) do
+        Dec(I);
       Exit(I);
     end
     else
