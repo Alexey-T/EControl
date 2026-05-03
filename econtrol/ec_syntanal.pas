@@ -2601,7 +2601,9 @@ begin
       KindIndexer[i] := NKind;
     end;
 
-    bCheckAutoFold := bMultiLineToken;
+    bCheckAutoFold :=
+      bMultiLineToken and
+      (NLine2 - NLine + 1 >= EControlOptions.AutoFoldComments);
   end;
 
   if bCheckAutoFold then
