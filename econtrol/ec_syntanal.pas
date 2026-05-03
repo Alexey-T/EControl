@@ -2553,6 +2553,7 @@ var
   NNewLen, NPrevLen, NTokenIndex, NLine, NLine2: integer;
   NKind: TecTokenKind;
   i: integer;
+  bMultiLineToken, bCheckAutoFold: boolean;
 begin
   NNewLen := FBuffer.Count;
   NPrevLen := Length(TokenIndexer);
@@ -2570,6 +2571,8 @@ begin
   NLine := Token.Range.PointStart.Y;
   NLine2 := Token.Range.PointEnd.Y;
   if NLine >= NNewLen then Exit;
+  bMultiLineToken := NLine2 > NLine;
+  bCheckAutoFold := False;
 
   if Assigned(Token.Style) then
     NKind := Token.Style.TokenKind
@@ -2587,18 +2590,25 @@ begin
       KindIndexer[i] := NKind;
     end;
 
+    bCheckAutoFold := True;
+  end
+  else
+  begin
+    //for next lines of multi-line token
+    for i := NLine + 1 to NLine2 do
+    begin
+      TokenIndexer[i] := NTokenIndex;
+      KindIndexer[i] := NKind;
+    end;
+
+    bCheckAutoFold := bMultiLineToken;
+  end;
+
+  if bCheckAutoFold then
     if (NKind <> etkOther) then
       if (EControlOptions.AutoFoldComments > 1) and Assigned(FOnAddRangeSimple) then
         if not Owner.DisableAutoFold then
           FindAutoFoldRange(Token, NKind);
-  end
-  else
-  //for next lines of multi-line token
-  for i := NLine + 1 to NLine2 do
-  begin
-    TokenIndexer[i] := NTokenIndex;
-    KindIndexer[i] := NKind;
-  end;
 end;
 
 procedure TecParserResults.FindAutoFoldRange(constref Token: TecSyntToken; ATokenKind: TecTokenKind);
