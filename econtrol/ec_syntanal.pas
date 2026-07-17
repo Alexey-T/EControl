@@ -4065,7 +4065,13 @@ begin
 end;
 
 type
-  TecParserLineMode = (plmNone, plmFromStart, plmToEnd, plmExplicitRange, plmToLefterBracket);
+  TecParserLineMode = (
+    plmNone,
+    plmFromStart,
+    plmToEnd,
+    plmExplicitRange,
+    plmToLefterBracket // Alexey: added for CSS lexer to support FmtStr='%SK1'
+    );
 
 function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
   Range: TecTextRange): ecString;
