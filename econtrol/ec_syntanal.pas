@@ -4535,8 +4535,7 @@ begin
                    end;
                end;
                Dec(N);
-               if N < 1 then Break;
-             until False;
+             until N < 1;
              to_idx := Tags[idx].Range.EndPos;
              Insert(FBuffer.SubString(N + 1, Min(to_idx - N, EControlOptions.MaxLengthForSZFormat)), Result, i);
            end;
