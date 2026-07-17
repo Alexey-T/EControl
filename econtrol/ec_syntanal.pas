@@ -4070,8 +4070,8 @@ type
     plmFromStart,
     plmToEnd,
     plmExplicitRange,
-    plmToLefterBracket // Alexey: added for CSS lexer to support FmtStr='%SK1',
-                       // from the lefter nearest '}' to token_1
+    plmFromLefterBracket // Alexey: added for CSS lexer to support FmtStr='%SK1',
+                         // from the lefter nearest '}' or line-break to token_1
     );
 
 function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
@@ -4359,7 +4359,7 @@ begin
      case UpCase(char(Ord(Result[j]))) of
        'L': LineMode := plmFromStart; // from start of line
        'Z': LineMode := plmToEnd; // to end of line
-       'K': LineMode := plmToLefterBracket; // Alexey
+       'K': LineMode := plmFromLefterBracket; // Alexey
        else LineMode := plmNone;
      end;
      if LineMode <> plmNone then Inc(j);
@@ -4532,7 +4532,7 @@ begin
               Insert(rngResult, Result, i);
             end;
 
-         plmToLefterBracket: // Alexey
+         plmFromLefterBracket: // Alexey
            begin
              N := Tags[idx].Range.StartPos;
              repeat
