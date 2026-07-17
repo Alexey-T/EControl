@@ -4521,13 +4521,25 @@ begin
               end;
               Insert(rngResult, Result, i);
             end;
-         plmToLefterBracket:
+         plmToLefterBracket: // Alexey
            begin
-              N := Tags[idx].Range.StartPos;
-              while (N > 1) and (FBuffer.FText[N] <> #10) and (FBuffer.FText[N] <> '}') do Dec(N);
-              to_idx := Tags[idx].Range.EndPos;
-              Insert(FBuffer.SubString(N + 1, Min(to_idx - N, EControlOptions.MaxLengthForSZFormat)), Result, i);
-            end;
+             N := Tags[idx].Range.StartPos;
+             repeat
+               case FBuffer.FText[N] of
+                 #10, '}':
+                   Break;
+                 '/': // stop on comment /*....*/
+                   begin
+                     if (N > 1) and (FBuffer.FText[N - 1] = '*') then
+                       Break;
+                   end;
+               end;
+               Dec(N);
+               if N < 1 then Break;
+             until False;
+             to_idx := Tags[idx].Range.EndPos;
+             Insert(FBuffer.SubString(N + 1, Min(to_idx - N, EControlOptions.MaxLengthForSZFormat)), Result, i);
+           end;
          // HAW: ... end of token range accumulation mode
       end;
 
