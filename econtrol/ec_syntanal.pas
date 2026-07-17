@@ -4070,7 +4070,8 @@ type
     plmFromStart,
     plmToEnd,
     plmExplicitRange,
-    plmToLefterBracket // Alexey: added for CSS lexer to support FmtStr='%SK1'
+    plmToLefterBracket // Alexey: added for CSS lexer to support FmtStr='%SK1',
+                       // from the lefter nearest '}' to token_1
     );
 
 function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
