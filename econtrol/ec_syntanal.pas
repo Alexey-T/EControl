@@ -4250,6 +4250,10 @@ begin
   Result := FmtStr;
   if Range=nil then Exit;
 
+  //2026.07:
+  //this 'CSS' value is not used in CudaText lexers anymore
+  //CudaText CSS lexer now uses value %SK1 to format nodes
+  (*
   //special handling for CSS lexer
   if FmtStr='CSS' then
   begin
@@ -4284,6 +4288,7 @@ begin
     Result := Copy(Buffer.FText, i+1, to_idx-i);
     Exit;
   end;
+  *)
 
    // HAW: obsolete -> to_idx := Length(Result);
    //      the variable "j" is now always pointing to the next character to process.
