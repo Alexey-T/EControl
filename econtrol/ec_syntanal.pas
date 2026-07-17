@@ -4521,7 +4521,7 @@ begin
               N := Tags[idx].Range.StartPos;
               while (N > 1) and (FBuffer.FText[N] <> #10) and (FBuffer.FText[N] <> '}') do Dec(N);
               to_idx := Tags[idx].Range.EndPos;
-              Insert(FBuffer.SubString(N + 1, Min(to_idx - N + 1, EControlOptions.MaxLengthForSZFormat)), Result, i);
+              Insert(FBuffer.SubString(N + 1, Min(to_idx - N, EControlOptions.MaxLengthForSZFormat)), Result, i);
             end;
          // HAW: ... end of token range accumulation mode
       end;
