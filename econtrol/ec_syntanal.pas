@@ -4065,7 +4065,7 @@ begin
 end;
 
 type
-  TecParserLineMode = (plmNone, plmFromStart, plmToEnd, plmExplicitRange);
+  TecParserLineMode = (plmNone, plmFromStart, plmToEnd, plmExplicitRange, plmToLefterBracket);
 
 function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
   Range: TecTextRange): ecString;
@@ -4347,6 +4347,7 @@ begin
      case UpCase(char(Ord(Result[j]))) of
        'L': LineMode := plmFromStart; // from start of line
        'Z': LineMode := plmToEnd; // to end of line
+       'K': LineMode := plmToLefterBracket; // Alexey
        else LineMode := plmNone;
      end;
      if LineMode <> plmNone then Inc(j);
@@ -4514,6 +4515,13 @@ begin
                 inc( idx );  dec( rngmax );
               end;
               Insert(rngResult, Result, i);
+            end;
+         plmToLefterBracket:
+           begin
+              N := Tags[idx].Range.StartPos;
+              while (N > 1) and (FBuffer.FText[N] <> #10) and (FBuffer.FText[N] <> '}') do Dec(N);
+              to_idx := Tags[idx].Range.EndPos;
+              Insert(FBuffer.SubString(N + 1, Min(to_idx - N + 1, EControlOptions.MaxLengthForSZFormat)), Result, i);
             end;
          // HAW: ... end of token range accumulation mode
       end;
