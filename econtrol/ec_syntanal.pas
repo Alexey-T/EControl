@@ -4488,12 +4488,14 @@ begin
        case LineMode of
          plmNone:
             Insert(TagStr[idx], Result, i);
+
          plmFromStart:
            begin
               N := FBuffer.OffsetToOffsetOfLineStart(Tags[idx].Range.StartPos);
               to_idx := Tags[idx].Range.EndPos;
               Insert(FBuffer.SubString(N, Min(to_idx - N + 1, EControlOptions.MaxLengthForSZFormat)), Result, i);
             end;
+
          plmToEnd:
            begin
               to_idx := FBuffer.OffsetToOffsetOfLineEnd(Tags[idx].Range.EndPos);
@@ -4502,6 +4504,7 @@ begin
               // Alexey: fixed SubString offset/len (2 patches)
               // Alexey: limited SubString length, for CudaText issue #3796
             end;
+
          // HAW: new mode = 3 --- explicit range  idx...to_idx
          plmExplicitRange:
            if  (to_idx >= 0)  and  (to_idx < FTagList.Count)  then  begin
@@ -4521,6 +4524,7 @@ begin
               end;
               Insert(rngResult, Result, i);
             end;
+
          plmToLefterBracket: // Alexey
            begin
              N := Tags[idx].Range.StartPos;
@@ -4539,11 +4543,7 @@ begin
              to_idx := Tags[idx].Range.EndPos;
              Insert(FBuffer.SubString(N + 1, Min(to_idx - N, EControlOptions.MaxLengthForSZFormat)), Result, i);
            end;
-         // HAW: ... end of token range accumulation mode
       end;
-
-      // HAW: I am currently not sure how to handle the "stylename" property here
-      //      ... will be added, when available
     end;
 end;
 
