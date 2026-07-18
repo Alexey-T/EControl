@@ -4536,18 +4536,18 @@ begin
            begin
              N := Tags[idx].Range.StartPos;
              if N > 0 then
-             repeat
-               case FBuffer.FText[N] of
-                 #10, '}':
-                   Break;
-                 '/': // stop on comment /*....*/
-                   begin
-                     if (N > 1) and (FBuffer.FText[N - 1] = '*') then
-                       Break;
-                   end;
-               end;
-               Dec(N);
-             until N < 1;
+               repeat
+                 case FBuffer.FText[N] of
+                   #10, '}':
+                     Break;
+                   '/': // stop on comment /*....*/
+                     begin
+                       if (N > 1) and (FBuffer.FText[N - 1] = '*') then
+                         Break;
+                     end;
+                 end;
+                 Dec(N);
+               until N < 1;
              to_idx := Tags[idx].Range.EndPos;
              Insert(FBuffer.SubString(N + 1, Min(to_idx - N, EControlOptions.MaxLengthForSZFormat)), Result, i);
            end;
