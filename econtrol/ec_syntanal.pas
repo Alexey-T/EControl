@@ -4535,8 +4535,8 @@ begin
          plmFromLefterBracket: // Alexey
            begin
              N := Tags[idx].Range.StartPos;
-             if N > 0 then
-               repeat
+             while N > 0 do
+               begin
                  case FBuffer.FText[N] of
                    #10, '}':
                      Break;
@@ -4547,7 +4547,7 @@ begin
                      end;
                  end;
                  Dec(N);
-               until N < 1;
+               end;
              to_idx := Tags[idx].Range.EndPos;
              Insert(FBuffer.SubString(N + 1, Min(to_idx - N, EControlOptions.MaxLengthForSZFormat)), Result, i);
            end;
