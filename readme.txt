@@ -27,4 +27,4 @@ Michael in 2015 worked at the Yaroslavl State University, seems had an office th
 econtrol.ru site (deleted in 2024).
 
 Copyright (c) 2004-2015, EControl
-Copyright for changed/added parts (c) 2015-2026 Alexey Torgashin, UVviewsoft.com
+Copyright for changed/added parts (c) 2015-2026 Alexey Yu. Torgashin (UVviewsoft.com)
