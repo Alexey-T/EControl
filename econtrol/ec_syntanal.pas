@@ -2868,10 +2868,10 @@ function TecParserResults.ExtractTag(var APos: integer; ADisableFolding: Boolean
 var
   Source: ecString;
   CurToken: TecSyntToken;
-  own: TecSyntAnalyzer;
+  CurLexer: TecSyntAnalyzer;
   bTokenExtracted: boolean;
 
-   procedure GetOwner;
+   procedure GetOwnerLexer;
    // Gets current lexer into 'own' variable
    var
        iSubLexer, NMatchLen: integer;
@@ -2881,7 +2881,7 @@ var
        MarkerChar: WideChar;
        MarkerStr: string;
    begin
-    own := FOwner;
+    CurLexer := FOwner;
     for iSubLexer := FSubLexerBlocks.Count - 1 downto 0 do
      begin
        Sub := FSubLexerBlocks.InternalGet(iSubLexer);
@@ -2962,12 +2962,12 @@ print(1);
                    Sub.Range.EndPos := APos - 1 + NMatchLen;
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
                    Sub.CondEndPos := Sub.Range.EndPos;
-                   own := Sub.FinalSubAnalyzer;
-                   if own = nil then
+                   CurLexer := Sub.FinalSubAnalyzer;
+                   if CurLexer = nil then
                    begin
-                     own := Sub.Rule.SyntAnalyzer;
-                     if own = nil then
-                       own := FOwner;
+                     CurLexer := Sub.Rule.SyntAnalyzer;
+                     if CurLexer = nil then
+                       CurLexer := FOwner;
                    end;
                  end else
                  begin
@@ -3010,24 +3010,24 @@ print(1);
                CloseAtEnd(FTagList.FindPriorAt(Sub.Range.StartPos));
              end else
              begin
-               own := Sub.FinalSubAnalyzer;
-               if own = nil then
+               CurLexer := Sub.FinalSubAnalyzer;
+               if CurLexer = nil then
                begin
-                 own := Sub.Rule.SyntAnalyzer;
-                 if own = nil then
-                   own := FOwner;
+                 CurLexer := Sub.Rule.SyntAnalyzer;
+                 if CurLexer = nil then
+                   CurLexer := FOwner;
                end;
                Exit;
              end;
           end else
        if APos < Sub.Range.EndPos then
          begin
-           own := Sub.FinalSubAnalyzer;
-           if own = nil then
+           CurLexer := Sub.FinalSubAnalyzer;
+           if CurLexer = nil then
            begin
-             own := Sub.Rule.SyntAnalyzer;
-             if own = nil then
-               own := FOwner;
+             CurLexer := Sub.Rule.SyntAnalyzer;
+             if CurLexer = nil then
+               CurLexer := FOwner;
            end;
            Exit;
          end;
@@ -3090,12 +3090,12 @@ print(1);
        Rule: TecSubAnalyzerRule;
    begin
      Result := False;
-     for i := 0 to own.SubAnalyzers.Count - 1 do
+     for i := 0 to CurLexer.SubAnalyzers.Count - 1 do
      begin
-       Rule := own.SubAnalyzers[i];
+       Rule := CurLexer.SubAnalyzers[i];
        if CanOpen(Rule) then Exit(True);
      end;
-     if own <> FOwner then
+     if CurLexer <> FOwner then
        for i := 0 to FOwner.SubAnalyzers.Count - 1 do
        begin
          Rule := FOwner.SubAnalyzers[i];
@@ -3109,17 +3109,18 @@ var
 begin
   bTokenExtracted := False;
   Source := FBuffer.FText;
-  GetOwner;
+  CurLexer := nil;
+  GetOwnerLexer;
   if bTokenExtracted then Exit(False);
-  if own=nil then
-    raise EParserError.Create('GetOwner=nil');
+  if CurLexer=nil then
+    raise EParserError.Create('GetOwnerLexer=nil');
 
   // we had 2 calls of TryOpenSublexer, but this first one is not needed
   //TryOpenSubLexer;
 
-  if own.SkipSpaces then
+  if CurLexer.SkipSpaces then
   begin
-    if own.ParseEndOfLine then
+    if CurLexer.ParseEndOfLine then
       bEnded := SkipSpacesNoLineBreak(Source, APos)
     else
       bEnded := SkipSpacesAndBreaks(Source, APos);
@@ -3131,19 +3132,19 @@ begin
   if Result then Exit;
 
   TryOpenSubLexer;
-  GetOwner;
+  GetOwnerLexer;
 
   if bTokenExtracted then Exit(False);
 
-  if own=nil then
+  if CurLexer=nil then
     raise EParserError.Create('GetOwner=nil');
 
-  CurToken := FOwner.GetToken(Self, Source, APos, own <> FOwner);
+  CurToken := FOwner.GetToken(Self, Source, APos, CurLexer <> FOwner);
   if not Buffer.Valid then
     Exit;
-  if (own <> FOwner) and (CurToken.Range.StartPos < 0) then
+  if (CurLexer <> FOwner) and (CurToken.Range.StartPos < 0) then
   begin
-    CurToken := own.GetToken(Self, Source, APos, False);
+    CurToken := CurLexer.GetToken(Self, Source, APos, False);
     if not Buffer.Valid then
       Exit;
   end;
@@ -3173,15 +3174,15 @@ begin
 
     if not FOwner.SeparateBlockAnalysis then
      begin
-      FOwner.SelectTokenFormat(Self, Source, ADisableFolding, own <> FOwner);
-      if own <> FOwner then
-        own.SelectTokenFormat(Self, Source, ADisableFolding, False);
+      FOwner.SelectTokenFormat(Self, Source, ADisableFolding, CurLexer <> FOwner);
+      if CurLexer <> FOwner then
+        CurLexer.SelectTokenFormat(Self, Source, ADisableFolding, False);
      end else
 //    if not IsIdle then
      begin  // Only for first iteration of analysis
-      FOwner.HighlightKeywords(Self, Source, own <> FOwner);
-      if own <> FOwner then
-        own.HighlightKeywords(Self, Source, False);
+      FOwner.HighlightKeywords(Self, Source, CurLexer <> FOwner);
+      if CurLexer <> FOwner then
+        CurLexer.HighlightKeywords(Self, Source, False);
      end;
     APos := CurToken.Range.EndPos + 1;
    end;
