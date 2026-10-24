@@ -3123,13 +3123,12 @@ begin
     raise EParserError.Create('GetOwnerLexer=nil');
 
   CurToken := FOwner.GetToken(Self, Source, APos, CurLexer <> FOwner);
-  if not Buffer.Valid then
-    Exit;
+  if not Buffer.Valid then Exit;
+
   if (CurLexer <> FOwner) and (CurToken.Range.StartPos < 0) then
   begin
     CurToken := CurLexer.GetToken(Self, Source, APos, False);
-    if not Buffer.Valid then
-      Exit;
+    if not Buffer.Valid then Exit;
   end;
 
   if CurToken.Range.StartPos < 0 then  // no token
