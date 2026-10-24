@@ -1536,7 +1536,7 @@ end;
 
 function TecConditionCollection.GetItem(Index: integer): TecSingleTagCondition;
 begin
-  Result := (inherited Items[Index]) as TecSingleTagCondition;
+  Result := TecSingleTagCondition(inherited Items[Index]);
 end;
 
 function TecConditionCollection.GetOwner: TPersistent;
@@ -1617,24 +1617,38 @@ end;
 
 function TecTagBlockCondition.Check(const Source: ecString;
   Tags: TecClientSyntAnalyzer; N: integer; var RefIdx: integer): Boolean;
-var i, offs, idx, skipped, skip_cond: integer;
+var i, offs, idx, skipped, skip_cond, NConditions: integer;
+    Cond: TecSingleTagCondition;
 begin
+  Result := False;
+  offs := CheckOffset;
+  // Most block rules start with a token-type condition. If the current token
+  // cannot satisfy it, avoid the lock and the full condition-list traversal.
+  if (offs = 0) and (N > 0) and (FConditions.Count > 0) then
+  begin
+    Cond := FConditions[0];
+    if (Cond.FTokenTypes <> 0) and
+       (Cond.FCondType in [tcStrictMask, tcMask, tcEqual]) and
+       (((1 shl Tags[N - 1].TokenType) and Cond.FTokenTypes) = 0) then
+      Exit;
+  end;
   FCriSec.Enter;
   try
-    Result := False;
-    offs := CheckOffset;
     skipped := 0;
     skip_cond := 0;
     i := 0;
-    while i < ConditionList.Count do
+    NConditions := ConditionList.Count;
+    while i < NConditions do
     begin
       idx := N - 1 - i - offs - skipped + skip_cond;
-      if (ConditionList[i].CondType = tcSkip) and (i < ConditionList.Count - 1)
+      Cond := ConditionList[i];
+      if (Cond.CondType = tcSkip) and (i < NConditions - 1)
          and (ConditionList[i+1].CondType <> tcSkip) then
         begin
           inc(i);
           inc(skip_cond);
-          while (idx >= 0) and not ConditionList[i].CheckToken(Source, Tags[idx]) do
+          Cond := ConditionList[i];
+          while (idx >= 0) and not Cond.CheckToken(Source, Tags[idx]) do
           begin
             if not ConditionList[i - 1].CheckToken(Source, Tags[idx]) then
               Exit;
@@ -1643,14 +1657,13 @@ begin
           end;
           if idx < 0 then Exit;
         end;
-      with ConditionList[i] do
-        if (idx < 0) or not CheckToken(Source, Tags[idx]) then Exit;
+      if (idx < 0) or not Cond.CheckToken(Source, Tags[idx]) then Exit;
       inc(i);
     end;
 
-    Result := ConditionList.Count > 0;
+    Result := NConditions > 0;
     //if FRefToCondEnd then
-    RefIdx := N - ConditionList.Count - offs - skipped + skip_cond;
+    RefIdx := N - NConditions - offs - skipped + skip_cond;
     //else
     //  RefIdx := N - 1 - offs;
   finally
@@ -2049,7 +2062,7 @@ end;
 
 function TecBlockRuleCollection.GetItem(Index: integer): TecTagBlockCondition;
 begin
-  Result := inherited Items[Index] as TecTagBlockCondition;
+  Result := TecTagBlockCondition(inherited Items[Index]);
 end;
 
 { TecTokenRule }
@@ -2331,7 +2344,7 @@ end;
 
 function TecTokenRuleCollection.GetItem(Index: integer): TecTokenRule;
 begin
-  Result := inherited Items[Index] as TecTokenRule;
+  Result := TecTokenRule(inherited Items[Index]);
 end;
 
 { TecParserResults }
@@ -4582,8 +4595,9 @@ end;
 
 function TecClientSyntAnalyzer.IsEnabled(ARule: TRuleCollectionItem; AOnlyGlobal: Boolean): Boolean;
 begin
-  Result := inherited IsEnabled(ARule, AOnlyGlobal) and
-      (HasOpened(ARule, ARule.Block, ARule.StrictParent) xor ARule.NotParent);
+  Result := inherited IsEnabled(ARule, AOnlyGlobal);
+  if Result and (ARule.NotParent or ARule.StrictParent or Assigned(ARule.Block)) then
+    Result := HasOpened(ARule, ARule.Block, ARule.StrictParent) xor ARule.NotParent;
 end;
 
 procedure TecClientSyntAnalyzer.TextChangedOnLine(ALine: integer);

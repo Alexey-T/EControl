@@ -1588,7 +1588,11 @@ end;
 
 function TecRegExpr.Match(const InputString: UCString; var aPos: integer; Back: Boolean): Boolean;
 begin
-  Result := Compile; // ensure compiling and validity
+  // Hot path: a valid expression is compiled only once. Avoid entering Compile
+  // (and its exception frame) for every token-rule match.
+  Result := Assigned(FProgRoot) and (TreRootNode(FProgRoot).FList.Count > 0);
+  if not Result then
+    Result := Compile; // ensure compiling and validity
   if Result then
     begin
       if aPos < 1 then

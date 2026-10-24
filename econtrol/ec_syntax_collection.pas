@@ -147,7 +147,7 @@ end;
 
 function TSyntCollection.GetItems(Index: integer): TSyntCollectionItem;
 begin
-  Result := (inherited Items[Index]) as TSyntCollectionItem;
+  Result := TSyntCollectionItem(inherited Items[Index]);
 end;
 
 function TSyntCollection.GetOwner: TPersistent;
