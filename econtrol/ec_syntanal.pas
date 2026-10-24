@@ -304,8 +304,8 @@ type
   public
     constructor Create(Collection: TCollection); override;
     destructor Destroy; override;
-    function Check(const Source: ecString; Tags: TecClientSyntAnalyzer;
-                   N: integer;  var RefIdx: integer): Boolean;
+    function Check(const Source: ecString; ATags: TecClientSyntAnalyzer;
+                   ATagIndex: integer; var ARefIndex: integer): Boolean;
     property BlockEndCond: TecTagBlockCondition read FBlockEndCond write SetBlockEndCond;
     property TreeItemStyleObj: TecSyntaxFormat read FTreeItemStyleObj;
     property TreeGroupStyleObj: TecSyntaxFormat read FTreeGroupStyleObj;
@@ -1616,7 +1616,7 @@ begin
 end;
 
 function TecTagBlockCondition.Check(const Source: ecString;
-  Tags: TecClientSyntAnalyzer; N: integer; var RefIdx: integer): Boolean;
+  ATags: TecClientSyntAnalyzer; ATagIndex: integer; var ARefIndex: integer): Boolean;
 var i, offs, idx, skipped, skip_cond, NConditions: integer;
     Cond: TecSingleTagCondition;
 begin
@@ -1624,12 +1624,12 @@ begin
   offs := CheckOffset;
   // Most block rules start with a token-type condition. If the current token
   // cannot satisfy it, avoid the lock and the full condition-list traversal.
-  if (offs = 0) and (N > 0) and (FConditions.Count > 0) then
+  if (offs = 0) and (ATagIndex > 0) and (FConditions.Count > 0) then
   begin
     Cond := FConditions[0];
     if (Cond.FTokenTypes <> 0) and
        (Cond.FCondType in [tcStrictMask, tcMask, tcEqual]) and
-       (((1 shl Tags[N - 1].TokenType) and Cond.FTokenTypes) = 0) then
+       (((1 shl ATags[ATagIndex - 1].TokenType) and Cond.FTokenTypes) = 0) then
       Exit;
   end;
   FCriSec.Enter;
@@ -1640,7 +1640,7 @@ begin
     NConditions := ConditionList.Count;
     while i < NConditions do
     begin
-      idx := N - 1 - i - offs - skipped + skip_cond;
+      idx := ATagIndex - 1 - i - offs - skipped + skip_cond;
       Cond := ConditionList[i];
       if (Cond.CondType = tcSkip) and (i < NConditions - 1)
          and (ConditionList[i+1].CondType <> tcSkip) then
@@ -1648,24 +1648,24 @@ begin
           inc(i);
           inc(skip_cond);
           Cond := ConditionList[i];
-          while (idx >= 0) and not Cond.CheckToken(Source, Tags[idx]) do
+          while (idx >= 0) and not Cond.CheckToken(Source, ATags[idx]) do
           begin
-            if not ConditionList[i - 1].CheckToken(Source, Tags[idx]) then
+            if not ConditionList[i - 1].CheckToken(Source, ATags[idx]) then
               Exit;
             dec(idx);
             inc(skipped);
           end;
           if idx < 0 then Exit;
         end;
-      if (idx < 0) or not Cond.CheckToken(Source, Tags[idx]) then Exit;
+      if (idx < 0) or not Cond.CheckToken(Source, ATags[idx]) then Exit;
       inc(i);
     end;
 
     Result := NConditions > 0;
     //if FRefToCondEnd then
-    RefIdx := N - NConditions - offs - skipped + skip_cond;
+    ARefIndex := ATagIndex - NConditions - offs - skipped + skip_cond;
     //else
-    //  RefIdx := N - 1 - offs;
+    //  ARefIndex := ATagIndex - 1 - offs;
   finally
     FCriSec.Leave;
   end;
