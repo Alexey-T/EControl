@@ -520,7 +520,7 @@ type
     FOnAddRangeSimple: TecOnAddRangeSimple; //Alexey
 
     function GetLastPos: integer;
-    function ExtractTag(var FPos: integer; ADisableFolding: Boolean): Boolean;
+    function ExtractTag(var APos: integer; ADisableFolding: Boolean): Boolean;
     function GetTags(Index: integer): PecSyntToken;
     function GetSubLexerRangeCount: integer;
 
@@ -2863,7 +2863,7 @@ begin
   SetString(Result, ResultBuf, PosEnd-APos);
 end;
 
-function TecParserResults.ExtractTag(var FPos: integer; ADisableFolding: Boolean): Boolean;
+function TecParserResults.ExtractTag(var APos: integer; ADisableFolding: Boolean): Boolean;
 // Function returns True if end of the text is reached
 var
   Source: ecString;
@@ -2885,7 +2885,7 @@ var
     for iSubLexer := FSubLexerBlocks.Count - 1 downto 0 do
      begin
        Sub := FSubLexerBlocks.InternalGet(iSubLexer);
-       if FPos > Sub.Range.StartPos then
+       if APos > Sub.Range.StartPos then
         if Sub.Range.EndPos = -1 then
           begin
             // try close sub lexer
@@ -2912,7 +2912,7 @@ var
             if (Sub.Rule.StartExpression = '\{') and
               (Sub.Rule.EndExpression = '\}') then
             begin
-              if (Buffer.FText[FPos] = '}') and CheckBracketsClosed_Curly(
+              if (Buffer.FText[APos] = '}') and CheckBracketsClosed_Curly(
                  FTagList.FindPriorAt(Sub.Range.StartPos),
                  FTagList.Count - 1,
                  1 {AFinalLevel}) then
@@ -2924,7 +2924,7 @@ var
             if (Sub.Rule.StartExpression = '<') and
               (Sub.Rule.EndExpression = '>') then
             begin
-              if (Buffer.FText[FPos] = '>') and CheckBracketsClosed_Angle(
+              if (Buffer.FText[APos] = '>') and CheckBracketsClosed_Angle(
                  FTagList.FindPriorAt(Sub.Range.StartPos),
                  FTagList.Count - 1,
                  1 {AFinalLevel}) then
@@ -2944,7 +2944,7 @@ print(1);
                   parses this token '>' using MDX main lexer instead of sublexer.
                   it's visible on the above snippet.
                   }
-                  if Buffer.FText[FPos+1] = #10 then
+                  if Buffer.FText[APos+1] = #10 then
                     NMatchLen := 1
                   else
                     NMatchLen := 2;
@@ -2953,13 +2953,13 @@ print(1);
                 NMatchLen := 0;
             end
             else
-              NMatchLen := Sub.Rule.MatchEnd(Source, FPos);
+              NMatchLen := Sub.Rule.MatchEnd(Source, APos);
 
             if NMatchLen > 0 then
              begin
                if Sub.Rule.IncludeBounds then
                  begin
-                   Sub.Range.EndPos := FPos - 1 + NMatchLen;
+                   Sub.Range.EndPos := APos - 1 + NMatchLen;
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
                    Sub.CondEndPos := Sub.Range.EndPos;
                    own := Sub.FinalSubAnalyzer;
@@ -2971,7 +2971,7 @@ print(1);
                    end;
                  end else
                  begin
-                   Sub.Range.EndPos := FPos - 1;
+                   Sub.Range.EndPos := APos - 1;
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
                    Sub.CondEndPos := Sub.Range.EndPos + NMatchLen;
 
@@ -2980,17 +2980,17 @@ print(1);
                    //   css`text
                    //   json`text`
                    // Test condition length = 1, otherwise it will be regression: badly parsed Markdown text
-                   if (NMatchLen = 1) and (Buffer.FText[FPos] = '`') then
+                   if (NMatchLen = 1) and (Buffer.FText[APos] = '`') then
                    begin
                      {
                      // This block was suggested by AI (which? user sent it.) but code makes CurToken of length=0! Invisible token.
 
                      // Create a token for the EndExpression so it is styled and doesn't get parsed by the parent lexer
                      CurToken := TecSyntToken.Create(Sub.Rule,
-                       FPos,
-                       FPos + NMatchLen - 1,
-                       FBuffer.StrToCaret(FPos),
-                       FBuffer.StrToCaret(FPos + NMatchLen - 1)
+                       APos,
+                       APos + NMatchLen - 1,
+                       FBuffer.StrToCaret(APos),
+                       FBuffer.StrToCaret(APos + NMatchLen - 1)
                        );
 
                      FTagList.Add(CurToken);
@@ -2998,8 +2998,8 @@ print(1);
                      }
 
                      // Advance position past the EndExpression
-                     Inc(FPos, NMatchLen);
-                     FLastAnalPos := FPos;
+                     Inc(APos, NMatchLen);
+                     FLastAnalPos := APos;
 
                      // Signal that we extracted a token and should return
                      bTokenExtracted := True;
@@ -3020,7 +3020,7 @@ print(1);
                Exit;
              end;
           end else
-       if FPos < Sub.Range.EndPos then
+       if APos < Sub.Range.EndPos then
          begin
            own := Sub.FinalSubAnalyzer;
            if own = nil then
@@ -3057,9 +3057,9 @@ print(1);
    begin
      Result := IsEnabled(Rule, False) and (Rule.SyntAnalyzer <> nil);
      if not Result then Exit;
-     Result := Rule.FromTextBegin and (FPos = 1);
+     Result := Rule.FromTextBegin and (APos = 1);
      if Result then N := 0 else
-                    N := Rule.MatchStart(Source, FPos);
+                    N := Rule.MatchStart(Source, APos);
      Result := Result or (N > 0);
      if not Result then Exit;
      // To prevent repeated opening
@@ -3067,7 +3067,7 @@ print(1);
      if NCnt > 0 then
      begin
        SubPtr := FSubLexerBlocks.InternalGet(NCnt - 1);
-       if (SubPtr.Range.EndPos = FPos - 1) and
+       if (SubPtr.Range.EndPos = APos - 1) and
           (SubPtr.Rule = Rule) then Exit;
      end;
 
@@ -3075,11 +3075,11 @@ print(1);
 
      FillChar(sub, SizeOf(sub), 0);
      sub.Rule := Rule;
-     sub.CondStartPos := FPos - 1;
+     sub.CondStartPos := APos - 1;
      if Rule.IncludeBounds then
-       sub.Range.StartPos := FPos - 1
+       sub.Range.StartPos := APos - 1
      else
-       sub.Range.StartPos := FPos + N - 1;
+       sub.Range.StartPos := APos + N - 1;
      sub.Range.PointStart := FBuffer.StrToCaret(sub.Range.StartPos);
      sub.Reopen;
      FSubLexerBlocks.Add(sub);
@@ -3120,12 +3120,12 @@ begin
   if own.SkipSpaces then
   begin
     if own.ParseEndOfLine then
-      bEnded := SkipSpacesNoLineBreak(Source, FPos)
+      bEnded := SkipSpacesNoLineBreak(Source, APos)
     else
-      bEnded := SkipSpacesAndBreaks(Source, FPos);
+      bEnded := SkipSpacesAndBreaks(Source, APos);
   end
   else
-    bEnded := FPos > Length(Source);
+    bEnded := APos > Length(Source);
 
   Result := bEnded;
   if Result then Exit;
@@ -3138,31 +3138,31 @@ begin
   if own=nil then
     raise EParserError.Create('GetOwner=nil');
 
-  CurToken := FOwner.GetToken(Self, Source, FPos, own <> FOwner);
+  CurToken := FOwner.GetToken(Self, Source, APos, own <> FOwner);
   if not Buffer.Valid then
     Exit;
   if (own <> FOwner) and (CurToken.Range.StartPos < 0) then
   begin
-    CurToken := own.GetToken(Self, Source, FPos, False);
+    CurToken := own.GetToken(Self, Source, APos, False);
     if not Buffer.Valid then
       Exit;
   end;
 
   if CurToken.Range.StartPos < 0 then  // no token
    begin
-     NNextPos := FPos;
-     SkipSpacesNoLineBreak(Source, NNextPos); // Alexey: needed for huge space-only lines, where Inc(FPos) is very slow
-     if NNextPos > FPos then
-       FPos := NNextPos
+     NNextPos := APos;
+     SkipSpacesNoLineBreak(Source, NNextPos); // Alexey: needed for huge space-only lines, where Inc(APos) is very slow
+     if NNextPos > APos then
+       APos := NNextPos
      else
-       Inc(FPos);
+       Inc(APos);
    end else
    begin
     CheckIntersect;
     SaveState;
 
     // Alexey: Pascal lexer finds surrogate pairs and makes too short tokens (1 wordchar) from them
-    if (CurToken.Range.EndPos-CurToken.Range.StartPos = 1) and IsCharSurrogateHigh(Source[FPos]) then
+    if (CurToken.Range.EndPos-CurToken.Range.StartPos = 1) and IsCharSurrogateHigh(Source[APos]) then
     begin
       CurToken.Range.EndPos += 1;
       CurToken.Range.PointEnd.X += 1;
@@ -3183,9 +3183,9 @@ begin
       if own <> FOwner then
         own.HighlightKeywords(Self, Source, False);
      end;
-    FPos := CurToken.Range.EndPos + 1;
+    APos := CurToken.Range.EndPos + 1;
    end;
-   FLastAnalPos := FPos;
+   FLastAnalPos := APos;
 end;
 
 function TecParserResults.AnalyzerAtPos(APos: integer; ABlocks: TecSubLexerRanges): TecSyntAnalyzer;
@@ -3749,17 +3749,17 @@ end;
 
 procedure TecClientSyntAnalyzer.ParseToPos(APos: integer);
 var
-  FPos: integer;
+  FTempPos: integer;
   bDisableFolding: boolean;
 begin
   if FBuffer.TextLength = 0 then Exit;
   if FFinished then Exit;
-  FPos := GetLastPos;
+  FTempPos := GetLastPos;
   bDisableFolding := GetDisabledFolding;
 
-  while FPos - 1 <= APos + 1 do
+  while FTempPos - 1 <= APos + 1 do
    begin
-     if ExtractTag(FPos, bDisableFolding) then
+     if ExtractTag(FTempPos, bDisableFolding) then
      begin
        if not FOwner.SeparateBlockAnalysis then
          Finished;
