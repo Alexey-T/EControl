@@ -1417,7 +1417,7 @@ begin
        SToken := Token.GetStr(Source, True); // Alexey
 
        //it was try/except around this block - bad! Alexey
-         for i := 0 to FTagList.Count - 1 do
+       for i := 0 to FTagList.Count - 1 do
           begin
             ReObj := TecRegExpr(FRegexes[i]);
             if FCondType = tcMask then
@@ -1435,7 +1435,7 @@ begin
      end else
      begin
        SToken := Token.GetStr(Source, True);
-       Result := (FTagList as TStringList).Find(SToken, N);
+       Result := (FTagList as TStringList).Find(UTF8Encode(SToken), N);
        if FCondType = tcNotEqual then
          Result := not Result;
      end;
