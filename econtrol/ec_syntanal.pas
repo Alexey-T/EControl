@@ -442,20 +442,6 @@ type
     property Items[Index: integer]: TecSubAnalyzerRule read GetItem; default;
   end;
 
-  { TecCodeTemplate }
-
-  TecCodeTemplate = class(TCollectionItem)
-  end;
-
-  TecCodeTemplates = class(TOwnedCollection)
-  private
-    function GetItem(Index: integer): TecCodeTemplate;
-  public
-    constructor Create(AOwner: TPersistent);
-    function Add: TecCodeTemplate;
-    property Items[Index: integer]: TecCodeTemplate read GetItem; default;
-  end;
-
 // *******************************************************************
 //  Parser classes
 //
@@ -766,7 +752,6 @@ type
     FTokenRules: TecTokenRuleCollection;
     FBlockRules: TecBlockRuleCollection;
     FBlockRules_Detecters: array of TecTagBlockCondition; //Alexey
-    FCodeTemplates: TecCodeTemplates;
     FExtentions: string;
     FLexerName: string;
     FCoping: Boolean;
@@ -797,6 +782,7 @@ type
     FSupportsDynamicHighlight: boolean;
     FCurlyBrackets: TecTripleState;
 
+    procedure ReadCodeTemplates(Reader: TReader);
     procedure LoadExtraData(const AFileName: string);
     procedure InitCommentRules;
     procedure SetSampleText(const Value: TStrings);
@@ -805,7 +791,6 @@ type
     procedure BlocksChanged(Sender: TCollection; Item: TSyntCollectionItem);
     procedure SubLexRuleChanged(Sender: TCollection; Item: TSyntCollectionItem);
     procedure SetBlockRules(const Value: TecBlockRuleCollection);
-    procedure SetCodeTemplates(const Value: TecCodeTemplates);
     procedure SetTokenRules(const Value: TecTokenRuleCollection);
     procedure SetFormats(const Value: TecStylesCollection);
     function GetUniqueName(const Base: string): string;
@@ -834,6 +819,7 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Change; dynamic;
     property SeparateBlockAnalysis: Boolean read GetSeparateBlocks;
+    procedure DefineProperties(Filer: TFiler); override;
   public
     SpecialKinds: array of boolean; //Alexey: holds True for each TokenKind for indent-based folding
     IndentBasedFolding: boolean; //Alexey
@@ -877,7 +863,6 @@ type
     property Formats: TecStylesCollection read FFormats write SetFormats;
     property TokenRules: TecTokenRuleCollection read FTokenRules write SetTokenRules;
     property BlockRules: TecBlockRuleCollection read FBlockRules write SetBlockRules;
-    property CodeTemplates: TecCodeTemplates read FCodeTemplates write SetCodeTemplates;
     property SubAnalyzers: TecSubAnalyzerRules read FSubAnalyzers write SetSubAnalyzers;
     property SampleText: TStrings read FSampleText write SetSampleText;
 
@@ -903,6 +888,8 @@ type
     property Charset: TFontCharSet read FCharset write FCharset; // Alexey
     property AlwaysSyncBlockAnal: Boolean read FAlwaysSyncBlockAnal write SetAlwaysSyncBlockAnal default False;
   end;
+
+  { TLibSyntAnalyzer }
 
   TLibSyntAnalyzer = class(TecSyntAnalyzer)
   protected
@@ -4583,6 +4570,25 @@ end;
 
 { TecSyntAnalyzer }
 
+procedure TecSyntAnalyzer.DefineProperties(Filer: TFiler);
+begin
+  inherited;
+  // Register CodeTemplates as virtual property to support old CudaText lexers with "CodeTemplates = <>".
+  // - ReadData  = ReadCodeTemplates (skips value on reading)
+  // - WriteData = nil               (never write it)
+  // - HasData   = False             (Filer won't write property to stream)
+  Filer.DefineProperty('CodeTemplates', ReadCodeTemplates, nil, False);
+end;
+
+procedure TecSyntAnalyzer.ReadCodeTemplates(Reader: TReader);
+begin
+  // TReader.SkipValue correctly 'eats' value of any type, including vaCollection,
+  // so both will be readable:
+  //   CodeTemplates = <>
+  //   CodeTemplates = < item ... end >
+  Reader.SkipValue;
+end;
+
 procedure TecSyntAnalyzer.LoadExtraData(const AFileName: string);
 const
   //Utf8Bom = #$EF#$BB#$BF;
@@ -5048,7 +5054,6 @@ begin
   FSubAnalyzers.SyntOwner := Self;
   FSubAnalyzers.OnChange := SubLexRuleChanged;
 
-  FCodeTemplates := TecCodeTemplates.Create(Self);
   FSkipSpaces := True;
 
   FNotes := TStringList.Create;
@@ -5071,7 +5076,6 @@ begin
   FreeAndNil(FSampleText);
   FreeAndNil(FBlockRules);
   FreeAndNil(FTokenRules);
-  FreeAndNil(FCodeTemplates);
   FreeAndNil(FTokenTypeNames);
   FreeAndNil(FSubAnalyzers);
   FreeAndNil(FNotes);
@@ -5097,7 +5101,6 @@ begin
     Formats := Src.Formats;
     BlockRules := Src.BlockRules;
     TokenRules := Src.TokenRules;
-    CodeTemplates := Src.CodeTemplates;
     SubAnalyzers := Src.SubAnalyzers;
     TokenTypeNames := Src.TokenTypeNames;
     Notes := Src.Notes;
@@ -5458,12 +5461,6 @@ begin
   ClearClientContents;
 end;
 
-procedure TecSyntAnalyzer.SetCodeTemplates(const Value: TecCodeTemplates);
-begin
-  FCodeTemplates.Assign(Value);
-  ClearClientContents;
-end;
-
 procedure TecSyntAnalyzer.SetTokenRules(const Value: TecTokenRuleCollection);
 begin
   FTokenRules.Assign(Value);
@@ -5744,23 +5741,6 @@ begin
     DetectBlockSeparate;
     ClearClientContents;
    end;
-end;
-
-{ TecCodeTemplates }
-
-function TecCodeTemplates.Add: TecCodeTemplate;
-begin
-  Result := TecCodeTemplate(inherited Add);
-end;
-
-constructor TecCodeTemplates.Create(AOwner: TPersistent);
-begin
-  inherited Create(AOwner, TecCodeTemplate);
-end;
-
-function TecCodeTemplates.GetItem(Index: integer): TecCodeTemplate;
-begin
-  Result := TecCodeTemplate(inherited Items[Index]);
 end;
 
 { TecPublicData }
