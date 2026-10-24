@@ -445,21 +445,6 @@ type
   { TecCodeTemplate }
 
   TecCodeTemplate = class(TCollectionItem)
-  private
-    FName: string;
-    FDescription: string;
-    FAdvanced: boolean;
-    FCode: TStrings;
-  protected
-    function GetDisplayName: string; override;
-  public
-    constructor Create(Collection: TCollection); override;
-    destructor Destroy; override;
-  published
-    property Name: string read FName write FName;
-    property Description: string read FDescription write FDescription;
-    property Advanced: Boolean read FAdvanced write FAdvanced;
-    property Code: TStrings read FCode;
   end;
 
   TecCodeTemplates = class(TOwnedCollection)
@@ -5925,54 +5910,6 @@ begin
     ClearClientContents;
    end;
 end;
-
-{
-function TecSyntAnalyzer.GetCollapseStyleName: string;
-begin
-  Result := GetStyleName(FCollapseStyleName, FCollapseStyle);
-end;
-
-procedure TecSyntAnalyzer.SetCollapseStyleName(const Value: string);
-begin
-  if csLoading in ComponentState then
-    FCollapseStyleName := Value
-  else
-    FCollapseStyle := TecSyntaxFormat(FFormats.ItemByName(Value));
-end;
-
-procedure TecSyntAnalyzer.SetCollapseStyle(const Value: TecSyntaxFormat);
-begin
-  if FCollapseStyle <> Value then
-    begin
-      FCollapseStyle := Value;
-      UpdateClients;
-      Change;
-    end;
-end;
-}
-
-{ TecCodeTemplate }
-
-constructor TecCodeTemplate.Create(Collection: TCollection);
-begin
-  inherited;
-  FName := '';
-  FDescription := '';
-  FAdvanced := False;
-  FCode := TStringList.Create;
-end;
-
-destructor TecCodeTemplate.Destroy;
-begin
-  FreeAndNil(FCode);
-  inherited;
-end;
-
-function TecCodeTemplate.GetDisplayName: string;
-begin
-  Result := FName;
-end;
-
 
 { TecCodeTemplates }
 
