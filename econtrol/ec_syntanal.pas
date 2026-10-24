@@ -870,7 +870,7 @@ type
     procedure UpdateSpecialKinds; //Alexey
   protected
     function GetToken(Client: TecParserResults; const Source: ecString;
-                       APos: integer; OnlyGlobal: Boolean): TecSyntToken; virtual;
+                       APos: integer; AOnlyGlobal: Boolean): TecSyntToken; virtual;
     procedure HighlightKeywords(Client: TecParserResults; const Source: ecString;
                        OnlyGlobal: Boolean); virtual;
     procedure SelectTokenFormat(Client: TecParserResults; const Source: ecString;
@@ -5329,7 +5329,7 @@ begin
 end;
 
 function TecSyntAnalyzer.GetToken(Client: TecParserResults; const Source: ecString;
-                              APos: integer; OnlyGlobal: Boolean): TecSyntToken;
+                              APos: integer; AOnlyGlobal: Boolean): TecSyntToken;
 var i, N, lp: integer;
     Rule: TecTokenRule;
     PntStart, PntEnd: TPoint;
@@ -5348,17 +5348,19 @@ begin
                APos + N - 1,
                Client.Buffer.StrToCaret(APos-1),
                Client.Buffer.StrToCaret(APos+N-1)
-               );
+               )
+      else
+        Result := Default(TecSyntToken);
       Exit;
     end;
 
   lp := 0;
   for i := 0 to FTokenRules.Count - 1 do
     begin
-      if not Client.Buffer.Valid then
-        Exit;
+      if not Client.Buffer.Valid then Exit;
+
       Rule := FTokenRules[i];
-      if Client.IsEnabled(Rule, OnlyGlobal) then
+      if Client.IsEnabled(Rule, AOnlyGlobal) then
           begin
             if (Rule.ColumnFrom > 0) or (Rule.ColumnTo > 0) then
               begin
