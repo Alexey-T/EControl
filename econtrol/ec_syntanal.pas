@@ -5330,7 +5330,7 @@ end;
 
 function TecSyntAnalyzer.GetToken(Client: TecParserResults; const Source: ecString;
                               APos: integer; AOnlyGlobal: Boolean): TecSyntToken;
-var i, N, lp: integer;
+var NRuleIndex, NLen, NPosInLine: integer;
     Rule: TecTokenRule;
     PntStart, PntEnd: TPoint;
 begin
@@ -5339,59 +5339,63 @@ begin
 
   if Assigned(FOnParseToken) then
     begin
-      N := 0;
+      NLen := 0;
       Rule := nil;
-      FOnParseToken(Client, Source, APos, N, Rule);
+      FOnParseToken(Client, Source, APos, NLen, Rule);
       if Assigned(Rule) then
         Result := TecSyntToken.Create(Rule,
                APos - 1,
-               APos + N - 1,
+               APos + NLen - 1,
                Client.Buffer.StrToCaret(APos-1),
-               Client.Buffer.StrToCaret(APos+N-1)
+               Client.Buffer.StrToCaret(APos+NLen-1)
                )
       else
         Result := Default(TecSyntToken);
       Exit;
     end;
 
-  lp := 0;
-  for i := 0 to FTokenRules.Count - 1 do
+  NPosInLine := 0;
+  for NRuleIndex := 0 to FTokenRules.Count - 1 do
     begin
-      if not Client.Buffer.Valid then Exit;
+      if not Client.Buffer.Valid then
+      begin
+        Result := Default(TecSyntToken);
+        Exit;
+      end;
 
-      Rule := FTokenRules[i];
+      Rule := FTokenRules[NRuleIndex];
       if Client.IsEnabled(Rule, AOnlyGlobal) then
           begin
             if (Rule.ColumnFrom > 0) or (Rule.ColumnTo > 0) then
               begin
-               if lp = 0 then
-                 lp := Client.FBuffer.StrToCaret(APos - 1).X + 1;
+               if NPosInLine = 0 then
+                 NPosInLine := Client.FBuffer.StrToCaret(APos - 1).X + 1;
 
-               if (Rule.ColumnFrom > 0) and (lp < Rule.ColumnFrom) or
-                  (Rule.ColumnTo > 0) and (lp > Rule.ColumnTo) then
+               if (Rule.ColumnFrom > 0) and (NPosInLine < Rule.ColumnFrom) or
+                  (Rule.ColumnTo > 0) and (NPosInLine > Rule.ColumnTo) then
                   Continue;
               end;
-            N := Rule.Match(Source, APos);
+            NLen := Rule.Match(Source, APos);
             if Assigned(Rule.OnMatchToken) then
-              Rule.OnMatchToken(Rule, Client, Source, APos, N);
-            if N > 0 then
+              Rule.OnMatchToken(Rule, Client, Source, APos, NLen);
+            if NLen > 0 then
               begin
                 Client.ApplyStates(Rule);
 
                 PntStart := Client.Buffer.StrToCaret(APos-1);
 
                 //optimization: if token is short, get PntEnd simpler
-                if PntStart.X + N >= Client.Buffer.LineLength(PntStart.Y) then
-                  PntEnd := Client.Buffer.StrToCaret(APos+N-1)
+                if PntStart.X + NLen >= Client.Buffer.LineLength(PntStart.Y) then
+                  PntEnd := Client.Buffer.StrToCaret(APos+NLen-1)
                 else
                 begin
                   PntEnd.Y := PntStart.Y;
-                  PntEnd.X := PntStart.X + N;
+                  PntEnd.X := PntStart.X + NLen;
                 end;
 
                 Result := TecSyntToken.Create(Rule,
                        APos - 1,
-                       APos + N - 1,
+                       APos + NLen - 1,
                        PntStart,
                        PntEnd
                        );
