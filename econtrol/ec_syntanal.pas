@@ -776,19 +776,6 @@ type
     FFullRefreshSize: integer;
 
     FDummyString: string;
-    {
-    FMarkedBlock: TecSyntaxFormat;
-    FMarkedBlockName: string;
-    FSearchMatch: TecSyntaxFormat;
-    FSearchMatchName: string;
-    FCurrentLine: TecSyntaxFormat;
-    FCurrentLineName: string;
-    FDefStyle: TecSyntaxFormat;
-    FDefStyleName: string;
-    FCollapseStyle: TecSyntaxFormat;
-    FCollapseStyleName: string;
-    }
-
     FNotes: TStrings;
     FInternal: boolean;
     FRestartFromLineStart: Boolean;
@@ -826,23 +813,6 @@ type
     procedure SetSubAnalyzers(const Value: TecSubAnalyzerRules);
     procedure SetTokenTypeNames(const Value: TStrings);
     function GetStyleName(const AName: string; const AStyle: TecSyntaxFormat): string;
-    {
-    procedure SetMarkedBlock(const Value: TecSyntaxFormat);
-    function GetMarkedBlockName: string;
-    procedure SetMarkedBlockName(const Value: string);
-    procedure SetSearchMatch(const Value: TecSyntaxFormat);
-    function GetSearchMatchStyle: string;
-    procedure SetSearchMatchStyle(const Value: string);
-    procedure SetCurrentLine(const Value: TecSyntaxFormat);
-    function GetCurrentLineStyle: string;
-    procedure SetCurrentLineStyle(const Value: string);
-    procedure SetDefStyle(const Value: TecSyntaxFormat);
-    function GetDefaultStyleName: string;
-    procedure SetDefaultStyleName(const Value: string);
-    function GetCollapseStyleName: string;
-    procedure SetCollapseStyleName(const Value: string);
-    procedure SetCollapseStyle(const Value: TecSyntaxFormat);
-    }
     procedure SetNotes(const Value: TStrings);
     procedure SetParseEndOfLine(const Value: Boolean);
     procedure TokenNamesChanged(Sender: TObject);
@@ -898,14 +868,6 @@ type
     function SupportsDynamicHighlight: boolean;
     function SupportsCurlyBrackets: boolean; //Alexey: for CudaText
 
-    {
-    property MarkedBlock: TecSyntaxFormat read FMarkedBlock write SetMarkedBlock;
-    property SearchMatch: TecSyntaxFormat read FSearchMatch write SetSearchMatch;
-    property CurrentLine: TecSyntaxFormat read FCurrentLine write SetCurrentLine;
-    property DefStyle: TecSyntaxFormat read FDefStyle write SetDefStyle;
-    property CollapseStyle: TecSyntaxFormat read FCollapseStyle write SetCollapseStyle;
-    }
-
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnGetCollapseRange: TecBoundDefEvent read FOnGetCollapseRange write FOnGetCollapseRange;
     property OnCloseTextRange: TecBoundDefEvent read FOnCloseTextRange write FOnCloseTextRange;
@@ -922,13 +884,6 @@ type
     property TokenTypeNames: TStrings read FTokenTypeNames write SetTokenTypeNames;
     property Gramma: TGrammaAnalyzer read FGrammaParser write SetGrammar;
 
-    {
-    property MarkedBlockStyle: string read GetMarkedBlockName write SetMarkedBlockName;
-    property SearchMatchStyle: string read GetSearchMatchStyle write SetSearchMatchStyle;
-    property CurrentLineStyle: string read GetCurrentLineStyle write SetCurrentLineStyle;
-    property DefaultStyleName: string read GetDefaultStyleName write SetDefaultStyleName;
-    property CollapseStyleName: string read GetCollapseStyleName write SetCollapseStyleName;
-    }
     property MarkedBlockStyle: string read FDummyString write FDummyString;
     property SearchMatchStyle: string read FDummyString write FDummyString;
     property CurrentLineStyle: string read FDummyString write FDummyString;
@@ -5093,15 +5048,6 @@ begin
   FSubAnalyzers.SyntOwner := Self;
   FSubAnalyzers.OnChange := SubLexRuleChanged;
 
-  {
-  FMarkedBlock := FFormats.Add as TecSyntaxFormat;
-  FMarkedBlock.BgColor := clHighlight;
-  FMarkedBlock.Font.Color := clHighlightText;
-  FMarkedBlock.FormatType := ftColor;
-  FMarkedBlock.DisplayName := 'Marked block';
-  FMarkedBlock.IsBlock := True;
-  }
-
   FCodeTemplates := TecCodeTemplates.Create(Self);
   FSkipSpaces := True;
 
@@ -5140,7 +5086,6 @@ var Src: TecSyntAnalyzer;
 begin
   if not (Source is TecSyntAnalyzer) then Exit;
   Src := Source as TecSyntAnalyzer;
-//  ClearClientContents;
   FCoping := True;
   try
     FAlwaysSyncBlockAnal := Src.FAlwaysSyncBlockAnal;
@@ -5150,18 +5095,10 @@ begin
     SampleText := Src.SampleText;
     FullRefreshSize := Src.FullRefreshSize;
     Formats := Src.Formats;
-    {
-    MarkedBlockStyle := Src.MarkedBlockStyle;
-    SearchMatchStyle := Src.SearchMatchStyle;
-    CurrentLineStyle := Src.CurrentLineStyle;
-    DefaultStyleName := Src.DefaultStyleName;
-    CollapseStyleName := Src.CollapseStyleName;
-    }
     BlockRules := Src.BlockRules;
     TokenRules := Src.TokenRules;
     CodeTemplates := Src.CodeTemplates;
     SubAnalyzers := Src.SubAnalyzers;
-    //DefaultStyle := Src.DefaultStyle;
     TokenTypeNames := Src.TokenTypeNames;
     Notes := Src.Notes;
     Internal := Src.Internal;
@@ -5399,12 +5336,6 @@ begin
   ClearClientContents;
   if Item = nil then
    begin
-    {
-    if not FFormats.ValidItem(FMarkedBlock) then FMarkedBlock := nil;
-    if not FFormats.ValidItem(FCurrentLine) then FCurrentLine := nil;
-    if not FFormats.ValidItem(FDefStyle) then FDefStyle := nil;
-    if not FFormats.ValidItem(FSearchMatch) then FSearchMatch := nil;
-    }
     for i := 0 to FBlockRules.Count - 1 do
      begin
       Rule := FBlockRules[i];
@@ -5492,14 +5423,6 @@ var
   i: integer;
 begin
   inherited;
-
-  {
-  MarkedBlockStyle := FMarkedBlockName;
-  SearchMatchStyle := FSearchMatchName;
-  CurrentLineStyle := FCurrentLineName;
-  CollapseStyleName := FCollapseStyleName;
-  DefaultStyleName := FDefStyleName;
-  }
 
   FFormats.Loaded;
   FBlockRules.Loaded;
@@ -5705,40 +5628,6 @@ begin
   if Assigned(FOnChange) then FOnChange(Self);
 end;
 
-{
-procedure TecSyntAnalyzer.SetSearchMatch(const Value: TecSyntaxFormat);
-begin
-  if FSearchMatch = Value then Exit;
-  FSearchMatch := Value;
-  UpdateClients;
-  Change;
-end;
-
-procedure TecSyntAnalyzer.SetMarkedBlock(const Value: TecSyntaxFormat);
-begin
-  if FMarkedBlock = Value then Exit;
-  FMarkedBlock := Value;
-  UpdateClients;
-  Change;
-end;
-
-procedure TecSyntAnalyzer.SetCurrentLine(const Value: TecSyntaxFormat);
-begin
-  if FCurrentLine = Value then Exit;
-  FCurrentLine := Value;
-  UpdateClients;
-  Change;
-end;
-
-procedure TecSyntAnalyzer.SetDefStyle(const Value: TecSyntaxFormat);
-begin
-  if FDefStyle = Value then Exit;
-  FDefStyle := Value;
-  UpdateClients;
-  Change;
-end;
-}
-
 function TecSyntAnalyzer.GetStyleName(const AName: string; const AStyle: TecSyntaxFormat): string;
 begin
   if csLoading in ComponentState then
@@ -5749,60 +5638,6 @@ begin
    else
     Result := '';
 end;
-
-{
-function TecSyntAnalyzer.GetMarkedBlockName: string;
-begin
-  Result := GetStyleName(FMarkedBlockName, FMarkedBlock);
-end;
-
-procedure TecSyntAnalyzer.SetMarkedBlockName(const Value: string);
-begin
-  if csLoading in ComponentState then
-    FMarkedBlockName := Value
-  else
-    MarkedBlock := TecSyntaxFormat(FFormats.ItemByName(Value));
-end;
-
-function TecSyntAnalyzer.GetSearchMatchStyle: string;
-begin
-  Result := GetStyleName(FSearchMatchName, FSearchMatch);
-end;
-
-procedure TecSyntAnalyzer.SetSearchMatchStyle(const Value: string);
-begin
-  if csLoading in ComponentState then
-    FSearchMatchName := Value
-  else
-    FSearchMatch := TecSyntaxFormat(FFormats.ItemByName(Value));
-end;
-
-function TecSyntAnalyzer.GetCurrentLineStyle: string;
-begin
-  Result := GetStyleName(FCurrentLineName, FCurrentLine);
-end;
-
-procedure TecSyntAnalyzer.SetCurrentLineStyle(const Value: string);
-begin
-  if csLoading in ComponentState then
-    FCurrentLineName := Value
-  else
-    FCurrentLine := TecSyntaxFormat(FFormats.ItemByName(Value));
-end;
-
-function TecSyntAnalyzer.GetDefaultStyleName: string;
-begin
-  Result := GetStyleName(FDefStyleName, FDefStyle);
-end;
-
-procedure TecSyntAnalyzer.SetDefaultStyleName(const Value: string);
-begin
-  if csLoading in ComponentState then
-    FDefStyleName := Value
-  else
-    FDefStyle := TecSyntaxFormat(FFormats.ItemByName(Value));
-end;
-}
 
 procedure TecSyntAnalyzer.SetNotes(const Value: TStrings);
 begin
