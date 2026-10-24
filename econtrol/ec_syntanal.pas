@@ -2869,8 +2869,7 @@ var
   Source: ecString;
   CurToken: TecSyntToken;
 
-   procedure GetOwnerLexer(out CurLexer: TecSyntAnalyzer; var bTokenExtracted: Boolean);
-   // Gets current lexer into 'own' variable
+   procedure GetOwnerLexer(out ACurLexer: TecSyntAnalyzer; var ATokenExtracted: Boolean);
    var
        iSubLexer, NMatchLen: integer;
        Sub: PecSubLexerRange;
@@ -2879,7 +2878,7 @@ var
        MarkerChar: WideChar;
        MarkerStr: string;
    begin
-    CurLexer := FOwner;
+    ACurLexer := FOwner;
     for iSubLexer := FSubLexerBlocks.Count - 1 downto 0 do
      begin
        Sub := FSubLexerBlocks.InternalGet(iSubLexer);
@@ -2960,12 +2959,12 @@ print(1);
                    Sub.Range.EndPos := APos - 1 + NMatchLen;
                    Sub.Range.PointEnd := FBuffer.StrToCaret(Sub.Range.EndPos);
                    Sub.CondEndPos := Sub.Range.EndPos;
-                   CurLexer := Sub.FinalSubAnalyzer;
-                   if CurLexer = nil then
+                   ACurLexer := Sub.FinalSubAnalyzer;
+                   if ACurLexer = nil then
                    begin
-                     CurLexer := Sub.Rule.SyntAnalyzer;
-                     if CurLexer = nil then
-                       CurLexer := FOwner;
+                     ACurLexer := Sub.Rule.SyntAnalyzer;
+                     if ACurLexer = nil then
+                       ACurLexer := FOwner;
                    end;
                  end else
                  begin
@@ -3000,7 +2999,7 @@ print(1);
                      FLastAnalPos := APos;
 
                      // Signal that we extracted a token and should return
-                     bTokenExtracted := True;
+                     ATokenExtracted := True;
                      Exit;
                    end;
                  end;
@@ -3008,24 +3007,24 @@ print(1);
                CloseAtEnd(FTagList.FindPriorAt(Sub.Range.StartPos));
              end else
              begin
-               CurLexer := Sub.FinalSubAnalyzer;
-               if CurLexer = nil then
+               ACurLexer := Sub.FinalSubAnalyzer;
+               if ACurLexer = nil then
                begin
-                 CurLexer := Sub.Rule.SyntAnalyzer;
-                 if CurLexer = nil then
-                   CurLexer := FOwner;
+                 ACurLexer := Sub.Rule.SyntAnalyzer;
+                 if ACurLexer = nil then
+                   ACurLexer := FOwner;
                end;
                Exit;
              end;
           end else
        if APos < Sub.Range.EndPos then
          begin
-           CurLexer := Sub.FinalSubAnalyzer;
-           if CurLexer = nil then
+           ACurLexer := Sub.FinalSubAnalyzer;
+           if ACurLexer = nil then
            begin
-             CurLexer := Sub.Rule.SyntAnalyzer;
-             if CurLexer = nil then
-               CurLexer := FOwner;
+             ACurLexer := Sub.Rule.SyntAnalyzer;
+             if ACurLexer = nil then
+               ACurLexer := FOwner;
            end;
            Exit;
          end;
@@ -3048,16 +3047,16 @@ print(1);
     end;
    end;
 
-   function CanOpen(Rule: TecSubAnalyzerRule): Boolean;
+   function CanOpen(ARule: TecSubAnalyzerRule): Boolean;
    var N, NCnt: integer;
        Sub: TecSubLexerRange;
        SubPtr: PecSubLexerRange;
    begin
-     Result := IsEnabled(Rule, False) and (Rule.SyntAnalyzer <> nil);
+     Result := IsEnabled(ARule, False) and (ARule.SyntAnalyzer <> nil);
      if not Result then Exit;
-     Result := Rule.FromTextBegin and (APos = 1);
+     Result := ARule.FromTextBegin and (APos = 1);
      if Result then N := 0 else
-                    N := Rule.MatchStart(Source, APos);
+                    N := ARule.MatchStart(Source, APos);
      Result := Result or (N > 0);
      if not Result then Exit;
      // To prevent repeated opening
@@ -3066,15 +3065,15 @@ print(1);
      begin
        SubPtr := FSubLexerBlocks.InternalGet(NCnt - 1);
        if (SubPtr.Range.EndPos = APos - 1) and
-          (SubPtr.Rule = Rule) then Exit;
+          (SubPtr.Rule = ARule) then Exit;
      end;
 
-     ApplyStates(Rule);
+     ApplyStates(ARule);
 
      FillChar(sub, SizeOf(sub), 0);
-     sub.Rule := Rule;
+     sub.Rule := ARule;
      sub.CondStartPos := APos - 1;
-     if Rule.IncludeBounds then
+     if ARule.IncludeBounds then
        sub.Range.StartPos := APos - 1
      else
        sub.Range.StartPos := APos + N - 1;
@@ -3083,17 +3082,17 @@ print(1);
      FSubLexerBlocks.Add(sub);
    end;
 
-   function TryOpenSubLexer(CurLexer: TecSyntAnalyzer): boolean;
+   function TryOpenSubLexer(ACurLexer: TecSyntAnalyzer): boolean;
    var i: integer;
        Rule: TecSubAnalyzerRule;
    begin
      Result := False;
-     for i := 0 to CurLexer.SubAnalyzers.Count - 1 do
+     for i := 0 to ACurLexer.SubAnalyzers.Count - 1 do
      begin
-       Rule := CurLexer.SubAnalyzers[i];
+       Rule := ACurLexer.SubAnalyzers[i];
        if CanOpen(Rule) then Exit(True);
      end;
-     if CurLexer <> FOwner then
+     if ACurLexer <> FOwner then
        for i := 0 to FOwner.SubAnalyzers.Count - 1 do
        begin
          Rule := FOwner.SubAnalyzers[i];
