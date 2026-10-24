@@ -2979,21 +2979,6 @@ print(1);
                    // Test condition length = 1, otherwise it will be regression: badly parsed Markdown text
                    if (NMatchLen = 1) and (Buffer.FText[APos] = '`') then
                    begin
-                     {
-                     // This block was suggested by AI (which? user sent it.) but code makes CurToken of length=0! Invisible token.
-
-                     // Create a token for the EndExpression so it is styled and doesn't get parsed by the parent lexer
-                     CurToken := TecSyntToken.Create(Sub.Rule,
-                       APos,
-                       APos + NMatchLen - 1,
-                       FBuffer.StrToCaret(APos),
-                       FBuffer.StrToCaret(APos + NMatchLen - 1)
-                       );
-
-                     FTagList.Add(CurToken);
-                     UpdateTokenIndexer(CurToken);
-                     }
-
                      // Advance position past the EndExpression
                      Inc(APos, NMatchLen);
                      FLastAnalPos := APos;
