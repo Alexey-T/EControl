@@ -2867,7 +2867,6 @@ function TecParserResults.ExtractTag(var APos: integer; ADisableFolding: Boolean
 // Function returns True if end of the text is reached
 var
   Source: ecString;
-  CurToken: TecSyntToken;
 
    procedure GetOwnerLexer(out ACurLexer: TecSyntAnalyzer; var ATokenExtracted: Boolean);
    var
@@ -3016,7 +3015,7 @@ print(1);
     end;
    end;
 
-   procedure CheckIntersect;
+   procedure CheckIntersect(var CurToken: TecSyntToken);
    var i: integer;
        Sub: PecSubLexerRange;
    begin
@@ -3087,6 +3086,7 @@ print(1);
 
 var
   CurLexer: TecSyntAnalyzer;
+  CurToken: TecSyntToken;
   bTokenExtracted: boolean;
   bEnded: boolean;
   NNextPos: integer;
@@ -3142,7 +3142,7 @@ begin
        Inc(APos);
    end else
    begin
-    CheckIntersect;
+    CheckIntersect(CurToken);
     SaveState;
 
     // Alexey: Pascal lexer finds surrogate pairs and makes too short tokens (1 wordchar) from them
