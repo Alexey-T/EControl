@@ -2868,10 +2868,8 @@ function TecParserResults.ExtractTag(var APos: integer; ADisableFolding: Boolean
 var
   Source: ecString;
   CurToken: TecSyntToken;
-  CurLexer: TecSyntAnalyzer;
-  bTokenExtracted: boolean;
 
-   procedure GetOwnerLexer;
+   procedure GetOwnerLexer(out CurLexer: TecSyntAnalyzer; var bTokenExtracted: Boolean);
    // Gets current lexer into 'own' variable
    var
        iSubLexer, NMatchLen: integer;
@@ -3085,7 +3083,7 @@ print(1);
      FSubLexerBlocks.Add(sub);
    end;
 
-   function TryOpenSubLexer: boolean;
+   function TryOpenSubLexer(CurLexer: TecSyntAnalyzer): boolean;
    var i: integer;
        Rule: TecSubAnalyzerRule;
    begin
@@ -3104,13 +3102,14 @@ print(1);
    end;
 
 var
+  CurLexer: TecSyntAnalyzer;
+  bTokenExtracted: boolean;
   bEnded: boolean;
   NNextPos: integer;
 begin
   bTokenExtracted := False;
   Source := FBuffer.FText;
-  CurLexer := nil;
-  GetOwnerLexer;
+  GetOwnerLexer(CurLexer, bTokenExtracted);
   if bTokenExtracted then Exit(False);
   if CurLexer=nil then
     raise EParserError.Create('GetOwnerLexer=nil');
@@ -3131,13 +3130,13 @@ begin
   Result := bEnded;
   if Result then Exit;
 
-  TryOpenSubLexer;
-  GetOwnerLexer;
+  TryOpenSubLexer(CurLexer);
+  GetOwnerLexer(CurLexer, bTokenExtracted);
 
   if bTokenExtracted then Exit(False);
 
   if CurLexer=nil then
-    raise EParserError.Create('GetOwner=nil');
+    raise EParserError.Create('GetOwnerLexer=nil');
 
   CurToken := FOwner.GetToken(Self, Source, APos, CurLexer <> FOwner);
   if not Buffer.Valid then
