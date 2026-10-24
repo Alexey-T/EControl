@@ -3161,10 +3161,10 @@ begin
     SaveState;
 
     // Alexey: Pascal lexer finds surrogate pairs and makes too short tokens (1 wordchar) from them
-    if (CurToken.Range.EndPos-CurToken.Range.StartPos = 1) and IsCharSurrogateHigh(Source[APos]) then
+    if (CurToken.Range.EndPos - CurToken.Range.StartPos = 1) and IsCharSurrogateHigh(Source[APos]) then
     begin
-      CurToken.Range.EndPos += 1;
-      CurToken.Range.PointEnd.X += 1;
+      Inc(CurToken.Range.EndPos);
+      Inc(CurToken.Range.PointEnd.X);
     end;
 
     FTagList.Add(CurToken);
@@ -3176,7 +3176,6 @@ begin
       if CurLexer <> FOwner then
         CurLexer.SelectTokenFormat(Self, Source, ADisableFolding, False);
      end else
-//    if not IsIdle then
      begin  // Only for first iteration of analysis
       FOwner.HighlightKeywords(Self, Source, CurLexer <> FOwner);
       if CurLexer <> FOwner then
