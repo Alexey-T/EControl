@@ -218,6 +218,7 @@ type
   TecTagBlockCondition = class(TRuleCollectionItem)
   private
     FCriSec: TCriticalSection;
+    FUsesRegexes: Boolean; // Alexey: True when Check() must use FCriSec (some condition uses regex matching)
     FConditions: TecConditionCollection;
     FIdentIndex: integer;
     FLinePos: TecLineBreakPos;
@@ -259,6 +260,7 @@ type
     FAutoCloseText: ecString;
     FAutoCloseMode: TecAutoCloseMode;
     procedure ConditionsChanged(Sender: TObject);
+    procedure PrewarmRegexes;
     function GetBlockEndName: string;
     procedure SetBlockEndName(const Value: string);
     procedure SetBlockType(const Value: TecTagBlockType);
@@ -1555,6 +1557,7 @@ end;
 constructor TecTagBlockCondition.Create(Collection: TCollection);
 begin
   inherited;
+  FUsesRegexes := True; // safe default: lock until PrewarmRegexes() proves it is not needed
   FConditions := TecConditionCollection.Create(Self);
   FConditions.OnChange := ConditionsChanged;
   FBlockType := btRangeStart;
@@ -1632,7 +1635,8 @@ begin
        (((1 shl Tags[N - 1].TokenType) and Cond.FTokenTypes) = 0) then
       Exit;
   end;
-  FCriSec.Enter;
+  if FUsesRegexes then
+    FCriSec.Enter;
   try
     skipped := 0;
     skip_cond := 0;
@@ -1667,7 +1671,8 @@ begin
     //else
     //  RefIdx := N - 1 - offs;
   finally
-    FCriSec.Leave;
+    if FUsesRegexes then
+      FCriSec.Leave;
   end;
 end;
 
@@ -1723,6 +1728,7 @@ begin
     FTreeItemStyleObj := TecSyntaxFormat(FSynt.Formats.ItemByName(FTreeItemStyle));
   if FTreeGroupStyle <> '' then
     FTreeGroupStyleObj := TecSyntaxFormat(FSynt.Formats.ItemByName(FTreeGroupStyle));
+  PrewarmRegexes;
 end;
 
 function TecTagBlockCondition.CheckOffset: integer;
@@ -1754,7 +1760,26 @@ end;
 
 procedure TecTagBlockCondition.ConditionsChanged(Sender: TObject);
 begin
+  PrewarmRegexes;
   Changed(False);
+end;
+
+procedure TecTagBlockCondition.PrewarmRegexes;
+var
+  i: integer;
+  Cond: TecSingleTagCondition;
+begin
+  FUsesRegexes := False;
+  for i := 0 to FConditions.Count - 1 do
+  begin
+    Cond := FConditions[i];
+    if (Cond.CondType in [tcMask, tcStrictMask]) and
+       (Cond.TagList.Count > 0) then
+    begin
+      FUsesRegexes := True;
+      Cond.UpdateRegexes; // compile regexes now, at load time; Check() must not compile them lazily
+    end;
+  end;
 end;
 
 procedure TecTagBlockCondition.SetBlockEndCond(
@@ -4838,6 +4863,11 @@ begin
   finally
     FreeAndNil(Stream);
   end;
+
+  //prewarm regexes of all block rules, so Check() is lock-free
+  //for rules without regex conditions
+  for i := 0 to FBlockRules.Count - 1 do
+    FBlockRules[i].PrewarmRegexes;
 
   {
   ShowMessage(ExtractFileName(AFileName)+#10+
