@@ -371,7 +371,6 @@ type
     FOnMatchToken: TecMatchTokenEvent;
     FColumnTo: integer;
     FColumnFrom: integer;
-    FCriSec: TCriticalSection;
     function GetExpression: ecString;
     procedure SetExpression(const Value: ecString);
     procedure SetTokenType(const Value: integer);
@@ -384,6 +383,9 @@ type
   public
     constructor Create(Collection: TCollection); override;
     destructor Destroy; override;
+    // compiles the rule's regex now, so Match() never compiles lazily from
+    // several parser threads at once (Match() is lock-free)
+    procedure PrewarmRegex;
     function Match(const Source: ecString; Pos: integer): integer;
     property OnMatchToken: TecMatchTokenEvent read FOnMatchToken write FOnMatchToken;
   published
@@ -2039,7 +2041,6 @@ begin
   inherited;
   FBlock := nil;
   FFormat := nil;
-  FCriSec := TCriticalSection.Create;
   FRegExpr := TecRegExpr.Create;
   SetDefaultModifiers(FRegExpr);
 end;
@@ -2047,7 +2048,6 @@ end;
 destructor TecTokenRule.Destroy;
 begin
   FreeAndNil(FRegExpr);
-  FreeAndNil(FCriSec);
   inherited;
 end;
 
@@ -2067,13 +2067,18 @@ begin
 end;
 
 function TecTokenRule.Match(const Source: ecString; Pos: integer): integer;
+// Lock-free: regex matching does not mutate the compiled regex anymore
+// (match state is thread-local in ec_regexpr), and lexer regexes are
+// pre-warmed (TecSyntAnalyzer.Loaded / PrewarmRegex), so several parser
+// threads can call Match() on the same rule at the same time. Solves
+// CudaText issue #3352 without a critical section.
 begin
-  FCriSec.Enter; //solve CudaText issue #3352
-  try
-    Result := FRegExpr.MatchLength(Source, Pos);
-  finally
-    FCriSec.Leave;
-  end;
+  Result := FRegExpr.MatchLength(Source, Pos);
+end;
+
+procedure TecTokenRule.PrewarmRegex;
+begin
+  FRegExpr.Compile;
 end;
 
 procedure TecTokenRule.SetColumnFrom(const Value: integer);
@@ -5461,6 +5466,12 @@ begin
   FBlockRules.Loaded;
   FTokenRules.Loaded;
   FSubAnalyzers.Loaded;
+
+  //prewarm regexes of all token rules: after this, TecTokenRule.Match()
+  //never compiles lazily, so it is lock-free and thread-safe
+  for i := 0 to FTokenRules.Count - 1 do
+    FTokenRules[i].PrewarmRegex;
+
   CompileGramma;
   DetectBlockSeparate;
   for i := 0 to FMasters.Count - 1 do
@@ -5639,7 +5650,17 @@ end;
 
 procedure TecSyntAnalyzer.TokenRuleChanged(Sender: TCollection;
   Item: TSyntCollectionItem);
+var
+  i: integer;
 begin
+  // rule expression could change: keep the rule's regex pre-warmed, so
+  // TecTokenRule.Match() stays lock-free (no lazy compile from parser threads)
+  if Item is TecTokenRule then
+    TecTokenRule(Item).PrewarmRegex
+  else
+    if Item = nil then
+      for i := 0 to FTokenRules.Count - 1 do
+        FTokenRules[i].PrewarmRegex;
   DetectBlockSeparate;
   ClearClientContents;
   Change;
