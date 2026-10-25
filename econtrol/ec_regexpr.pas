@@ -42,6 +42,9 @@ type
     FExpression: ecString;
     FModifiersStatic: Word;
     FMatchRes: array of integer; // final match extents, interleaved: [2*i]=start, [2*i+1]=end
+    FSharedEntry: TObject;       // v3: cache entry when the program is shared (refcounted), nil = private
+    FCompiledOK: Boolean;        // v3: FProgRoot assigned AND program is not empty
+    FCompileTried: Boolean;      // v3: a compile was attempted (prevents retry storms on invalid expressions)
     procedure SaveMatchResults(St: PInteger);
     procedure SetModifiers(const Value: Word);
     function GetModifier(const Index: Integer): boolean;
@@ -54,6 +57,7 @@ type
     function GetSubExprMatchCount: integer;
     procedure SetExpression(const Value: ecString);
     procedure ClearRoot;
+    procedure DropProgram; // v3: release the current program (shared or private) without touching match state
     function IsEmpty: Boolean;
     procedure ParseModifiers(const S: PWideChar; Len: integer; var Modifiers: Word); // Alexey
   public
@@ -82,6 +86,7 @@ type
     property MatchPos[Idx: integer]: integer read GetMatchPos;
     property MatchLen[Idx: integer]: integer read GetMatchLen;
     property SubExprMatchCount: integer read GetSubExprMatchCount;
+    property CompiledOK: Boolean read FCompiledOK; // v3
   published
     property Expression: ecString read FExpression write SetExpression;
     property ModifierStr: ecString read GetModifierStr write SetModifierStr stored False;
@@ -360,7 +365,7 @@ type
     constructor Create(AOwner: TecRegExpr); reintroduce;
     destructor Destroy; override;
     procedure Clear; override;
-    function MatchStr(const InputString: UCString; var aPos: integer; Back: Boolean): Boolean; overload;
+    function MatchStr(const InputString: UCString; var aPos: integer; Back: Boolean; AClient: TecRegExpr): Boolean; overload;
 
     property Owner: TecRegExpr read FOwner;
   end;
@@ -452,6 +457,69 @@ begin
           if Result = '' then
             raise TecRegExprCompileError.Create('Invalid hex digit in \x');
          end;
+  end;
+end;
+
+{ v3: global cache of compiled regex programs, keyed by
+  Expression + ModifierFlags + ModifiersStatic. Identical expressions
+  (very common across the 300+ lexer files) share one compiled program:
+  less memory and less load-time compiling. Entries die when their last
+  user releases them. Match() never touches this cache (it only reads the
+  program pointer), so parsing stays lock-free. }
+type
+  TReProgEntry = class
+  public
+    Prog: TreRootNode;
+    RefCount: integer;
+    Key: string;
+  end;
+
+var
+  REProgCache: TStringList = nil; // sorted, Objects[i] = TReProgEntry
+  REProgCacheLock: TCriticalSection = nil;
+
+function RECacheKey(const AExpression: UCString; AModifiers, AStatic: Word): string;
+begin
+  // length prefix + separators make the key unambiguous
+  Result := IntToStr(AModifiers) + #1 + IntToStr(AStatic) + #1 +
+            IntToStr(Length(AExpression)) + #1 + string(AExpression);
+end;
+
+// must be called under REProgCacheLock; consumes ACompiled (frees it on duplicate)
+function REAcquireProg(const AKey: string; ACompiled: TreRootNode): TReProgEntry;
+var
+  N: integer;
+begin
+  if REProgCache.Find(AKey, N) then
+  begin
+    Result := TReProgEntry(REProgCache.Objects[N]);
+    ACompiled.Free;
+  end
+  else
+  begin
+    Result := TReProgEntry.Create;
+    Result.Prog := ACompiled;
+    Result.RefCount := 0;
+    Result.Key := AKey;
+    REProgCache.AddObject(AKey, Result);
+  end;
+  Inc(Result.RefCount);
+end;
+
+// must be called under REProgCacheLock
+procedure REReleaseProg(AEntry: TReProgEntry);
+var
+  N: integer;
+begin
+  if AEntry = nil then Exit;
+  Dec(AEntry.RefCount);
+  if AEntry.RefCount <= 0 then
+  begin
+    N := REProgCache.IndexOf(AEntry.Key);
+    if N >= 0 then
+      REProgCache.Delete(N);
+    AEntry.Prog.Free;
+    AEntry.Free;
   end;
 end;
 
@@ -1539,7 +1607,7 @@ begin
 end;
 
 function TreRootNode.MatchStr(const InputString: UCString;
-  var aPos: integer; Back: Boolean): Boolean;
+  var aPos: integer; Back: Boolean; AClient: TecRegExpr): Boolean;
 var
   FixedState: array[0..2*RE_MAX_FIXED-1] of integer;
   St: PInteger;
@@ -1557,9 +1625,10 @@ begin
     Result := MatchNode(Self, InputString, aPos, St) <> 0;
   // save the final match extents for MatchPos/MatchLen/GetMatch readers;
   // like before this change, they give valid values only on the thread
-  // which called Match()
-  if Result and (FOwner <> nil) then
-    FOwner.SaveMatchResults(St);
+  // which called Match(). v3: the program can be shared between several
+  // TecRegExpr, so results go to the CALLER, not to the program owner
+  if Result and (AClient <> nil) then
+    AClient.SaveMatchResults(St);
 end;
 
 // =============================================================================
@@ -1576,15 +1645,38 @@ end;
 
 destructor TecRegExpr.Destroy;
 begin
-  FreeAndNil(FProgRoot);
+  DropProgram;
   inherited;
+end;
+
+procedure TecRegExpr.DropProgram;
+// v3: release the current program: unref the shared one / free the private one
+begin
+  if FSharedEntry <> nil then
+  begin
+    if REProgCacheLock <> nil then
+    begin
+      REProgCacheLock.Enter;
+      try
+        REReleaseProg(TReProgEntry(FSharedEntry));
+      finally
+        REProgCacheLock.Leave;
+      end;
+    end;
+    FSharedEntry := nil;
+    FProgRoot := nil;
+  end
+  else
+    FreeAndNil(FProgRoot);
 end;
 
 procedure TecRegExpr.ClearRoot;
 begin
-  FreeAndNil(FProgRoot);
+  DropProgram;
   FMatchRes := nil;
   FMatchOK := False;
+  FCompiledOK := False;
+  FCompileTried := False;
 end;
 
 procedure TecRegExpr.SaveMatchResults(St: PInteger);
@@ -1602,23 +1694,58 @@ begin
 end;
 
 procedure TecRegExpr.Compile(const AExpression: UCString);
-var Pos: integer;
+var
+  Pos: integer;
+  NewRoot: TreRootNode;
+  Key: string;
 begin
   {$IFDEF RE_DEBUG} LastNodeID := 0; {$ENDIF}
   FMatchOK := False;
-  if not Assigned(FProgRoot) then
-    FProgRoot := TreRootNode.Create(Self)
-  else
-    TreRootNode(FProgRoot).Clear;
-
-  Pos := 1;
+  // v3: always build a FRESH program (the current one may be shared with
+  // other TecRegExpr and must not be mutated), then share it via the cache
+  NewRoot := TreRootNode.Create(Self);
   try
+    Pos := 1;
     if AExpression <> '' then
-      TreRootNode(FProgRoot).Compile(AExpression, Pos, FModifiers);
+      NewRoot.Compile(AExpression, Pos, FModifiers);
   except
-    ClearRoot;
+    NewRoot.Free;
+    DropProgram;
+    FCompileTried := True;
+    FCompiledOK := False;
     raise;
   end;
+
+  DropProgram;
+  if AExpression = FExpression then
+  begin
+    // same expression as ours: the program can be shared with other regexes
+    Key := RECacheKey(FExpression, FModifiers, FModifiersStatic);
+    if REProgCacheLock <> nil then
+    begin
+      REProgCacheLock.Enter;
+      try
+        FSharedEntry := REAcquireProg(Key, NewRoot); // frees NewRoot on duplicate
+      finally
+        REProgCacheLock.Leave;
+      end;
+      FProgRoot := TReProgEntry(FSharedEntry).Prog;
+    end
+    else
+    begin
+      FSharedEntry := nil;
+      FProgRoot := NewRoot;
+    end;
+  end
+  else
+  begin
+    // one-shot compile for another expression: keep the program private
+    FSharedEntry := nil;
+    FProgRoot := NewRoot;
+  end;
+
+  FCompileTried := True;
+  FCompiledOK := TreRootNode(FProgRoot).FList.Count > 0;
   SetLength(FMatchRes, 2 * TreRootNode(FProgRoot).FSubExpr.Count);
   //FUnicodeCompiled := True;
 end;
@@ -1626,7 +1753,7 @@ end;
 function TecRegExpr.Compile: Boolean;
 begin
   try
-    if IsEmpty then
+    if FProgRoot = nil then
       Compile(FExpression);
   except
     on TecRegExprCompileError do
@@ -1634,7 +1761,7 @@ begin
     else
       raise;
   end;
-  Result := not IsEmpty;
+  Result := FCompiledOK;
 end;
 
 function TecRegExpr.GetIsInvalid: Boolean;
@@ -1667,37 +1794,47 @@ end;
 
 function TecRegExpr.Match(const InputString: UCString; var aPos: integer; Back: Boolean): Boolean;
 begin
-  // Hot path: a compiled expression is never recompiled here. An expression
-  // which compiles to an empty program (e.g. empty Expression) keeps FProgRoot
-  // set, and must not trigger Compile() again on every call.
-  if FProgRoot = nil then
+  // v3 hot path: single Boolean field read. FCompiledOK is True exactly
+  // when FProgRoot is assigned and the program is not empty.
+  if not FCompiledOK then
     begin
-      // lazy compile (regexes of loaded lexers are pre-warmed, so this is
-      // rare); the lock makes it safe if several threads reach it at once
-      if RECompileLock <> nil then
-        RECompileLock.Enter;
-      try
-        if FProgRoot = nil then // re-check under the lock
-          Result := Compile // ensure compiling and validity
-        else
-          Result := TreRootNode(FProgRoot).FList.Count > 0;
-      finally
-        if RECompileLock <> nil then
-          RECompileLock.Leave;
-      end;
-    end
-  else
-    Result := TreRootNode(FProgRoot).FList.Count > 0;
-  if Result then
-    begin
-      if aPos < 1 then
-        aPos := 1;
-      Result := TreRootNode(FProgRoot).MatchStr(InputString, aPos, Back);
-      // note: MatchPos/MatchLen/GetMatch give valid values only on the
-      // thread which called Match() (match state is per-call now, and the
-      // saved extents are a single Boolean-write-level shared copy)
-      FMatchOK := Result;
+      if FProgRoot = nil then
+        begin
+          // previous compile failed: never retry from Match (an invalid
+          // expression would otherwise recompile + raise on every call)
+          if FCompileTried then
+            Exit(False);
+          // lazy compile (regexes of loaded lexers are pre-warmed, so this
+          // is rare); the lock makes it safe if several threads reach it at once
+          if RECompileLock <> nil then
+            RECompileLock.Enter;
+          try
+            if FProgRoot = nil then // re-check under the lock
+              begin
+                if FCompileTried then // another thread just failed the compile
+                  Result := False
+                else
+                  Result := Compile; // ensure compiling and validity
+              end
+            else
+              Result := TreRootNode(FProgRoot).FList.Count > 0;
+          finally
+            if RECompileLock <> nil then
+              RECompileLock.Leave;
+          end;
+          if not Result then
+            Exit;
+        end
+      else
+        Exit(False); // compiled to an empty program: matches nothing
     end;
+  if aPos < 1 then
+    aPos := 1;
+  Result := TreRootNode(FProgRoot).MatchStr(InputString, aPos, Back, Self);
+  // note: MatchPos/MatchLen/GetMatch give valid values only on the
+  // thread which called Match() (match state is per-call now, and the
+  // saved extents are a single Boolean-write-level shared copy)
+  FMatchOK := Result;
 end;
 
 function TecRegExpr.MatchLength(const InputString: UCString;
@@ -1915,9 +2052,28 @@ end;
 
 initialization
   RECompileLock := TCriticalSection.Create;
+  REProgCache := TStringList.Create;
+  REProgCache.Sorted := True;
+  REProgCache.Duplicates := dupError;
+  REProgCacheLock := TCriticalSection.Create;
 
 finalization
   FreeAndNil(RECompileLock);
+  if REProgCacheLock <> nil then
+  begin
+    REProgCacheLock.Enter;
+    try
+      while REProgCache.Count > 0 do
+      begin
+        TReProgEntry(REProgCache.Objects[0]).Prog.Free;
+        TReProgEntry(REProgCache.Objects[0]).Free;
+        REProgCache.Delete(0);
+      end;
+    finally
+      REProgCacheLock.Leave;
+    end;
+  end;
+  FreeAndNil(REProgCache);
+  FreeAndNil(REProgCacheLock);
 
 end.
-
