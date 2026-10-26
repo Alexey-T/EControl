@@ -37,6 +37,16 @@ uses
 const
   cTokWide = 128;
 
+  { v3: dispatch regions of block rules (see TecBlockDispatch):
+    region r spans Flat[Offs[r]..Offs[r+1]-1] }
+  cBlkAll = 0;             // all rules, original order (fallback for exotic token types)
+  cBlkAllNoFold = 1;       // all rules minus btRangeStart/btRangeEnd
+  cBlkFoldBucket0 = 2;     // + token type 0..31, folding enabled
+  cBlkNoFoldBucket0 = 34;  // + token type 0..31, folding disabled
+  cBlkDetAll = 66;         // all detecters, original order
+  cBlkDetBucket0 = 67;     // + token type 0..31, detecters
+  cBlkOffsCount = 99;      // 99 regions -> 100 offsets (0..99)
+
 type
   TecLineBreakPos = (lbTop, lbBottom);
   TecLineBreakBound = set of TecLineBreakPos;
@@ -246,6 +256,7 @@ type
     FDynSelectMin: Boolean;
     FCancelNextRules: Boolean;
     FOnBlockCheck: TecBlockCheckEvent;
+    FFirstCondMask: DWORD; // v3: TokenTypes of Conditions[0] when it can pre-filter rules by the last token's type; 0 = no pre-filter
     FDrawStaple: Boolean;
     FGroupIndex: integer;
     FCollapseFmt: ecString;
@@ -267,6 +278,8 @@ type
     FAutoCloseMode: TecAutoCloseMode;
     procedure ConditionsChanged(Sender: TObject);
     procedure PrewarmRegexes;
+    procedure UpdateFirstCondMask; // v3
+    procedure SetOnBlockCheck(const Value: TecBlockCheckEvent); // v3: fires Changed so dispatch caches stay correct
     function GetBlockEndName: string;
     procedure SetBlockEndName(const Value: string);
     procedure SetBlockType(const Value: TecTagBlockType);
@@ -318,7 +331,7 @@ type
     property TreeItemStyleObj: TecSyntaxFormat read FTreeItemStyleObj;
     property TreeGroupStyleObj: TecSyntaxFormat read FTreeGroupStyleObj;
     procedure Loaded; override;
-    property OnBlockCheck: TecBlockCheckEvent read FOnBlockCheck write FOnBlockCheck;
+    property OnBlockCheck: TecBlockCheckEvent read FOnBlockCheck write SetOnBlockCheck;
   published
     property BlockType: TecTagBlockType read FBlockType write SetBlockType default btRangeStart;
     property ConditionList: TecConditionCollection read FConditions write SetConditions;
@@ -767,6 +780,28 @@ type
     RuleSets: array[0..cTokWide] of QWord;
   end;
 
+  { v3: dispatch cache for block rules, built once at lexer load / rule
+    change time. Parser threads only READ the object pointer (consistent
+    snapshot: the flat array and its offsets always match), so parsing
+    stays lock-free. Rebuilds swap in a new object and retire the old one
+    (freed when the analyzer dies).
+    Flat is the concatenation of regions; region r spans
+    Flat[Offs[r]..Offs[r+1]-1], region constants are cBlk* above:
+    - all rules / all rules minus folding rules
+    - per token type 0..31: folding rules / no-folding rules / detecters
+    - all detecters (original order)
+    Detecters keeps the legacy flat list for FBlockRules_Detecters.
+    A rule lands in bucket t when its first condition accepts token type t
+    (FFirstCondMask); rules without a mask land in all buckets. Order inside
+    every region preserves the original rule order, which keeps
+    first-match-wins and CancelNextRules semantics identical. }
+  TecBlockDispatch = class
+  public
+    Flat: array of TecTagBlockCondition;
+    Offs: array[0..cBlkOffsCount] of integer;
+    Detecters: array of TecTagBlockCondition; // legacy flat list of detecters
+  end;
+
   { TecSyntAnalyzer }
 
   TecSyntAnalyzer = class(TLoadableComponent)
@@ -784,8 +819,9 @@ type
     FTokenRules: TecTokenRuleCollection;
     FBlockRules: TecBlockRuleCollection;
     FBlockRules_Detecters: array of TecTagBlockCondition; //Alexey
-    FTokenDisp: TecTokenDispatch; // v3: nil = not built (GetToken falls back to plain iteration)
-    FRetiredDisp: TFPObjectList;  // v3: replaced dispatch objects, freed on Destroy
+    FBlockDisp: TecBlockDispatch;   // v3: nil = not built (hot loops fall back to plain iteration)
+    FTokenDisp: TecTokenDispatch;   // v3: nil = not built (GetToken falls back to plain iteration)
+    FRetiredDisp: TFPObjectList;    // v3: replaced dispatch objects, freed on Destroy
     FExtentions: string;
     FLexerName: string;
     FCoping: Boolean;
@@ -824,8 +860,11 @@ type
     procedure TokenRuleChanged(Sender: TCollection; Item: TSyntCollectionItem);
     procedure BlocksChanged(Sender: TCollection; Item: TSyntCollectionItem);
     procedure SubLexRuleChanged(Sender: TCollection; Item: TSyntCollectionItem);
-    // v3: dispatch cache builder (first-char buckets for token rules)
+    // v3: dispatch cache builders (token-type buckets for block rules,
+    // first-char buckets for token rules)
+    procedure RebuildBlockCaches;
     procedure BuildTokenBuckets;
+    procedure SwapBlockDispatch(ADisp: TecBlockDispatch);
     procedure SwapTokenDispatch(ADisp: TecTokenDispatch);
     procedure SetBlockRules(const Value: TecBlockRuleCollection);
     procedure SetTokenRules(const Value: TecTokenRuleCollection);
@@ -1587,16 +1626,9 @@ var i, offs, idx, skipped, skip_cond, NConditions: integer;
 begin
   Result := False;
   offs := CheckOffset;
-  // Most block rules start with a token-type condition. If the current token
-  // cannot satisfy it, avoid the lock and the full condition-list traversal.
-  if (offs = 0) and (ATagIndex > 0) and (FConditions.Count > 0) then
-  begin
-    Cond := FConditions[0];
-    if (Cond.FTokenTypes <> 0) and
-       (Cond.FCondType in [tcStrictMask, tcMask, tcEqual]) and
-       (((1 shl ATags[ATagIndex - 1].TokenType) and Cond.FTokenTypes) = 0) then
-      Exit;
-  end;
+  // v3: the token-type pre-filter for Conditions[0] moved to the callers
+  // (TecSyntAnalyzer.RebuildBlockCaches precomputes FFirstCondMask), so the
+  // per-rule call overhead is skipped together with the whole Check() call
   if FUsesRegexes then
     FCriSec.Enter;
   try
@@ -1723,6 +1755,36 @@ end;
 procedure TecTagBlockCondition.ConditionsChanged(Sender: TObject);
 begin
   PrewarmRegexes;
+  UpdateFirstCondMask;
+  Changed(False);
+end;
+
+procedure TecTagBlockCondition.UpdateFirstCondMask;
+// v3: precompute the TokenTypes mask of Conditions[0], so callers can skip
+// the rule (without calling Check) when the current token's type cannot
+// satisfy the first condition. 0 = pre-filter not possible.
+var
+  Cond: TecSingleTagCondition;
+begin
+  FFirstCondMask := 0;
+  // rules with the OnBlockCheck event must not be skipped: the event fires
+  // for every checked rule, keep the original behavior for them
+  if (FConditions.Count > 0) and not Assigned(FOnBlockCheck) and
+     (FGrammaRule = nil) and (CheckOffset = 0) then
+  begin
+    Cond := FConditions[0];
+    if (Cond.FTokenTypes <> 0) and
+       (Cond.FCondType in [tcStrictMask, tcMask, tcEqual]) then
+      FFirstCondMask := Cond.FTokenTypes;
+  end;
+end;
+
+procedure TecTagBlockCondition.SetOnBlockCheck(const Value: TecBlockCheckEvent);
+// v3: fires Changed so the dispatch caches are rebuilt (masked rules with
+// events must stay unfiltered)
+begin
+  if @FOnBlockCheck = @Value then Exit;
+  FOnBlockCheck := Value;
   Changed(False);
 end;
 
@@ -5169,6 +5231,7 @@ begin
   TStringList(FTokenTypeNames).OnChange := nil;
   FGrammaParser.OnChange := nil;
 
+  FreeAndNil(FBlockDisp);
   FreeAndNil(FTokenDisp);
   FreeAndNil(FRetiredDisp);
 
@@ -5196,6 +5259,149 @@ begin
     FRetiredDisp.Add(FTokenDisp);
   end;
   FTokenDisp := ADisp;
+end;
+
+procedure TecSyntAnalyzer.SwapBlockDispatch(ADisp: TecBlockDispatch);
+// v3: single pointer store; readers keep a consistent snapshot. The old
+// object is retired (not freed) because a parser thread may still read it.
+begin
+  if FBlockDisp <> nil then
+  begin
+    if FRetiredDisp = nil then
+      FRetiredDisp := TFPObjectList.Create(False);
+    FRetiredDisp.Add(FBlockDisp);
+  end;
+  FBlockDisp := ADisp;
+end;
+
+procedure TecSyntAnalyzer.RebuildBlockCaches;
+// v3: buckets of block rules by the token type of the last parsed token.
+// A rule lands in bucket t when its first condition accepts token type t
+// (FFirstCondMask); rules without a mask (or with events) land in all
+// buckets. Order inside every region preserves the original rule order,
+// which keeps first-match-wins and CancelNextRules semantics identical.
+// Also rebuilds the legacy FBlockRules_Detecters list.
+var
+  Counts, Cur: array[0..cBlkOffsCount - 1] of integer;
+  i, t, o, Total, NDet: integer;
+  Rule: TecTagBlockCondition;
+  bDet, bFold: Boolean;
+  Disp: TecBlockDispatch;
+begin
+  for i := 0 to FBlockRules.Count - 1 do
+    FBlockRules[i].UpdateFirstCondMask;
+
+  FillChar(Counts, SizeOf(Counts), 0);
+  for i := 0 to FBlockRules.Count - 1 do
+  begin
+    Rule := FBlockRules[i];
+    bFold := not (Rule.FBlockType in [btRangeStart, btRangeEnd]);
+    Inc(Counts[cBlkAll]);
+    if bFold then
+      Inc(Counts[cBlkAllNoFold]);
+    bDet := Rule.Enabled and (Rule.FBlockType = btTagDetect) and
+            (Rule.FBlock = nil) and (Rule.FGrammaRule = nil);
+    if bDet then
+      Inc(Counts[cBlkDetAll]);
+    if Rule.FFirstCondMask = 0 then
+    begin
+      for t := 0 to 31 do
+      begin
+        Inc(Counts[cBlkFoldBucket0 + t]);
+        if bFold then
+          Inc(Counts[cBlkNoFoldBucket0 + t]);
+        if bDet then
+          Inc(Counts[cBlkDetBucket0 + t]);
+      end;
+    end
+    else
+      for t := 0 to 31 do
+        if (Rule.FFirstCondMask and (DWORD(1) shl t)) <> 0 then
+        begin
+          Inc(Counts[cBlkFoldBucket0 + t]);
+          if bFold then
+            Inc(Counts[cBlkNoFoldBucket0 + t]);
+          if bDet then
+            Inc(Counts[cBlkDetBucket0 + t]);
+        end;
+  end;
+
+  Disp := TecBlockDispatch.Create;
+  Total := 0;
+  for o := 0 to cBlkOffsCount - 1 do
+  begin
+    Disp.Offs[o] := Total;
+    Cur[o] := Total;
+    Inc(Total, Counts[o]);
+  end;
+  Disp.Offs[cBlkOffsCount] := Total;
+  SetLength(Disp.Flat, Total);
+
+  // legacy detecters list, same content as before
+  SetLength(Disp.Detecters, Counts[cBlkDetAll]);
+  NDet := 0;
+
+  for i := 0 to FBlockRules.Count - 1 do
+  begin
+    Rule := FBlockRules[i];
+    bFold := not (Rule.FBlockType in [btRangeStart, btRangeEnd]);
+    bDet := Rule.Enabled and (Rule.FBlockType = btTagDetect) and
+            (Rule.FBlock = nil) and (Rule.FGrammaRule = nil);
+
+    Disp.Flat[Cur[cBlkAll]] := Rule;
+    Inc(Cur[cBlkAll]);
+    if bFold then
+    begin
+      Disp.Flat[Cur[cBlkAllNoFold]] := Rule;
+      Inc(Cur[cBlkAllNoFold]);
+    end;
+    if bDet then
+    begin
+      Disp.Flat[Cur[cBlkDetAll]] := Rule;
+      Inc(Cur[cBlkDetAll]);
+      Disp.Detecters[NDet] := Rule;
+      Inc(NDet);
+    end;
+
+    if Rule.FFirstCondMask = 0 then
+    begin
+      for t := 0 to 31 do
+      begin
+        Disp.Flat[Cur[cBlkFoldBucket0 + t]] := Rule;
+        Inc(Cur[cBlkFoldBucket0 + t]);
+        if bFold then
+        begin
+          Disp.Flat[Cur[cBlkNoFoldBucket0 + t]] := Rule;
+          Inc(Cur[cBlkNoFoldBucket0 + t]);
+        end;
+        if bDet then
+        begin
+          Disp.Flat[Cur[cBlkDetBucket0 + t]] := Rule;
+          Inc(Cur[cBlkDetBucket0 + t]);
+        end;
+      end;
+    end
+    else
+      for t := 0 to 31 do
+        if (Rule.FFirstCondMask and (DWORD(1) shl t)) <> 0 then
+        begin
+          Disp.Flat[Cur[cBlkFoldBucket0 + t]] := Rule;
+          Inc(Cur[cBlkFoldBucket0 + t]);
+          if bFold then
+          begin
+            Disp.Flat[Cur[cBlkNoFoldBucket0 + t]] := Rule;
+            Inc(Cur[cBlkNoFoldBucket0 + t]);
+          end;
+          if bDet then
+          begin
+            Disp.Flat[Cur[cBlkDetBucket0 + t]] := Rule;
+            Inc(Cur[cBlkDetBucket0 + t]);
+          end;
+        end;
+  end;
+
+  FBlockRules_Detecters := Disp.Detecters;
+  SwapBlockDispatch(Disp);
 end;
 
 procedure TecSyntAnalyzer.BuildTokenBuckets;
@@ -5287,17 +5493,92 @@ end;
 
 procedure TecSyntAnalyzer.HighlightKeywords(Client: TecParserResults;
   const Source: ecString; OnlyGlobal: Boolean);
-var iRule, N, ki, RefIdx: integer;
+var iRule, N, ki, RefIdx, iTokenType: integer;
     Accept: Boolean;
     Tag: PecSyntToken;
     Rule: TecTagBlockCondition;
+    Disp: TecBlockDispatch;
 begin
   N := Client.TagCount;
-  for iRule := 0 to High(FBlockRules_Detecters) do
+  Disp := FBlockDisp;
+  if Disp <> nil then
+  begin
+    // v3: dispatch detecters by the last token's type: rules whose first
+    // condition needs another token type are skipped without calling Check
+    iTokenType := -1;
+    if N > 0 then
+      iTokenType := TecClientSyntAnalyzer(Client).Tags[N - 1].TokenType;
+    if (iTokenType >= 0) and (iTokenType <= 31) then
+    begin
+      for iRule := Disp.Offs[cBlkDetBucket0 + iTokenType] to Disp.Offs[cBlkDetBucket0 + iTokenType + 1] - 1 do
+      begin
+        if not Client.Buffer.Valid then Exit;
+
+        Rule := Disp.Flat[iRule];
+        with Rule do
+          begin
+           if OnlyGlobal and not AlwaysEnabled then Continue;
+           RefIdx := 0;
+           Accept := Check(Source, TecClientSyntAnalyzer(Client), N, RefIdx);
+           if Assigned(OnBlockCheck) then
+             OnBlockCheck(Rule, TecClientSyntAnalyzer(Client), Source, RefIdx, Accept);
+           if Accept then
+             begin
+               if FRefToCondEnd then ki := RefIdx - IdentIndex
+                 else ki := N - 1 - CheckOffset - IdentIndex;
+
+               Tag := TecClientSyntAnalyzer(Client).Tags[ki];
+               Tag.Rule := Rule;
+               if TokenType >= 0 then
+                  Tag.TokenType := TokenType;
+
+               if CancelNextRules then Exit;   // 2.27
+             end;
+          end;
+      end;
+    end
+    else
+    begin
+      // exotic token type: all detecters in original order
+      for iRule := Disp.Offs[cBlkDetAll] to Disp.Offs[cBlkDetAll + 1] - 1 do
+      begin
+        if not Client.Buffer.Valid then Exit;
+
+        Rule := Disp.Flat[iRule];
+        with Rule do
+          begin
+           if OnlyGlobal and not AlwaysEnabled then Continue;
+           RefIdx := 0;
+           Accept := Check(Source, TecClientSyntAnalyzer(Client), N, RefIdx);
+           if Assigned(OnBlockCheck) then
+             OnBlockCheck(Rule, TecClientSyntAnalyzer(Client), Source, RefIdx, Accept);
+           if Accept then
+             begin
+               if FRefToCondEnd then ki := RefIdx - IdentIndex
+                 else ki := N - 1 - CheckOffset - IdentIndex;
+
+               Tag := TecClientSyntAnalyzer(Client).Tags[ki];
+               Tag.Rule := Rule;
+               if TokenType >= 0 then
+                  Tag.TokenType := TokenType;
+
+               if CancelNextRules then Exit;   // 2.27
+             end;
+          end;
+      end;
+    end;
+    Exit;
+  end;
+
+  // fallback (dispatch caches not built): plain iteration
+  for iRule := 0 to FBlockRules.Count - 1 do
   begin
     if not Client.Buffer.Valid then Exit;
 
-    Rule := FBlockRules_Detecters[iRule];
+    Rule := FBlockRules[iRule];
+    if not (Rule.Enabled and (Rule.FBlockType = btTagDetect) and
+            (Rule.FBlock = nil) and (Rule.FGrammaRule = nil)) then
+      Continue;
     with Rule do
       begin
        if OnlyGlobal and not AlwaysEnabled then Continue;
@@ -5325,11 +5606,12 @@ end;
 procedure TecSyntAnalyzer.SelectTokenFormat(Client: TecParserResults;
             const Source: ecString;
             DisableFolding, OnlyGlobal: Boolean; ATokenIndex: integer);
-var i, li, ki, strt, RefIdx: integer;
+var i, li, ki, strt, RefIdx, iTokenType, iRegion: integer;
     Range: TecTextRange;
     Accept: Boolean;
     RClient: TecClientSyntAnalyzer;
     Rule: TecTagBlockCondition;
+    Disp: TecBlockDispatch;
 
   function CheckIndex(Idx: integer): Boolean; inline;
   begin
@@ -5343,6 +5625,100 @@ begin
   RClient := TecClientSyntAnalyzer(Client);
   RClient.FStartSepRangeAnal := ATokenIndex + 1;
 
+  Disp := FBlockDisp;
+  if Disp <> nil then
+  begin
+    // v3: dispatch block rules by the token type of Tags[ATokenIndex-1]:
+    // rules whose first condition needs another token type are skipped
+    // without calling Check. Folding rules are in a separate bucket set,
+    // so the DisableFolding filter is done by the region choice.
+    iTokenType := -1;
+    if ATokenIndex > 0 then
+      iTokenType := RClient.Tags[ATokenIndex - 1].TokenType;
+    if (iTokenType >= 0) and (iTokenType <= 31) then
+    begin
+      if DisableFolding then
+        iRegion := cBlkNoFoldBucket0 + iTokenType
+      else
+        iRegion := cBlkFoldBucket0 + iTokenType;
+    end
+    else
+    begin
+      if DisableFolding then
+        iRegion := cBlkAllNoFold
+      else
+        iRegion := cBlkAll;
+    end;
+
+    for i := Disp.Offs[iRegion] to Disp.Offs[iRegion + 1] - 1 do
+    begin
+      if not Client.Buffer.Valid then Exit;
+
+      Rule := Disp.Flat[i];
+      with Rule do
+       if not SeparateBlockAnalysis or (BlockType <> btTagDetect) or
+          (Block = nil) or (FGrammaRule = nil) then
+       if Client.IsEnabled(Rule, OnlyGlobal) then
+        begin
+          RefIdx := 0;
+          if FGrammaRule <> nil then
+           begin
+             RefIdx := FGrammaParser.TestRule(ATokenIndex - 1, FGrammaRule, Client);
+             Accept := RefIdx <> -1;
+           end else
+             Accept := Check(Source, RClient, ATokenIndex, RefIdx);
+
+          if Assigned(OnBlockCheck) then
+            OnBlockCheck(Rule, RClient, Source, RefIdx, Accept);
+
+          if Accept then
+          begin
+           Client.ApplyStates(Rule);
+           if FRefToCondEnd then strt := RefIdx
+             else strt := ATokenIndex - 1 - CheckOffset;
+      //    strt := ATokenIndex - 1 - CheckOffset;
+           ki := strt - IdentIndex;
+           if CheckIndex(ki) then
+            case BlockType of
+               btTagDetect: // Tag detection
+                 if not RClient.DetectTag(Rule, ki) then
+                   Continue;
+               btRangeStart: // Start of block
+                begin
+                  if Rule.SelfClose then
+                    RClient.CloseRange(Rule, strt);
+                  li := strt - BlockOffset;
+                  if CheckIndex(li) then
+                   begin
+                    Range := TecTextRange.Create(li, RClient.Tags[li].Range.StartPos);
+                    Range.IdentIdx := ki;
+                    Range.Rule := Rule;
+                    Range.FCondIndex := ATokenIndex - 1;
+                    if NoEndRule then
+                     begin
+                      Range.EndIdx := ATokenIndex - 1 - CheckOffset;
+                      Range.FEndCondIndex := ATokenIndex - 1;
+                      Range.StartIdx := RefIdx - BlockOffset;
+                     end;
+                    RClient.AddRange(Range);
+                   end;
+                end;
+               btRangeEnd:  // End of block
+                 if not RClient.CloseRange(Rule, strt) then
+                   Continue;
+               btLineBreak:
+                 begin
+                   // Alexey: deleted support for line separators
+                 end;
+            end;
+           if CancelNextRules then Break;
+          end;
+        end;
+    end;
+    Exit;
+  end;
+
+  // fallback (dispatch caches not built): plain iteration
     for i := 0 to FBlockRules.Count - 1 do
     begin
       if not Client.Buffer.Valid then Exit;
@@ -5601,6 +5977,11 @@ procedure TecSyntAnalyzer.BlocksChanged(Sender: TCollection;
 var i: integer;
     Rule: TecTagBlockCondition;
 begin
+  // v3: refresh the dispatch caches before clients reparse (skipped while
+  // streaming: Loaded builds them once when loading finishes)
+  if not (csLoading in ComponentState) then
+    RebuildBlockCaches;
+
   ClearClientContents;
   if Item = nil then
    begin
@@ -5661,7 +6042,6 @@ end;
 
 procedure TecSyntAnalyzer.Loaded;
 var
-  Rule: TecTagBlockCondition;
   i: integer;
 begin
   inherited;
@@ -5681,21 +6061,10 @@ begin
   for i := 0 to FMasters.Count - 1 do
     TecSyntAnalyzer(FMasters[i]).DetectBlockSeparate;
 
-  //v3: build the first-char dispatch cache for token rules
+  //v3: build the dispatch caches (token-type buckets for block rules,
+  //first-char buckets for token rules); also rebuilds FBlockRules_Detecters
+  RebuildBlockCaches;
   BuildTokenBuckets;
-
-  FBlockRules_Detecters := nil;
-  for i := 0 to FBlockRules.Count - 1 do
-  begin
-    Rule := FBlockRules[i];
-    with Rule do
-      if Enabled and (BlockType = btTagDetect) and
-         (Block = nil) and (FGrammaRule = nil) then
-      begin
-        SetLength(FBlockRules_Detecters, Length(FBlockRules_Detecters)+1);
-        FBlockRules_Detecters[High(FBlockRules_Detecters)] := Rule;
-      end;
-  end;
 
   UpdateSpecialKinds;
 
