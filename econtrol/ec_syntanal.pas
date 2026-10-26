@@ -31,6 +31,12 @@ uses
   ATStringProc_TextBuffer,
   ec_proc_StreamComponent;
 
+{ v3: first-char dispatch of token rules (see TecTokenDispatch).
+  Char #N (N = 0..127) maps to bucket N; first chars >= #128 and end of
+  text map to the wide bucket cTokWide. }
+const
+  cTokWide = 128;
+
 type
   TecLineBreakPos = (lbTop, lbBottom);
   TecLineBreakBound = set of TecLineBreakPos;
@@ -371,11 +377,13 @@ type
     FOnMatchToken: TecMatchTokenEvent;
     FColumnTo: integer;
     FColumnFrom: integer;
+    FFirstChars: TecReFirstCharSet; // v3: possible first chars, for dispatch without calling Match()
     function GetExpression: ecString;
     procedure SetExpression(const Value: ecString);
     procedure SetTokenType(const Value: integer);
     procedure SetColumnFrom(const Value: integer);
     procedure SetColumnTo(const Value: integer);
+    procedure SetOnMatchToken(const Value: TecMatchTokenEvent); // v3: fires Changed so dispatch caches stay correct
   protected
     procedure AssignTo(Dest: TPersistent); override;
     function GetItemBaseName: string; override;
@@ -386,8 +394,10 @@ type
     // compiles the rule's regex now, so Match() never compiles lazily from
     // several parser threads at once (Match() is lock-free)
     procedure PrewarmRegex;
+    // v3: recompute the possible-first-chars set of the expression
+    procedure UpdateFirstChars;
     function Match(const Source: ecString; Pos: integer): integer;
-    property OnMatchToken: TecMatchTokenEvent read FOnMatchToken write FOnMatchToken;
+    property OnMatchToken: TecMatchTokenEvent read FOnMatchToken write SetOnMatchToken;
   published
     property TokenType: integer read FTokenType write SetTokenType default 0;
     property Expression: ecString read GetExpression write SetExpression;
@@ -739,6 +749,24 @@ type
 
   TecTripleState = (etsStateNone, etsStateFalse, etsStateTrue);
 
+  { v3: dispatch cache for token rules, built once at lexer load / rule
+    change time. Parser threads only READ the object pointer (consistent
+    snapshot), so parsing stays lock-free. Rebuilds swap in a new object and
+    retire the old one (freed when the analyzer dies).
+    RuleSets[c] is a bit set (64-bit QWord) of indexes in the TokenRules
+    list: bit i is set when rule TokenRules[i] can match when the next
+    char is c (c = 0..127), or when c = cTokWide (first char >= #128 or
+    end of text). Rules with an unknown first-char set are in every
+    bucket. Set bits are iterated in rising order, which preserves the
+    original rule order, so first-match-wins semantics are identical.
+    QWord holds 64 rules: the most complex public lexer (Markdown) has 48
+    token rules; a lexer with >64 rules gets no dispatch (FTokenDisp=nil)
+    and GetToken() uses the plain loop. }
+  TecTokenDispatch = class
+  public
+    RuleSets: array[0..cTokWide] of QWord;
+  end;
+
   { TecSyntAnalyzer }
 
   TecSyntAnalyzer = class(TLoadableComponent)
@@ -756,6 +784,8 @@ type
     FTokenRules: TecTokenRuleCollection;
     FBlockRules: TecBlockRuleCollection;
     FBlockRules_Detecters: array of TecTagBlockCondition; //Alexey
+    FTokenDisp: TecTokenDispatch; // v3: nil = not built (GetToken falls back to plain iteration)
+    FRetiredDisp: TFPObjectList;  // v3: replaced dispatch objects, freed on Destroy
     FExtentions: string;
     FLexerName: string;
     FCoping: Boolean;
@@ -794,6 +824,9 @@ type
     procedure TokenRuleChanged(Sender: TCollection; Item: TSyntCollectionItem);
     procedure BlocksChanged(Sender: TCollection; Item: TSyntCollectionItem);
     procedure SubLexRuleChanged(Sender: TCollection; Item: TSyntCollectionItem);
+    // v3: dispatch cache builder (first-char buckets for token rules)
+    procedure BuildTokenBuckets;
+    procedure SwapTokenDispatch(ADisp: TecTokenDispatch);
     procedure SetBlockRules(const Value: TecBlockRuleCollection);
     procedure SetTokenRules(const Value: TecTokenRuleCollection);
     procedure SetFormats(const Value: TecStylesCollection);
@@ -2043,6 +2076,9 @@ begin
   FFormat := nil;
   FRegExpr := TecRegExpr.Create;
   SetDefaultModifiers(FRegExpr);
+  // v3: conservative default until the first analysis (rule stays eligible)
+  FFirstChars.Any := True;
+  FFirstChars.NonAscii := True;
 end;
 
 destructor TecTokenRule.Destroy;
@@ -2079,6 +2115,33 @@ end;
 procedure TecTokenRule.PrewarmRegex;
 begin
   FRegExpr.Compile;
+  UpdateFirstChars;
+end;
+
+procedure TecTokenRule.UpdateFirstChars;
+// v3: recompute the possible-first-chars set used by GetToken dispatch.
+// Must be called after the expression / modifiers changed (PrewarmRegex
+// does it) or at analyzer load time (BuildTokenBuckets does it for all rules).
+begin
+  // rules with the OnMatchToken event must not be pre-filtered: the event
+  // fires for every enabled rule, keep the original behavior for them
+  if Assigned(FOnMatchToken) then
+  begin
+    FFirstChars.Ascii := [];
+    FFirstChars.NonAscii := True;
+    FFirstChars.Any := True;
+    Exit;
+  end;
+  FRegExpr.CalcFirstChars(FFirstChars);
+end;
+
+procedure TecTokenRule.SetOnMatchToken(const Value: TecMatchTokenEvent);
+// v3: fires Changed so the dispatch caches are rebuilt (filtered rules with
+// events must stay unfiltered)
+begin
+  if @FOnMatchToken = @Value then Exit;
+  FOnMatchToken := Value;
+  Changed(False);
 end;
 
 procedure TecTokenRule.SetColumnFrom(const Value: integer);
@@ -5106,6 +5169,9 @@ begin
   TStringList(FTokenTypeNames).OnChange := nil;
   FGrammaParser.OnChange := nil;
 
+  FreeAndNil(FTokenDisp);
+  FreeAndNil(FRetiredDisp);
+
   FreeAndNil(FFormats);
   FreeAndNil(FMasters);
   FreeAndNil(FSampleText);
@@ -5117,6 +5183,69 @@ begin
   FreeAndNil(FGrammaParser);
   inherited;
   FreeAndNil(FClientList);
+end;
+
+procedure TecSyntAnalyzer.SwapTokenDispatch(ADisp: TecTokenDispatch);
+// v3: single pointer store; readers keep a consistent snapshot. The old
+// object is retired (not freed) because a parser thread may still read it.
+begin
+  if FTokenDisp <> nil then
+  begin
+    if FRetiredDisp = nil then
+      FRetiredDisp := TFPObjectList.Create(False);
+    FRetiredDisp.Add(FTokenDisp);
+  end;
+  FTokenDisp := ADisp;
+end;
+
+procedure TecSyntAnalyzer.BuildTokenBuckets;
+// v3: buckets of token rules by the first char of the token (the classic
+// highlighter dispatch). A rule lands in bucket c when its expression can
+// start with char c (FFirstChars); rules with an unknown first set (Any)
+// land in all buckets. Set bits are iterated in rising order in GetToken,
+// which preserves the original rule order, so first-match-wins semantics
+// are identical. QWord holds 64 rule indexes: a lexer with more token
+// rules gets no dispatch (nil), GetToken then uses the plain loop.
+var
+  i, c: integer;
+  Rule: TecTokenRule;
+  Bits: array[0..cTokWide] of QWord;
+  BitOfRule: QWord;
+  Disp: TecTokenDispatch;
+begin
+  for i := 0 to FTokenRules.Count - 1 do
+    FTokenRules[i].UpdateFirstChars;
+
+  if FTokenRules.Count > 64 then
+  begin
+    // QWord bits cannot hold >64 rule indexes: no dispatch, plain loop
+    SwapTokenDispatch(nil);
+    Exit;
+  end;
+
+  FillChar(Bits, SizeOf(Bits), 0);
+  for i := 0 to FTokenRules.Count - 1 do
+  begin
+    Rule := FTokenRules[i];
+    BitOfRule := QWord(1) shl i;
+    if Rule.FFirstChars.Any then
+    begin
+      for c := 0 to cTokWide do
+        Bits[c] := Bits[c] or BitOfRule;
+    end
+    else
+    begin
+      for c := 0 to 127 do
+        if c in Rule.FFirstChars.Ascii then
+          Bits[c] := Bits[c] or BitOfRule;
+      if Rule.FFirstChars.NonAscii then
+        Bits[cTokWide] := Bits[cTokWide] or BitOfRule;
+    end;
+  end;
+
+  Disp := TecTokenDispatch.Create;
+  Move(Bits[0], Disp.RuleSets[0], SizeOf(Bits));
+  SwapTokenDispatch(Disp);
 end;
 
 procedure TecSyntAnalyzer.Assign(Source: TPersistent);
@@ -5293,6 +5422,8 @@ function TecSyntAnalyzer.GetToken(Client: TecParserResults; const Source: ecStri
 var NRuleIndex, NLen, NPosInLine: integer;
     Rule: TecTokenRule;
     PntStart, PntEnd: TPoint;
+    Disp: TecTokenDispatch;
+    RuleSet: QWord;
 begin
   PntStart.X := -1;
   PntStart.Y := -1;
@@ -5315,6 +5446,79 @@ begin
     end;
 
   NPosInLine := 0;
+  Disp := FTokenDisp;
+  if Disp <> nil then
+  begin
+    // v3: first-char dispatch (the classic highlighter trick): only rules
+    // whose expression can start with the current char are tried; rules
+    // with an unknown first set (Any: event handlers, wide classes) are in
+    // every bucket. No rule can fire at end-of-text (all matches are empty),
+    // so the wide bucket serves that case too.
+    NLen := APos;
+    if NLen < 1 then
+      NLen := 1; // Match() clamps the same way
+    if (NLen <= Length(Source)) and (Ord(Source[NLen]) <= 127) then
+      RuleSet := Disp.RuleSets[Ord(Source[NLen])]
+    else
+      RuleSet := Disp.RuleSets[cTokWide]; // non-ASCII first char, or end of text
+
+    while RuleSet <> 0 do
+    begin
+      if not Client.Buffer.Valid then
+      begin
+        Result := Default(TecSyntToken);
+        Exit;
+      end;
+
+      NRuleIndex := BsfQWord(RuleSet);
+      RuleSet := RuleSet and (RuleSet - 1); // drop the lowest set bit
+      Rule := FTokenRules[NRuleIndex];
+      if Client.IsEnabled(Rule, AOnlyGlobal) then
+          begin
+            if (Rule.ColumnFrom > 0) or (Rule.ColumnTo > 0) then
+              begin
+               if NPosInLine = 0 then
+                 NPosInLine := Client.FBuffer.StrToCaret(APos - 1).X + 1;
+
+               if (Rule.ColumnFrom > 0) and (NPosInLine < Rule.ColumnFrom) or
+                  (Rule.ColumnTo > 0) and (NPosInLine > Rule.ColumnTo) then
+                  Continue;
+              end;
+            NLen := Rule.Match(Source, APos);
+            if Assigned(Rule.OnMatchToken) then
+              Rule.OnMatchToken(Rule, Client, Source, APos, NLen);
+            if NLen > 0 then
+              begin
+                Client.ApplyStates(Rule);
+
+                PntStart := Client.Buffer.StrToCaret(APos-1);
+
+                //optimization: if token is short, get PntEnd simpler
+                if PntStart.X + NLen >= Client.Buffer.LineLength(PntStart.Y) then
+                  PntEnd := Client.Buffer.StrToCaret(APos+NLen-1)
+                else
+                begin
+                  PntEnd.Y := PntStart.Y;
+                  PntEnd.X := PntStart.X + NLen;
+                end;
+
+                Result := TecSyntToken.Create(Rule,
+                       APos - 1,
+                       APos + NLen - 1,
+                       PntStart,
+                       PntEnd
+                       );
+                Exit;
+              end;
+          end;
+    end;
+
+    Result := TecSyntToken.Create(nil, -1, -1, PntStart, PntStart);
+    Exit;
+  end;
+
+  // fallback (dispatch not built: programmatic analyzer, or lexer with
+  // >64 token rules): plain iteration
   for NRuleIndex := 0 to FTokenRules.Count - 1 do
     begin
       if not Client.Buffer.Valid then
@@ -5476,6 +5680,9 @@ begin
   DetectBlockSeparate;
   for i := 0 to FMasters.Count - 1 do
     TecSyntAnalyzer(FMasters[i]).DetectBlockSeparate;
+
+  //v3: build the first-char dispatch cache for token rules
+  BuildTokenBuckets;
 
   FBlockRules_Detecters := nil;
   for i := 0 to FBlockRules.Count - 1 do
@@ -5661,6 +5868,10 @@ begin
     if Item = nil then
       for i := 0 to FTokenRules.Count - 1 do
         FTokenRules[i].PrewarmRegex;
+  // v3: refresh the first-char dispatch (skipped while streaming: Loaded
+  // builds it once when loading finishes)
+  if not (csLoading in ComponentState) then
+    BuildTokenBuckets;
   DetectBlockSeparate;
   ClearClientContents;
   Change;

@@ -40,6 +40,15 @@ type
   end;
 
 type
+  // possible first characters of a compiled expression, used by
+  // ec_syntanal to dispatch token rules without calling Match()
+  TecReFirstCharSet = record
+    Ascii: set of 0..127;  // possible first chars < #128
+    NonAscii: Boolean;     // possible first char >= #128
+    Any: Boolean;          // unknown: any first char is possible
+  end;
+
+type
   TecRegExpr = class //(TPersistent)
   private
     FProgRoot: TObject;
@@ -75,6 +84,8 @@ type
     //function GetMatch(const InputString: AnsiString; SubIdx: integer): AnsiString; overload;
     function GetMatch(const InputString: UCString; SubIdx: integer): UCString; overload;
     function Substitute (const InputString, ATemplate : ecString) : ecString;
+    // first-char analysis of the compiled program (conservative superset)
+    procedure CalcFirstChars(var AChars: TecReFirstCharSet);
 
     property ModifierMask: Word read FModifiers write SetModifiers;
     property ModifierI: boolean index MaskModI read GetModifier write SetModifier;
@@ -458,6 +469,192 @@ begin
           if Result = '' then
             raise TecRegExprCompileError.Create('Invalid hex digit in \x');
          end;
+  end;
+end;
+
+{ v3: first-char analysis of a compiled program. Computes a conservative
+  SUPERSET of the characters a regex can start a non-empty match with.
+  Used by ec_syntanal to skip token rules before calling Match().
+  Rules of the walk:
+  - a node which must consume a char (LoopMin>=1 and always consumes on
+    success) terminates the sequence: its char set is the answer
+  - a node which can be skipped or can succeed consuming nothing
+    (LoopMin=0, anchors, lookarounds, refs, uncertain containers)
+    contributes its own set AND the walk continues with the next node
+  - anything uncertain widens the result (NonAscii/Any), never narrows it }
+
+function REIsZeroWidthCheck(C: UCChar): Boolean; inline;
+begin
+  Result := (C = '^') or (C = '$') or (C = 'A') or (C = 'Z') or
+            (C = 'b') or (C = 'B');
+  // note: 'z' is NOT zero-width: it consumes a line break
+  // (#10, #13, #$2028, #$2029, #$0085)
+end;
+
+function RENodeAlwaysConsumes(Node: TRENodeBase): Boolean; inline;
+// True when a single successful match of the node consumes >=1 char
+begin
+  Result := False;
+  if Node.FLoopMin < 1 then Exit;
+  if Node is TCharSeqNode then Exit(True);
+  if Node is TCharSetNode then Exit(True); // consumes exactly 1 on success
+  if Node is TSpecCheckNode then
+    Result := not REIsZeroWidthCheck(TSpecCheckNode(Node).FCheckType);
+  // TRefNode: empty capture possible; TZeroWidth: consumes nothing;
+  // TreBranchNode/TreSubExpr: cannot prove for all branches -> conservative False
+end;
+
+procedure REAddSeqFirstChars(Node: TRENodeBase; var S: TecReFirstCharSet); forward;
+
+procedure REAddNodeFirstChars(Node: TRENodeBase; var S: TecReFirstCharSet);
+var
+  i, C: integer;
+  C2: UCChar;
+  sn: TSpecCheckNode;
+  cn: TCharSetNode;
+begin
+  if Node is TCharSeqNode then
+  begin
+    if TCharSeqNode(Node).FIgnoreCase then
+    begin
+      // stored char is upcased; both cases can hit it
+      for C := 0 to 127 do
+      begin
+        C2 := UCChar(C);
+        CharToUpCase(C2);
+        if C2 = TCharSeqNode(Node).FChar then
+          Include(S.Ascii, C);
+      end;
+    end
+    else
+      if Ord(TCharSeqNode(Node).FChar) <= 127 then
+        Include(S.Ascii, Ord(TCharSeqNode(Node).FChar));
+    if Ord(TCharSeqNode(Node).FChar) > 127 then
+      S.NonAscii := True;
+    Exit;
+  end;
+
+  if Node is TCharSetNode then
+  begin
+    cn := TCharSetNode(Node);
+    if cn.FInvert then
+      S.Any := True // complement: almost any char possible
+    else
+    begin
+      for C := 0 to 127 do
+      begin
+        C2 := UCChar(C);
+        if cn.FIgnoreCase then
+          CharToUpCase(C2);
+        if cn.HasChar(C2) then
+          Include(S.Ascii, C);
+      end;
+      // non-ascii possibility: wide ranges / wide chars / wide classes
+      for i := 1 to Length(cn.FCharRanges) do
+        if Ord(cn.FCharRanges[i]) > 127 then
+        begin
+          S.NonAscii := True;
+          Break;
+        end;
+      if not S.NonAscii then
+        for i := 1 to Length(cn.FCharArray) do
+          if Ord(cn.FCharArray[i]) > 127 then
+          begin
+            S.NonAscii := True;
+            Break;
+          end;
+      if (not S.NonAscii) and (cn.FCharSets <> '') then
+        for i := 1 to Length(cn.FCharSets) do
+          if IsInRange(cn.FCharSets[i], UCChar($0410)) then // test Cyrillic 'А'
+          begin
+            S.NonAscii := True;
+            Break;
+          end;
+    end;
+    Exit;
+  end;
+
+  if Node is TSpecCheckNode then
+  begin
+    sn := TSpecCheckNode(Node);
+    if REIsZeroWidthCheck(sn.FCheckType) then
+      Exit // zero-width anchor: nothing to add
+    else
+    if sn.FCheckType = '.' then
+    begin
+      S.Any := True;
+      S.NonAscii := True;
+    end
+    else
+    if sn.FCheckType = ':' then
+    begin
+      for C := 0 to 127 do
+        if (C <> 10) and (C <> 13) then
+          Include(S.Ascii, C);
+      S.NonAscii := True;
+    end
+    else
+    if sn.FCheckType = 'z' then
+    begin
+      // \z consumes a line break: #10, #13, or a Unicode line separator
+      Include(S.Ascii, 10);
+      Include(S.Ascii, 13);
+      S.NonAscii := True;
+    end
+    else
+    begin
+      // character class like \w \d \s \c (consumes 1 char)
+      for C := 0 to 127 do
+        if IsInRange(sn.FCheckType, UCChar(C)) then
+          Include(S.Ascii, C);
+      if IsInRange(sn.FCheckType, UCChar($0410)) then
+        S.NonAscii := True;
+    end;
+    Exit;
+  end;
+
+  if Node is TRefNode then
+  begin
+    S.Any := True; // matched text of a group: unknown
+    Exit;
+  end;
+
+  if Node is TZeroWidth then
+    Exit; // lookaround: zero-width, nothing to add
+
+  if Node is TreSubExpr then
+  begin
+    // alternation branches
+    with TreListNodeBase(Node) do
+      for i := 0 to FList.Count - 1 do
+        REAddNodeFirstChars(TRENodeBase(FList[i]), S);
+    Exit;
+  end;
+
+  if Node is TreBranchNode then
+  begin
+    // sequence: starts at the first node of the branch
+    with TreListNodeBase(Node) do
+      if FList.Count > 0 then
+        REAddSeqFirstChars(TRENodeBase(FList.First), S);
+    Exit;
+  end;
+
+  S.Any := True; // unknown node type: be safe
+end;
+
+procedure REAddSeqFirstChars(Node: TRENodeBase; var S: TecReFirstCharSet);
+// first chars of a node sequence starting at Node, following the Next chain
+begin
+  while Node <> nil do
+  begin
+    REAddNodeFirstChars(Node, S);
+    // continue past the node only when it can be skipped or consume nothing
+    if RENodeAlwaysConsumes(Node) then
+      Break;
+    if S.Any then
+      Break; // cannot get wider anyway
+    Node := Node.Next;
   end;
 end;
 
@@ -1854,6 +2051,27 @@ procedure TecRegExpr.Assign(Source: TecRegExpr);
 begin
   Self.Expression := Source.Expression;
   Self.ModifierMask := Source.ModifierMask;
+end;
+
+procedure TecRegExpr.CalcFirstChars(var AChars: TecReFirstCharSet);
+// v3: conservative superset of the chars a non-empty match can start with
+var
+  i: integer;
+begin
+  AChars.Ascii := [];
+  AChars.NonAscii := False;
+  AChars.Any := False;
+  if (FProgRoot = nil) or (TreRootNode(FProgRoot).FList.Count = 0) then
+  begin
+    // not compiled / invalid / empty program: the rule never fires with a
+    // positive length, but stay conservative anyway
+    AChars.Any := True;
+    Exit;
+  end;
+  // root is a TreSubExpr: its list = alternation branches
+  with TreRootNode(FProgRoot) do
+    for i := 0 to FList.Count - 1 do
+      REAddNodeFirstChars(TRENodeBase(FList[i]), AChars);
 end;
 
 procedure TecRegExpr.ParseModifiers(const S: PWideChar; Len: integer; var Modifiers: Word); // Alexey
