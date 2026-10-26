@@ -451,6 +451,8 @@ type
     destructor Destroy; override;
     function MatchStart(const Source: ecString; Pos: integer): integer;
     function MatchEnd(const Source: ecString; Pos: integer): integer;
+    // v3: compile start/end regexes now, so Match*() never compiles lazily
+    procedure PrewarmRegexes;
   published
     property StartExpression: ecString read GetStartExpression write SetStartExpression;
     property EndExpression: ecString read GetEndExpression write SetEndExpression;
@@ -6056,6 +6058,10 @@ begin
   for i := 0 to FTokenRules.Count - 1 do
     FTokenRules[i].PrewarmRegex;
 
+  //v3: same for sub-lexer start/end regexes
+  for i := 0 to FSubAnalyzers.Count - 1 do
+    FSubAnalyzers[i].PrewarmRegexes;
+
   CompileGramma;
   DetectBlockSeparate;
   for i := 0 to FMasters.Count - 1 do
@@ -6134,6 +6140,9 @@ end;
 procedure TecSyntAnalyzer.SubLexRuleChanged(Sender: TCollection;
   Item: TSyntCollectionItem);
 begin
+  // v3: keep the changed rule's start/end regexes pre-warmed
+  if Item is TecSubAnalyzerRule then
+    TecSubAnalyzerRule(Item).PrewarmRegexes;
   DetectBlockSeparate;
   ClearClientContents;
   Change;
@@ -6702,6 +6711,14 @@ end;
 function TecSubAnalyzerRule.MatchEnd(const Source: ecString; Pos: integer): integer;
 begin
   Result := FEndRegExpr.MatchLength(Source, Pos);
+end;
+
+procedure TecSubAnalyzerRule.PrewarmRegexes;
+// v3: compile start/end regexes at load time, so MatchStart/MatchEnd never
+// lazily compile from parser threads
+begin
+  FStartRegExpr.Compile;
+  FEndRegExpr.Compile;
 end;
 
 procedure TecSubAnalyzerRule.SetEndExpression(const Value: ecString);
