@@ -2053,6 +2053,7 @@ end;
 procedure TecRegExpr.CalcFirstChars(var AChars: TecReFirstCharSet);
 // v3: conservative superset of the chars a non-empty match can start with
 var
+  RootNode: TreRootNode;
   i: integer;
 begin
   AChars.Ascii := [];
@@ -2066,9 +2067,9 @@ begin
     Exit;
   end;
   // root is a TreSubExpr: its list = alternation branches
-  with TreRootNode(FProgRoot) do
-    for i := 0 to FList.Count - 1 do
-      REAddNodeFirstChars(TRENodeBase(FList[i]), AChars);
+  RootNode := TreRootNode(FProgRoot);
+  for i := 0 to RootNode.FList.Count - 1 do
+    REAddNodeFirstChars(TRENodeBase(RootNode.FList[i]), AChars);
 end;
 
 procedure TecRegExpr.ParseModifiers(const S: PWideChar; Len: integer; var Modifiers: Word); // Alexey
