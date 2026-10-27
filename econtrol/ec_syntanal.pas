@@ -5866,8 +5866,11 @@ end;
 
 procedure TecSyntAnalyzer.BlocksChanged(Sender: TCollection;
   Item: TSyntCollectionItem);
-var i: integer;
-    Rule: TecTagBlockCondition;
+var
+  Rule: TecTagBlockCondition;
+  TokRule: TecTokenRule;
+  AnRule: TecSubAnalyzerRule;
+  i: integer;
 begin
   // v3: refresh the dispatch caches before clients reparse (skipped while
   // streaming: Loaded builds them once when loading finishes)
@@ -5878,19 +5881,25 @@ begin
   if Item = nil then
    begin
     for i := 0 to FBlockRules.Count - 1 do
-     begin
+    begin
       Rule := FBlockRules[i];
       if not FBlockRules.ValidItem(Rule.Block) then Rule.Block := nil;
       if not FBlockRules.ValidItem(Rule.BlockEndCond) then Rule.BlockEndCond := nil;
-     end;
+    end;
+
     for i := 0 to FTokenRules.Count - 1 do
-     with FTokenRules[i] do
-      if not FBlockRules.ValidItem(Block) then Block := nil;
+    begin
+      TokRule := FTokenRules[i];
+      if not FBlockRules.ValidItem(TokRule.Block) then TokRule.Block := nil;
+    end;
+
     for i := 0 to FSubAnalyzers.Count - 1 do
-     with FSubAnalyzers[i] do
-      if not FSubAnalyzers.ValidItem(Block) then Block := nil;
+    begin
+      AnRule := FSubAnalyzers[i];
+      if not FSubAnalyzers.ValidItem(AnRule.Block) then AnRule.Block := nil;
+    end;
    end;
-//  UpdateClients;
+  //UpdateClients;
   Change;
 end;
 
