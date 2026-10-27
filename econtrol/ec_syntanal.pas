@@ -6710,38 +6710,15 @@ begin
   Result := TecSubAnalyzerRule(inherited Items[Index]);
 end;
 
-(*
-{ TecSyntStyles }
-
-constructor TecSyntStyles.Create(AOwner: TComponent);
-begin
-  inherited;
-  FStyles := TecStylesCollection.Create;
-end;
-
-destructor TecSyntStyles.Destroy;
-begin
-  FreeAndNil(FStyles);
-  inherited;
-end;
-
-procedure TecSyntStyles.SetStyles(const Value: TecStylesCollection);
-begin
-  FStyles.Assign(Value);
-end;
-*)
 
 initialization
   Classes.RegisterClass(TLibSyntAnalyzer);
 
   FillChar(EControlOptions, SizeOf(EControlOptions), 0);
-  with EControlOptions do
-  begin
-    MaxLinesWhenParserEnablesFolding := 15*1000;
-    MaxLengthForSZFormat := 100;
-    AutoFoldComments := 0;
-    AutoFoldComments_BreakOnEmptyLine := True;
-    IndentFolding_CheckBracketsAreClosed := True;
-  end;
+  EControlOptions.MaxLinesWhenParserEnablesFolding := 15*1000;
+  EControlOptions.MaxLengthForSZFormat := 100;
+  EControlOptions.AutoFoldComments := 0;
+  EControlOptions.AutoFoldComments_BreakOnEmptyLine := True;
+  EControlOptions.IndentFolding_CheckBracketsAreClosed := True;
 
 end.
