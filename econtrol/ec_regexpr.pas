@@ -301,9 +301,7 @@ type
   private
     FRef: integer;
     FIgnoreCase: Boolean;
-    //function GetExprStr(const InputString: AnsiString): AnsiString; overload;
-    //function GetExprStr(const InputString: UCString): UCString; overload;
-    procedure GetExprPtr(const AInputString: UCString; out APtr: PWideChar; out ALen: integer; St: PecRegexIntRange); // Alexey
+    procedure GetExprPtr(const AInputString: UCString; out APtr: PWideChar; out ALen: integer; St: PecRegexIntRange);
   public
     function Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
     function BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
@@ -326,9 +324,6 @@ type
   public
     procedure Add(Node: TRENodeBase);
     procedure Invert;
-    {
-    procedure Compile(const Expression: AnsiString; var aPos: integer; Modifiers: Word); overload;
-    }
     procedure Compile(const Expression: UCString; var aPos: integer; Modifiers: Word); overload;
     function Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
     function BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
