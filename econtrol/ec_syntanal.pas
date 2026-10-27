@@ -889,8 +889,8 @@ type
   protected
     function GetToken(AClient: TecParserResults; const Source: ecString;
                        APos: integer; AOnlyGlobal: Boolean): TecSyntToken; virtual;
-    procedure HighlightKeywords(Client: TecParserResults; const Source: ecString;
-                       OnlyGlobal: Boolean); virtual;
+    procedure HighlightKeywords(AClient: TecParserResults; const Source: ecString;
+                       AOnlyGlobal: Boolean); virtual;
     procedure SelectTokenFormat(AClient: TecParserResults; const Source: ecString;
                        ADisableFolding, AOnlyGlobal: Boolean; ATokenIndex: integer = -1); virtual;
     procedure Loaded; override;
@@ -5494,8 +5494,8 @@ begin
   UpdateClients;
 end;
 
-procedure TecSyntAnalyzer.HighlightKeywords(Client: TecParserResults;
-  const Source: ecString; OnlyGlobal: Boolean);
+procedure TecSyntAnalyzer.HighlightKeywords(AClient: TecParserResults;
+  const Source: ecString; AOnlyGlobal: Boolean);
 var
   NTagIdx: integer;
 
@@ -5507,13 +5507,13 @@ var
     Tag: PecSyntToken;
   begin
     Result := False;
-    if not Client.Buffer.Valid then Exit(True);
+    if not AClient.Buffer.Valid then Exit(True);
 
-    if OnlyGlobal and not ARule.AlwaysEnabled then Exit;
+    if AOnlyGlobal and not ARule.AlwaysEnabled then Exit;
     RefIdx := 0;
-    Accept := ARule.Check(Source, TecClientSyntAnalyzer(Client), NTagIdx, RefIdx);
+    Accept := ARule.Check(Source, TecClientSyntAnalyzer(AClient), NTagIdx, RefIdx);
     if Assigned(ARule.OnBlockCheck) then
-      ARule.OnBlockCheck(ARule, TecClientSyntAnalyzer(Client), Source, RefIdx, Accept);
+      ARule.OnBlockCheck(ARule, TecClientSyntAnalyzer(AClient), Source, RefIdx, Accept);
     if Accept then
      begin
        if ARule.FRefToCondEnd then
@@ -5521,7 +5521,7 @@ var
        else
          ki := NTagIdx - 1 - ARule.CheckOffset - ARule.IdentIndex;
 
-       Tag := TecClientSyntAnalyzer(Client).Tags[ki];
+       Tag := TecClientSyntAnalyzer(AClient).Tags[ki];
        Tag.Rule := ARule;
        if ARule.TokenType >= 0 then
           Tag.TokenType := ARule.TokenType;
@@ -5535,7 +5535,7 @@ var
   Rule: TecTagBlockCondition;
   iRule, iTokenType: integer;
 begin
-  NTagIdx := Client.TagCount;
+  NTagIdx := AClient.TagCount;
   Disp := FBlockDisp;
   if Disp <> nil then
   begin
@@ -5543,7 +5543,7 @@ begin
     // condition needs another token type are skipped without calling Check
     iTokenType := -1;
     if NTagIdx > 0 then
-      iTokenType := TecClientSyntAnalyzer(Client).Tags[NTagIdx - 1].TokenType;
+      iTokenType := TecClientSyntAnalyzer(AClient).Tags[NTagIdx - 1].TokenType;
     if (iTokenType >= 0) and (iTokenType <= 31) then
     begin
       for iRule := Disp.Offs[cBlkDetBucket0 + iTokenType] to Disp.Offs[cBlkDetBucket0 + iTokenType + 1] - 1 do
