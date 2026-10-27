@@ -303,7 +303,7 @@ type
     FIgnoreCase: Boolean;
     //function GetExprStr(const InputString: AnsiString): AnsiString; overload;
     //function GetExprStr(const InputString: UCString): UCString; overload;
-    procedure GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer; St: PecRegexIntRange); // Alexey
+    procedure GetExprPtr(const AInputString: UCString; out APtr: PWideChar; out ALen: integer; St: PecRegexIntRange); // Alexey
   public
     function Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
     function BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
@@ -880,19 +880,19 @@ end;
 
 { TRefNode }
 
-procedure TRefNode.GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer; St: PecRegexIntRange); // Alexey
-var se: TreSubExpr;
+procedure TRefNode.GetExprPtr(const AInputString: UCString; out APtr: PWideChar; out ALen: integer; St: PecRegexIntRange);
+var
+  se: TreSubExpr;
 begin
-  Ptr := nil;
-  Len := 0;
-  with Root do
-    if FSubExpr.Count > FRef then
-      begin
-        se := TreSubExpr(FSubExpr[FRef]);
-        Len := abs(St[se.FSlot].NEnd - St[se.FSlot].NBegin);
-        if (St[se.FSlot].NBegin > 0) and (St[se.FSlot].NEnd > 0) then
-          Ptr := @InputString[Min(St[se.FSlot].NBegin, St[se.FSlot].NEnd)];
-      end;
+  APtr := nil;
+  ALen := 0;
+  if Root.FSubExpr.Count > FRef then
+  begin
+    se := TreSubExpr(Root.FSubExpr[FRef]);
+    ALen := abs(St[se.FSlot].NEnd - St[se.FSlot].NBegin);
+    if (St[se.FSlot].NBegin > 0) and (St[se.FSlot].NEnd > 0) then
+      APtr := @AInputString[Min(St[se.FSlot].NBegin, St[se.FSlot].NEnd)];
+  end;
 end;
 
 function TRefNode.BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; // Alexey
