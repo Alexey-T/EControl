@@ -34,6 +34,22 @@ type
   TecRegExprCompileError = class(Exception);
 
 type
+  // match extent of one (sub)expression: half-open char range [NBegin..NEnd)
+  TecRegexIntRange = record
+    NBegin, NEnd: integer;
+  end;
+  PecRegexIntRange = ^TecRegexIntRange;
+
+type
+  // possible first characters of a compiled expression, used by
+  // ec_syntanal to dispatch token rules without calling Match()
+  TecReFirstCharSet = record
+    Ascii: set of 0..127;  // possible first chars < #128
+    NonAscii: Boolean;     // possible first char >= #128
+    Any: Boolean;          // unknown: any first char is possible
+  end;
+
+type
   TecRegExpr = class //(TPersistent)
   private
     FProgRoot: TObject;
@@ -41,6 +57,8 @@ type
     FMatchOK: Boolean;
     FExpression: ecString;
     FModifiersStatic: Word;
+    FMatchRes: array of TecRegexIntRange; // final match extents of (sub)expressions
+    procedure SaveMatchResults(St: PecRegexIntRange);
     procedure SetModifiers(const Value: Word);
     function GetModifier(const Index: Integer): boolean;
     function GetModifierStr: ecString;
@@ -67,6 +85,8 @@ type
     //function GetMatch(const InputString: AnsiString; SubIdx: integer): AnsiString; overload;
     function GetMatch(const InputString: UCString; SubIdx: integer): UCString; overload;
     function Substitute (const InputString, ATemplate : ecString) : ecString;
+    // first-char analysis of the compiled program (conservative superset)
+    procedure CalcFirstChars(var AChars: TecReFirstCharSet);
 
     property ModifierMask: Word read FModifiers write SetModifiers;
     property ModifierI: boolean index MaskModI read GetModifier write SetModifier;
@@ -112,8 +132,50 @@ procedure REDebugCompiledBuildTree(RE: TecRegExpr; TV: TTreeView);
 
 implementation
 
+{$POINTERMATH ON}
+
 uses
-  Contnrs, Math;
+  Contnrs, Math, SyncObjs;
+
+// Match state of sub expressions, passed down the matching recursion as a
+// pointer to an array of TecRegexIntRange records (PCRE2-style "match
+// data"): for the sub expression with slot index S, St[S].NBegin / St[S].NEnd
+// give the match extent. Matching mutates no per-object state, so several
+// threads can match the same compiled regex concurrently (CudaText #6565).
+// The state array lives on the stack of TreRootNode.MatchStr (fast, and
+// re-entrant for up to RE_MAX_FIXED sub expressions); bigger expressions use
+// a per-thread heap buffer (REGetStatePtr).
+const
+  // max count of sub expressions served by the stack buffer of MatchStr;
+  // 256 capture groups per regex is far beyond any lexer file, so the
+  // per-thread heap fallback below is a safety net only (it is not freed
+  // at thread exit, the FPC RTL has no thread-exit hook: leaks ~2 KB per
+  // thread which ever uses such a giant regex)
+  RE_MAX_FIXED = 256;
+
+threadvar
+  // rare fallback for expressions with many sub expressions (>RE_MAX_FIXED)
+  REStateBig: PecRegexIntRange;
+  REStateBigCap: integer;
+
+function REGetStatePtr(Count: integer): PecRegexIntRange;
+var
+  NewCap: integer;
+begin
+  if REStateBigCap < Count then
+  begin
+    NewCap := Count + 64;
+    ReAllocMem(REStateBig, NewCap * SizeOf(TecRegexIntRange));
+    REStateBigCap := NewCap;
+  end;
+  Result := REStateBig;
+end;
+
+var
+  // guards only the once-per-lifetime lazy Compile() in TecRegExpr.Match;
+  // never entered for already compiled regexes (all lexer regexes are
+  // pre-warmed at load time)
+  RECompileLock: TCriticalSection = nil;
 
 function BufferHexToInt(p: PWideChar; Len: integer): integer; //Alexey
 var
@@ -182,8 +244,8 @@ type
   public
     constructor Create(AOwner: TreSubExpr); virtual;
 
-    function Match(const InputString: UCString; var aPos: integer): integer; overload; virtual; abstract;
-    function BackMatch(const InputString: UCString; var aPos: integer): integer; overload; virtual; abstract;
+    function Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; overload; virtual; abstract;
+    function BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; overload; virtual; abstract;
 
     property Next: TRENodeBase read FNext write FNext;
     property Owner: TreSubExpr read FOwner;
@@ -208,8 +270,8 @@ type
     procedure AddSet(C: UCChar); overload;
     function HasChar(C: UCChar): Boolean; overload;
   public
-    function Match(const InputString: UCString; var aPos: integer): integer; override;
-    function BackMatch(const InputString: UCString; var aPos: integer): integer; override;
+    function Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
+    function BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
   end;
 
   // Simple text
@@ -218,8 +280,8 @@ type
     FIgnoreCase: Boolean;
     FChar: UCChar;
   public
-    function Match(const InputString: UCString; var aPos: integer): integer; override;
-    function BackMatch(const InputString: UCString; var aPos: integer): integer; override;
+    function Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
+    function BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
   end;
 
   // Special ckecking
@@ -227,8 +289,8 @@ type
   private
     FCheckType: UCChar;
   public
-    function Match(const InputString: UCString; var aPos: integer): integer; override;
-    function BackMatch(const InputString: UCString; var aPos: integer): integer; override;
+    function Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
+    function BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
   end;
 
   // Reference to sub expression
@@ -241,10 +303,10 @@ type
     FIgnoreCase: Boolean;
     //function GetExprStr(const InputString: AnsiString): AnsiString; overload;
     //function GetExprStr(const InputString: UCString): UCString; overload;
-    procedure GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer); // Alexey
+    procedure GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer; St: PecRegexIntRange); // Alexey
   public
-    function Match(const InputString: UCString; var aPos: integer): integer; override;
-    function BackMatch(const InputString: UCString; var aPos: integer): integer; override;
+    function Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
+    function BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
   end;
 
   // Base class of containers
@@ -268,8 +330,8 @@ type
     procedure Compile(const Expression: AnsiString; var aPos: integer; Modifiers: Word); overload;
     }
     procedure Compile(const Expression: UCString; var aPos: integer; Modifiers: Word); overload;
-    function Match(const InputString: UCString; var aPos: integer): integer; override;
-    function BackMatch(const InputString: UCString; var aPos: integer): integer; override;
+    function Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
+    function BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
   end;
 
   // Zero-width testing
@@ -284,23 +346,27 @@ type
     FBranch: TreBranchNode;
     function DoResult(MatchRes: integer): integer;
   public
-    function Match(const InputString: UCString; var aPos: integer): integer; override;
-    function BackMatch(const InputString: UCString; var aPos: integer): integer; override;
+    function Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
+    function BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
     destructor Destroy; override;
   end;
 
 
   // Select operation (list of TreListNodeBase) => sub expression
+  // Match state (start/end offsets of the matched sub expression) is passed
+  // down the matching calls as a flat array (see implementation), indexed by
+  // FSlot, so several threads can safely match the same compiled regex
+  // (CudaText issue #6565). Match results (MatchPos/MatchLen/GetMatch) are
+  // valid on the thread which performed Match().
   TreSubExpr = class(TreListNodeBase)
   private
-    FStart: integer; // first char of sub expression
-    FEnd: integer; // first char after sub expression
+    FSlot: integer; // index in TreRootNode.FSubExpr = slot index in the match-state array
   public
     constructor Create(AOwner: TreSubExpr); override;
     //procedure Compile(const Expression: AnsiString; var aPos: integer; Modifiers: Word); overload;
     procedure Compile(const Expression: UCString; var aPos: integer; Modifiers: Word); overload;
-    function Match(const InputString: UCString; var aPos: integer): integer; override;
-    function BackMatch(const InputString: UCString; var aPos: integer): integer; override;
+    function Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
+    function BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; override;
   end;
 
   // Root node
@@ -407,6 +473,192 @@ begin
   end;
 end;
 
+{ v3: first-char analysis of a compiled program. Computes a conservative
+  SUPERSET of the characters a regex can start a non-empty match with.
+  Used by ec_syntanal to skip token rules before calling Match().
+  Rules of the walk:
+  - a node which must consume a char (LoopMin>=1 and always consumes on
+    success) terminates the sequence: its char set is the answer
+  - a node which can be skipped or can succeed consuming nothing
+    (LoopMin=0, anchors, lookarounds, refs, uncertain containers)
+    contributes its own set AND the walk continues with the next node
+  - anything uncertain widens the result (NonAscii/Any), never narrows it }
+
+function REIsZeroWidthCheck(C: UCChar): Boolean; inline;
+begin
+  Result := (C = '^') or (C = '$') or (C = 'A') or (C = 'Z') or
+            (C = 'b') or (C = 'B');
+  // note: 'z' is NOT zero-width: it consumes a line break
+  // (#10, #13, #$2028, #$2029, #$0085)
+end;
+
+function RENodeAlwaysConsumes(Node: TRENodeBase): Boolean; inline;
+// True when a single successful match of the node consumes >=1 char
+begin
+  Result := False;
+  if Node.FLoopMin < 1 then Exit;
+  if Node is TCharSeqNode then Exit(True);
+  if Node is TCharSetNode then Exit(True); // consumes exactly 1 on success
+  if Node is TSpecCheckNode then
+    Result := not REIsZeroWidthCheck(TSpecCheckNode(Node).FCheckType);
+  // TRefNode: empty capture possible; TZeroWidth: consumes nothing;
+  // TreBranchNode/TreSubExpr: cannot prove for all branches -> conservative False
+end;
+
+procedure REAddSeqFirstChars(Node: TRENodeBase; var S: TecReFirstCharSet); forward;
+
+procedure REAddNodeFirstChars(Node: TRENodeBase; var S: TecReFirstCharSet);
+var
+  i, C: integer;
+  C2: UCChar;
+  sn: TSpecCheckNode;
+  cn: TCharSetNode;
+begin
+  if Node is TCharSeqNode then
+  begin
+    if TCharSeqNode(Node).FIgnoreCase then
+    begin
+      // stored char is upcased; both cases can hit it
+      for C := 0 to 127 do
+      begin
+        C2 := UCChar(C);
+        CharToUpCase(C2);
+        if C2 = TCharSeqNode(Node).FChar then
+          Include(S.Ascii, C);
+      end;
+    end
+    else
+      if Ord(TCharSeqNode(Node).FChar) <= 127 then
+        Include(S.Ascii, Ord(TCharSeqNode(Node).FChar));
+    if Ord(TCharSeqNode(Node).FChar) > 127 then
+      S.NonAscii := True;
+    Exit;
+  end;
+
+  if Node is TCharSetNode then
+  begin
+    cn := TCharSetNode(Node);
+    if cn.FInvert then
+      S.Any := True // complement: almost any char possible
+    else
+    begin
+      for C := 0 to 127 do
+      begin
+        C2 := UCChar(C);
+        if cn.FIgnoreCase then
+          CharToUpCase(C2);
+        if cn.HasChar(C2) then
+          Include(S.Ascii, C);
+      end;
+      // non-ascii possibility: wide ranges / wide chars / wide classes
+      for i := 1 to Length(cn.FCharRanges) do
+        if Ord(cn.FCharRanges[i]) > 127 then
+        begin
+          S.NonAscii := True;
+          Break;
+        end;
+      if not S.NonAscii then
+        for i := 1 to Length(cn.FCharArray) do
+          if Ord(cn.FCharArray[i]) > 127 then
+          begin
+            S.NonAscii := True;
+            Break;
+          end;
+      if (not S.NonAscii) and (cn.FCharSets <> '') then
+        for i := 1 to Length(cn.FCharSets) do
+          if IsInRange(cn.FCharSets[i], UCChar($0410)) then // test Cyrillic 'А'
+          begin
+            S.NonAscii := True;
+            Break;
+          end;
+    end;
+    Exit;
+  end;
+
+  if Node is TSpecCheckNode then
+  begin
+    sn := TSpecCheckNode(Node);
+    if REIsZeroWidthCheck(sn.FCheckType) then
+      Exit // zero-width anchor: nothing to add
+    else
+    if sn.FCheckType = '.' then
+    begin
+      S.Any := True;
+      S.NonAscii := True;
+    end
+    else
+    if sn.FCheckType = ':' then
+    begin
+      for C := 0 to 127 do
+        if (C <> 10) and (C <> 13) then
+          Include(S.Ascii, C);
+      S.NonAscii := True;
+    end
+    else
+    if sn.FCheckType = 'z' then
+    begin
+      // \z consumes a line break: #10, #13, or a Unicode line separator
+      Include(S.Ascii, 10);
+      Include(S.Ascii, 13);
+      S.NonAscii := True;
+    end
+    else
+    begin
+      // character class like \w \d \s \c (consumes 1 char)
+      for C := 0 to 127 do
+        if IsInRange(sn.FCheckType, UCChar(C)) then
+          Include(S.Ascii, C);
+      if IsInRange(sn.FCheckType, UCChar($0410)) then
+        S.NonAscii := True;
+    end;
+    Exit;
+  end;
+
+  if Node is TRefNode then
+  begin
+    S.Any := True; // matched text of a group: unknown
+    Exit;
+  end;
+
+  if Node is TZeroWidth then
+    Exit; // lookaround: zero-width, nothing to add
+
+  if Node is TreSubExpr then
+  begin
+    // alternation branches
+    with TreListNodeBase(Node) do
+      for i := 0 to FList.Count - 1 do
+        REAddNodeFirstChars(TRENodeBase(FList[i]), S);
+    Exit;
+  end;
+
+  if Node is TreBranchNode then
+  begin
+    // sequence: starts at the first node of the branch
+    with TreListNodeBase(Node) do
+      if FList.Count > 0 then
+        REAddSeqFirstChars(TRENodeBase(FList.First), S);
+    Exit;
+  end;
+
+  S.Any := True; // unknown node type: be safe
+end;
+
+procedure REAddSeqFirstChars(Node: TRENodeBase; var S: TecReFirstCharSet);
+// first chars of a node sequence starting at Node, following the Next chain
+begin
+  while Node <> nil do
+  begin
+    REAddNodeFirstChars(Node, S);
+    // continue past the node only when it can be skipped or consume nothing
+    if RENodeAlwaysConsumes(Node) then
+      Break;
+    if S.Any then
+      Break; // cannot get wider anyway
+    Node := Node.Next;
+  end;
+end;
+
 { TRENodeBase }
 
 constructor TRENodeBase.Create(AOwner: TreSubExpr);
@@ -473,7 +725,7 @@ begin
   FCharSets := FCharSets + C;
 end;
 
-function TCharSetNode.Match(const InputString: UCString; var aPos: integer): integer;
+function TCharSetNode.Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer;
 var C: UCChar;
     b: Boolean;
 begin
@@ -487,7 +739,7 @@ begin
   if b then Result := 1 else Result := 0;
 end;
 
-function TCharSetNode.BackMatch(const InputString: UCString; var aPos: integer): integer;
+function TCharSetNode.BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer;
 var C: UCChar;
     b: Boolean;
 begin
@@ -503,7 +755,7 @@ end;
 
 { TCharSeqNode }
 
-function TCharSeqNode.BackMatch(const InputString: UCString; var aPos: integer): integer;
+function TCharSeqNode.BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer;
 var C: UCChar;
 begin
   Result := 0;
@@ -520,7 +772,7 @@ begin
     end;
 end;
 
-function TCharSeqNode.Match(const InputString: UCString; var aPos: integer): integer;
+function TCharSeqNode.Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer;
 var C: UCChar;
 begin
   Result := 0;
@@ -539,7 +791,7 @@ end;
 
 { TSpecCheckNode }
 
-function TSpecCheckNode.BackMatch(const InputString: UCString; var aPos: integer): integer;
+function TSpecCheckNode.BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer;
 var C: UCChar;
     b: Boolean;
 begin
@@ -583,7 +835,7 @@ begin
   if b then Result := 1 else Result := 0;
 end;
 
-function TSpecCheckNode.Match(const InputString: UCString; var aPos: integer): integer;
+function TSpecCheckNode.Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer;
 var C: UCChar;
     b: Boolean;
 begin
@@ -628,7 +880,7 @@ end;
 
 { TRefNode }
 
-procedure TRefNode.GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer); // Alexey
+procedure TRefNode.GetExprPtr(const InputString: UCString; out Ptr: PWideChar; out Len: integer; St: PecRegexIntRange); // Alexey
 var se: TreSubExpr;
 begin
   Ptr := nil;
@@ -637,20 +889,20 @@ begin
     if FSubExpr.Count > FRef then
       begin
         se := TreSubExpr(FSubExpr[FRef]);
-        Len := abs(se.FEnd - se.FStart);
-        if (se.FStart > 0) and (se.FEnd > 0) then
-          Ptr := @InputString[Min(se.FStart, se.FEnd)];
+        Len := abs(St[se.FSlot].NEnd - St[se.FSlot].NBegin);
+        if (St[se.FSlot].NBegin > 0) and (St[se.FSlot].NEnd > 0) then
+          Ptr := @InputString[Min(St[se.FSlot].NBegin, St[se.FSlot].NEnd)];
       end;
 end;
 
-function TRefNode.BackMatch(const InputString: UCString; var aPos: integer): integer; // Alexey
+function TRefNode.BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; // Alexey
 var
   P1, P2: PWideChar;
   L: integer;
   b: Boolean;
 begin
   Result := 0;
-  GetExprPtr(InputString, P1, L);
+  GetExprPtr(InputString, P1, L, St);
   if (P1 <> nil) and (L < aPos) then
     begin
       P2 := @InputString[aPos - L];
@@ -666,14 +918,14 @@ begin
     end;
 end;
 
-function TRefNode.Match(const InputString: UCString; var aPos: integer): integer; // Alexey
+function TRefNode.Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer; // Alexey
 var
   P1, P2: PWideChar;
   L: integer;
   b: Boolean;
 begin
   Result := 0;
-  GetExprPtr(InputString, P1, L);
+  GetExprPtr(InputString, P1, L, St);
   if (P1 <> nil) and (L <= Length(InputString) - aPos + 1) then
     begin
       P2 := @InputString[aPos];
@@ -710,25 +962,25 @@ begin
 end;
 
 function TZeroWidth.BackMatch(const InputString: UCString;
-  var aPos: integer): integer;
+  var aPos: integer; St: PecRegexIntRange): integer;
 var testPos: integer;
 begin
   testPos := aPos;
   if FIsBack then
-    Result := DoResult(FBranch.Match(InputString, testPos))
+    Result := DoResult(FBranch.Match(InputString, testPos, St))
   else
-    Result := DoResult(FBranch.BackMatch(InputString, testPos));
+    Result := DoResult(FBranch.BackMatch(InputString, testPos, St));
 end;
 
 function TZeroWidth.Match(const InputString: UCString;
-  var aPos: integer): integer;
+  var aPos: integer; St: PecRegexIntRange): integer;
 var testPos: integer;
 begin
   testPos := aPos;
   if FIsBack then
-    Result := DoResult(FBranch.BackMatch(InputString, testPos))
+    Result := DoResult(FBranch.BackMatch(InputString, testPos, St))
   else
-    Result := DoResult(FBranch.Match(InputString, testPos));
+    Result := DoResult(FBranch.Match(InputString, testPos, St));
 end;
 
 { TreListNodeBase }
@@ -1117,11 +1369,12 @@ end;
 //  1 - match the Node
 //  2 - match The Node and all next nodes
 function MatchNode(Node: TRENodeBase; const InputString: UCString;
-   var aPos: integer): integer; overload;
+   var aPos: integer; St: PecRegexIntRange): integer; overload;
 
 var save, k, sv, LastSucc, total, Success: integer;
     IsBrEnd: Boolean;
-    
+    SlotPtr: PecRegexIntRange; // @St[Node.Owner.FSlot] when IsBrEnd (Owner is loop-invariant)
+
 begin
   if Node = nil then
     Exit(2);
@@ -1132,7 +1385,7 @@ begin
   Success := 0;
   for k := 1 to node.FLoopMin do
     begin
-      Success := Node.Match(InputString, aPos);
+      Success := Node.Match(InputString, aPos, St);
       if Success = 0 then
         begin
           aPos := save;
@@ -1151,19 +1404,23 @@ begin
 
   IsBrEnd := Assigned(Node.Owner) and
              ((Node.Next = nil) or (Node.Next.Owner <> Node.Owner));
+  if IsBrEnd then
+    SlotPtr := @St[Node.Owner.FSlot]
+  else
+    SlotPtr := St;
   repeat
     Inc(k);
     sv := aPos;
-    if IsBrEnd then Node.Owner.FEnd := aPos;
+    if IsBrEnd then SlotPtr^.NEnd := aPos;
     if Node is TreSubExpr then
       begin
         if Success <> 2 then
-          Success := MatchNode(GetAbsoluteNext(Node), InputString, aPos);
+          Success := MatchNode(GetAbsoluteNext(Node), InputString, aPos, St);
       end else
     if Node.Next <> nil then
-      Success := MatchNode(Node.Next, InputString, aPos) else
+      Success := MatchNode(Node.Next, InputString, aPos, St) else
     if IsBrEnd then
-      Success := MatchNode(GetAbsoluteNext(Node.Owner), InputString, aPos) else
+      Success := MatchNode(GetAbsoluteNext(Node.Owner), InputString, aPos, St) else
       Success := 2;
 
     if Success = 2 then // success all next nodes
@@ -1201,7 +1458,7 @@ begin
       end;
 
     sv := aPos;
-    Success := Node.Match(InputString, aPos);
+    Success := Node.Match(InputString, aPos, St);
   until (Success = 0) or (aPos = sv);
 
 //  if (node.FLoopMin > 0) and (k < node.FLoopMin) then
@@ -1215,20 +1472,21 @@ begin
     aPos := total;
     // Save sub-expression result
     if IsBrEnd and (LastSucc > 0) then
-      Node.Owner.FEnd := LastSucc;
+      SlotPtr^.NEnd := LastSucc;
    end else
    begin
     aPos := save;
-    if IsBrEnd then Node.Owner.FEnd := 0;
+    if IsBrEnd then SlotPtr^.NEnd := 0;
    end;
 end;
 
 // Main mtaching routine (recursive)
 function BackMatchNode(Node: TRENodeBase; const InputString: UCString;
-  var aPos: integer): integer; overload;
-  
+  var aPos: integer; St: PecRegexIntRange): integer; overload;
+
 var save, k, sv, LastSucc, total, Success: integer;
     IsBrEnd: Boolean;
+    SlotPtr: PecRegexIntRange; // @St[Node.Owner.FSlot] when IsBrEnd
 
 begin
   if Node = nil then
@@ -1240,7 +1498,7 @@ begin
   Success := 0;
   for k := 1 to node.FLoopMin do
     begin
-      Success := Node.BackMatch(InputString, aPos);
+      Success := Node.BackMatch(InputString, aPos, St);
       if Success = 0 then
         begin
           aPos := save;
@@ -1258,19 +1516,23 @@ begin
 
   IsBrEnd := Assigned(Node.Owner) and
              ((Node.Next = nil) or (Node.Next.Owner <> Node.Owner));
+  if IsBrEnd then
+    SlotPtr := @St[Node.Owner.FSlot]
+  else
+    SlotPtr := St;
   repeat
     Inc(k);
     sv := aPos;
-    if IsBrEnd then Node.Owner.FStart := aPos;
+    if IsBrEnd then SlotPtr^.NBegin := aPos;
     if Node is TreSubExpr then
       begin
         if Success <> 2 then
-          Success := BackMatchNode(GetAbsoluteNext(Node), InputString, aPos);
+          Success := BackMatchNode(GetAbsoluteNext(Node), InputString, aPos, St);
       end else
     if Node.Next <> nil then
-      Success := BackMatchNode(Node.Next, InputString, aPos) else
+      Success := BackMatchNode(Node.Next, InputString, aPos, St) else
     if IsBrEnd then
-      Success := BackMatchNode(GetAbsoluteNext(Node.Owner), InputString, aPos) else
+      Success := BackMatchNode(GetAbsoluteNext(Node.Owner), InputString, aPos, St) else
       Success := 2;
 
     if Success = 2 then
@@ -1305,7 +1567,7 @@ begin
       end;
 
     sv := aPos;
-    Success := Node.BackMatch(InputString, aPos);
+    Success := Node.BackMatch(InputString, aPos, St);
   until (Success = 0) or (aPos = sv);
 
 {$IFDEF RE_DEBUG}
@@ -1317,36 +1579,36 @@ begin
     aPos := total;
     // Save sub-expression result
     if IsBrEnd and (LastSucc > 0) then
-      Node.Owner.FStart := LastSucc;
+      SlotPtr^.NBegin := LastSucc;
    end else
    begin
     aPos := save;
-    if IsBrEnd then Node.Owner.FStart := 0;
+    if IsBrEnd then SlotPtr^.NBegin := 0;
    end;
 end;
 
-function TreBranchNode.Match(const InputString: UCString; var aPos: integer): integer;
+function TreBranchNode.Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer;
 begin
 {$IFDEF RE_DEBUG}
   if Assigned(REDebugOnMatchProc) then
     REDebugOnMatchProc(Format('Branch<: %d; Position: %d',[FNodeID, aPos]));
 {$ENDIF}
   if FList.Count = 0 then Result := 1
-    else Result := MatchNode(TRENodeBase(FList.First), InputString, aPos);
+    else Result := MatchNode(TRENodeBase(FList.First), InputString, aPos, St);
 {$IFDEF RE_DEBUG}
   if Assigned(REDebugOnMatchProc) then
     REDebugOnMatchProc(Format('Branch>: %d; Position: %d; Result: %d',[FNodeID, aPos, integer(Result)]));
 {$ENDIF}
 end;
 
-function TreBranchNode.BackMatch(const InputString: UCString; var aPos: integer): integer;
+function TreBranchNode.BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer;
 begin
 {$IFDEF RE_DEBUG}
   if Assigned(REDebugOnMatchProc) then
     REDebugOnMatchProc(Format('Branch<: %d; Position: %d',[FNodeID, aPos]));
 {$ENDIF}
   if FList.Count = 0 then Result := 1
-    else Result := BackMatchNode(TRENodeBase(FList.First), InputString, aPos);
+    else Result := BackMatchNode(TRENodeBase(FList.First), InputString, aPos, St);
 {$IFDEF RE_DEBUG}
   if Assigned(REDebugOnMatchProc) then
     REDebugOnMatchProc(Format('Branch>: %d; Position: %d; Result: %d',[FNodeID, aPos, integer(Result)]));
@@ -1372,29 +1634,30 @@ end;
 constructor TreSubExpr.Create(AOwner: TreSubExpr);
 begin
   inherited;
+  FSlot := 0;
   if Owner <> nil then
-    TreRootNode(Root).FSubExpr.Add(Self);
+    FSlot := TreRootNode(Root).FSubExpr.Add(Self);
 end;
 
-function TreSubExpr.Match(const InputString: UCString; var aPos: integer): integer;
+function TreSubExpr.Match(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer;
 var i: integer;
     OldEnd, OldStart, CurRes, svPos: integer;
 begin
-  OldEnd := FEnd;
-  OldStart := FStart;
-  FStart := aPos;
-  FEnd := 0;
+  OldEnd := St[FSlot].NEnd;
+  OldStart := St[FSlot].NBegin;
+  St[FSlot].NBegin := aPos;
+  St[FSlot].NEnd := 0;
   Result := 0;
   svPos := aPos;
   for i := 0 to FList.Count - 1 do
     begin
-      CurRes := TreBranchNode(FList[i]).Match(InputString, aPos);
+      CurRes := TreBranchNode(FList[i]).Match(InputString, aPos, St);
       if FNonGreedy then
         begin
           if CurRes > 0 then
             begin
-              OldEnd := FEnd;
-              OldStart := FStart;
+              OldEnd := St[FSlot].NEnd;
+              OldStart := St[FSlot].NBegin;
               Result := CurRes;
               aPos := svPos;
               Break;
@@ -1402,39 +1665,39 @@ begin
         end else
           if CurRes > Result then
             begin
-              OldEnd := FEnd;
-              OldStart := FStart;
+              OldEnd := St[FSlot].NEnd;
+              OldStart := St[FSlot].NBegin;
               Result := CurRes;
               aPos := svPos;
               if Result = 2 then
                 Break;
             end;
     end;
-  FEnd := OldEnd;
-  FStart := OldStart;
-  if (FEnd > 0) and (Result > 0) then
-    aPos := FEnd;
+  St[FSlot].NEnd := OldEnd;
+  St[FSlot].NBegin := OldStart;
+  if (St[FSlot].NEnd > 0) and (Result > 0) then
+    aPos := St[FSlot].NEnd;
 end;
 
-function TreSubExpr.BackMatch(const InputString: UCString; var aPos: integer): integer;
+function TreSubExpr.BackMatch(const InputString: UCString; var aPos: integer; St: PecRegexIntRange): integer;
 var i: integer;
     OldEnd, OldStart, CurRes, svPos: integer;
 begin
-  OldEnd := FEnd;
-  OldStart := FStart;
-  FStart := 0;
-  FEnd := aPos;
+  OldEnd := St[FSlot].NEnd;
+  OldStart := St[FSlot].NBegin;
+  St[FSlot].NBegin := 0;
+  St[FSlot].NEnd := aPos;
   Result := 0;
   svPos := aPos;
   for i := 0 to FList.Count - 1 do
     begin
-      CurRes := TreBranchNode(FList[i]).BackMatch(InputString, aPos);
+      CurRes := TreBranchNode(FList[i]).BackMatch(InputString, aPos, St);
       if FNonGreedy then
         begin
           if CurRes > 0 then
             begin
-              OldEnd := FEnd;
-              OldStart := FStart;
+              OldEnd := St[FSlot].NEnd;
+              OldStart := St[FSlot].NBegin;
               Result := CurRes;
               aPos := svPos;
               Break;
@@ -1442,18 +1705,18 @@ begin
         end else
           if CurRes > Result then
             begin
-              OldEnd := FEnd;
-              OldStart := FStart;
+              OldEnd := St[FSlot].NEnd;
+              OldStart := St[FSlot].NBegin;
               Result := CurRes;
               aPos := svPos;
               if Result = 2 then
                 Break;
             end;
     end;
-  FEnd := OldEnd;
-  FStart := OldStart;
-  if (FStart > 0) and (Result > 0) then
-    aPos := FStart;
+  St[FSlot].NEnd := OldEnd;
+  St[FSlot].NBegin := OldStart;
+  if (St[FSlot].NBegin > 0) and (Result > 0) then
+    aPos := St[FSlot].NBegin;
 end;
 
 { TreRootNode }
@@ -1481,17 +1744,26 @@ end;
 
 function TreRootNode.MatchStr(const InputString: UCString;
   var aPos: integer; Back: Boolean): Boolean;
-var i: integer;
+var
+  FixedState: array[0..RE_MAX_FIXED-1] of TecRegexIntRange;
+  St: PecRegexIntRange;
 begin
-  for i := 0 to FSubExpr.Count - 1 do
-   begin
-     TreSubExpr(FSubExpr[i]).FStart := -1;
-     TreSubExpr(FSubExpr[i]).FEnd := -1;
-   end;
-  if Back then
-    Result := BackMatchNode(Self, InputString, aPos) <> 0
+  if FSubExpr.Count <= RE_MAX_FIXED then
+    St := @FixedState[0]
   else
-    Result := MatchNode(Self, InputString, aPos) <> 0;
+    St := REGetStatePtr(FSubExpr.Count);
+  // sub expression slots are exactly 0..Count-1 (assigned in creation order),
+  // and -1 is all-bits-set, so a single byte fill resets the whole state
+  FillChar(St[0], FSubExpr.Count * SizeOf(TecRegexIntRange), $FF);
+  if Back then
+    Result := BackMatchNode(Self, InputString, aPos, St) <> 0
+  else
+    Result := MatchNode(Self, InputString, aPos, St) <> 0;
+  // save the final match extents for MatchPos/MatchLen/GetMatch readers;
+  // like before this change, they give valid values only on the thread
+  // which called Match()
+  if Result and (FOwner <> nil) then
+    FOwner.SaveMatchResults(St);
 end;
 
 // =============================================================================
@@ -1515,7 +1787,19 @@ end;
 procedure TecRegExpr.ClearRoot;
 begin
   FreeAndNil(FProgRoot);
+  FMatchRes := nil;
   FMatchOK := False;
+end;
+
+procedure TecRegExpr.SaveMatchResults(St: PecRegexIntRange);
+var
+  N: integer;
+begin
+  N := Length(FMatchRes);
+  if N > 0 then
+    // state slots and FMatchRes are both TecRegexIntRange records,
+    // so the whole block copies over with one Move
+    Move(St[0], FMatchRes[0], N * SizeOf(TecRegexIntRange));
 end;
 
 function TecRegExpr.IsEmpty: Boolean;
@@ -1541,6 +1825,7 @@ begin
     ClearRoot;
     raise;
   end;
+  SetLength(FMatchRes, TreRootNode(FProgRoot).FSubExpr.Count);
   //FUnicodeCompiled := True;
 end;
 
@@ -1588,16 +1873,35 @@ end;
 
 function TecRegExpr.Match(const InputString: UCString; var aPos: integer; Back: Boolean): Boolean;
 begin
-  // Hot path: a valid expression is compiled only once. Avoid entering Compile
-  // (and its exception frame) for every token-rule match.
-  Result := Assigned(FProgRoot) and (TreRootNode(FProgRoot).FList.Count > 0);
-  if not Result then
-    Result := Compile; // ensure compiling and validity
+  // Hot path: a compiled expression is never recompiled here. An expression
+  // which compiles to an empty program (e.g. empty Expression) keeps FProgRoot
+  // set, and must not trigger Compile() again on every call.
+  if FProgRoot = nil then
+    begin
+      // lazy compile (regexes of loaded lexers are pre-warmed, so this is
+      // rare); the lock makes it safe if several threads reach it at once
+      if RECompileLock <> nil then
+        RECompileLock.Enter;
+      try
+        if FProgRoot = nil then // re-check under the lock
+          Result := Compile // ensure compiling and validity
+        else
+          Result := TreRootNode(FProgRoot).FList.Count > 0;
+      finally
+        if RECompileLock <> nil then
+          RECompileLock.Leave;
+      end;
+    end
+  else
+    Result := TreRootNode(FProgRoot).FList.Count > 0;
   if Result then
     begin
       if aPos < 1 then
         aPos := 1;
       Result := TreRootNode(FProgRoot).MatchStr(InputString, aPos, Back);
+      // note: MatchPos/MatchLen/GetMatch give valid values only on the
+      // thread which called Match() (match state is per-call now, and the
+      // saved extents are a single Boolean-write-level shared copy)
       FMatchOK := Result;
     end;
 end;
@@ -1686,46 +1990,36 @@ end;
 function TecRegExpr.GetMatchLen(Idx: integer): integer;
 begin
   Result := -1;
-  if FMatchOK then
-    with TreRootNode(FProgRoot) do
-      if (idx < FSubExpr.Count) then
-        with TreSubExpr(FSubExpr[Idx]) do
-          if (FStart <> -1) and (FEnd <> -1) then
-            Result := FEnd - FStart;
+  if FMatchOK and (Idx >= 0) and (Idx < Length(FMatchRes)) then
+    if (FMatchRes[Idx].NBegin <> -1) and (FMatchRes[Idx].NEnd <> -1) then
+      Result := FMatchRes[Idx].NEnd - FMatchRes[Idx].NBegin;
 end;
 
 function TecRegExpr.GetMatchPos(Idx: integer): integer;
 begin
   Result := -1;
-  if FMatchOK then
-    with TreRootNode(FProgRoot) do
-      if (idx < FSubExpr.Count) then
-        with TreSubExpr(FSubExpr[Idx]) do
-          Result := FStart;
+  if FMatchOK and (Idx >= 0) and (Idx < Length(FMatchRes)) then
+    Result := FMatchRes[Idx].NBegin;
 end;
 
 function TecRegExpr.GetSubExprMatchCount: integer;
-var i: integer;
+var
+  i: integer;
 begin
   Result := -1;
   if FMatchOK then
-    with TreRootNode(FProgRoot) do
-      for i := 0 to FSubExpr.Count - 1 do
-        with TreSubExpr(FSubExpr[i]) do
-          if (FStart <> -1) and (FEnd <> -1) then
-            Inc(Result);
+    for i := 0 to Length(FMatchRes) - 1 do
+      if (FMatchRes[i].NBegin <> -1) and (FMatchRes[i].NEnd <> -1) then
+        Inc(Result);
 end;
 
 function TecRegExpr.GetMatch(const InputString: UCString;
   SubIdx: integer): UCString;
 begin
   Result := '';
-  if FMatchOK then
-    with TreRootNode(FProgRoot) do
-      if (SubIdx < FSubExpr.Count) then
-        with TreSubExpr(FSubExpr[SubIdx]) do
-          if (FStart <> -1) and (FEnd <> -1) then
-            Result := Copy(InputString, FStart, FEnd - FStart);
+  if FMatchOK and (SubIdx >= 0) and (SubIdx < Length(FMatchRes)) then
+    if (FMatchRes[SubIdx].NBegin <> -1) and (FMatchRes[SubIdx].NEnd <> -1) then
+      Result := Copy(InputString, FMatchRes[SubIdx].NBegin, FMatchRes[SubIdx].NEnd - FMatchRes[SubIdx].NBegin);
 end;
 
 function TecRegExpr.Substitute(const InputString, ATemplate: ecString): ecString;
@@ -1758,6 +2052,27 @@ procedure TecRegExpr.Assign(Source: TecRegExpr);
 begin
   Self.Expression := Source.Expression;
   Self.ModifierMask := Source.ModifierMask;
+end;
+
+procedure TecRegExpr.CalcFirstChars(var AChars: TecReFirstCharSet);
+// v3: conservative superset of the chars a non-empty match can start with
+var
+  i: integer;
+begin
+  AChars.Ascii := [];
+  AChars.NonAscii := False;
+  AChars.Any := False;
+  if (FProgRoot = nil) or (TreRootNode(FProgRoot).FList.Count = 0) then
+  begin
+    // not compiled / invalid / empty program: the rule never fires with a
+    // positive length, but stay conservative anyway
+    AChars.Any := True;
+    Exit;
+  end;
+  // root is a TreSubExpr: its list = alternation branches
+  with TreRootNode(FProgRoot) do
+    for i := 0 to FList.Count - 1 do
+      REAddNodeFirstChars(TRENodeBase(FList[i]), AChars);
 end;
 
 procedure TecRegExpr.ParseModifiers(const S: PWideChar; Len: integer; var Modifiers: Word); // Alexey
@@ -1824,6 +2139,12 @@ begin
   AddNode(TreRootNode(RE.FProgRoot), nil);
 end;
 {$ENDIF}
+
+initialization
+  RECompileLock := TCriticalSection.Create;
+
+finalization
+  FreeAndNil(RECompileLock);
 
 end.
 
