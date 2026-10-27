@@ -894,7 +894,7 @@ type
     procedure SelectTokenFormat(AClient: TecParserResults; const Source: ecString;
                        ADisableFolding, AOnlyGlobal: Boolean; ATokenIndex: integer = -1); virtual;
     procedure Loaded; override;
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure Notification(AComponent: TComponent; AOperation: TOperation); override;
     procedure Change; dynamic;
     property SeparateBlockAnalysis: Boolean read GetSeparateBlocks;
     procedure DefineProperties(Filer: TFiler); override;
@@ -6018,18 +6018,21 @@ begin
   ClearClientContents;
 end;
 
-procedure TecSyntAnalyzer.Notification(AComponent: TComponent;
-  Operation: TOperation);
-var i: integer;
+procedure TecSyntAnalyzer.Notification(AComponent: TComponent; AOperation: TOperation);
+var
+  AnRule: TecSubAnalyzerRule;
+  i: integer;
 begin
   inherited;
-  if (Operation = opRemove)  and (AComponent <> Self) and (aComponent is TecSyntAnalyzer) and
+  if (AOperation = opRemove) and (AComponent <> Self) and (aComponent is TecSyntAnalyzer) and
      Assigned(FSubAnalyzers) and Assigned(FMasters) then
    begin
      for i := 0 to FSubAnalyzers.Count - 1 do
-      with FSubAnalyzers[i] do
-       if FSyntAnalyzer = AComponent then
-        FSyntAnalyzer := nil;
+     begin
+       AnRule := FSubAnalyzers[i];
+       if AnRule.FSyntAnalyzer = AComponent then
+         AnRule.FSyntAnalyzer := nil;
+     end;
      FMasters.Remove(AComponent);
    end;
 end;
