@@ -153,7 +153,6 @@ end;
 procedure TecSyntaxFormat.AssignTo(Dest: TPersistent);
 var
   DestFmt: TecSyntaxFormat;
-  i: integer;
 begin
   inherited;
   if Dest is TecSyntaxFormat then
@@ -168,11 +167,8 @@ begin
     DestFmt.ReadOnly := Self.ReadOnly;
     DestFmt.MultiLineBorder := Self.MultiLineBorder;
     DestFmt.FChangeCase := Self.ChangeCase;
-    for i := 0 to 3 do
-    begin
-      DestFmt.FBorderTypes[i] := Self.FBorderTypes[i];
-      DestFmt.FBorderColors[i] := Self.FBorderColors[i];
-    end;
+    DestFmt.FBorderTypes := Self.FBorderTypes;
+    DestFmt.FBorderColors := Self.FBorderColors;
     DestFmt.FFormatFlags := Self.FFormatFlags;
   end;
 end;
