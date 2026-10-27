@@ -5904,16 +5904,14 @@ begin
 end;
 
 procedure TecSyntAnalyzer.ClearClientContents;
-var i:integer;
+var
+  i: integer;
 begin
   if FCoping then Exit;
   FCoping := True;
   try
     for i := 0 to FClientList.Count - 1 do
-     with TecClientSyntAnalyzer(FClientList[i]) do
-      begin
-        Clear; //it starts parsing again
-      end;
+      TecClientSyntAnalyzer(FClientList[i]).Clear; //it starts parsing again
     for i := 0 to FMasters.Count - 1 do
       TecSyntAnalyzer(FMasters[i]).ClearClientContents;
   finally
