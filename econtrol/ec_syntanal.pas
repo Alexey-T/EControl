@@ -203,7 +203,7 @@ type
   public
     constructor Create(Collection: TCollection); override;
     destructor Destroy; override;
-    function CheckToken(const Source: ecString; const Token: PecSyntToken): Boolean;
+    function CheckToken(const Source: ecString; const AToken: PecSyntToken): Boolean;
   published
     property TagList: TStrings read FTagList write SetTagList;
     property CondType: TecTagConditionType read FCondType write SetCondType default tcEqual;
@@ -1396,15 +1396,16 @@ begin
    end;
 end;
 
-function TecSingleTagCondition.CheckToken(const Source: ecString; const Token: PecSyntToken): Boolean;
-var SToken: ecString;
-    i, N: integer;
-    ReObj: TecRegExpr;
+function TecSingleTagCondition.CheckToken(const Source: ecString; const AToken: PecSyntToken): Boolean;
+var
+  ReObj: TecRegExpr;
+  SToken: ecString;
+  i, N: integer;
 begin
   Result := False;
   if FTokenTypes <> 0 then
    begin
-    Result := ((1 shl Token.TokenType) and FTokenTypes) <> 0;
+    Result := ((1 shl AToken.TokenType) and FTokenTypes) <> 0;
     if FCondType = tcSkip then Exit;
     if not Result then
     case FCondType of
@@ -1419,7 +1420,7 @@ begin
     if FCondType in [tcMask, tcStrictMask] then
      begin
        UpdateRegexes;
-       SToken := Token.GetStr(Source, True); // Alexey
+       SToken := AToken.GetStr(Source, True); // Alexey
 
        //it was try/except around this block - bad! Alexey
        for i := 0 to FTagList.Count - 1 do
@@ -1439,7 +1440,7 @@ begin
           end;
      end else
      begin
-       SToken := Token.GetStr(Source, True);
+       SToken := AToken.GetStr(Source, True);
        Result := (FTagList as TStringList).Find(UTF8Encode(SToken), N);
        if FCondType = tcNotEqual then
          Result := not Result;
