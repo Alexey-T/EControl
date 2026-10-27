@@ -5571,21 +5571,20 @@ end;
 procedure TecSyntAnalyzer.SelectTokenFormat(Client: TecParserResults;
             const Source: ecString;
             DisableFolding, OnlyGlobal: Boolean; ATokenIndex: integer);
-var i, iTokenType, iRegion: integer;
-    RClient: TecClientSyntAnalyzer;
-    Rule: TecTagBlockCondition;
-    Disp: TecBlockDispatch;
+var
+  RClient: TecClientSyntAnalyzer;
 
   function CheckIndex(Idx: integer): Boolean; inline;
   begin
-   Result := (Idx >= 0) and (Idx < ATokenIndex);
+    Result := (Idx >= 0) and (Idx < ATokenIndex);
   end;
 
   // check one block rule; True = stop scanning (buffer invalidated, or CancelNextRules)
   function CheckOneRule(Rule: TecTagBlockCondition): Boolean;
-  var li, ki, strt, RefIdx: integer;
-      Range: TecTextRange;
-      Accept: Boolean;
+  var
+    Range: TecTextRange;
+    li, ki, strt, RefIdx: integer;
+    Accept: Boolean;
   begin
     Result := False;
     if not Client.Buffer.Valid then Exit(True);
@@ -5650,6 +5649,10 @@ var i, iTokenType, iRegion: integer;
       end;
   end;
 
+var
+  Disp: TecBlockDispatch;
+  Rule: TecTagBlockCondition;
+  i, iTokenType, iRegion: integer;
 begin
   if ATokenIndex = -1 then
     ATokenIndex := Client.TagCount;
