@@ -508,6 +508,7 @@ var
   C2: UCChar;
   sn: TSpecCheckNode;
   cn: TCharSetNode;
+  NodeBase: TreListNodeBase;
 begin
   if Node is TCharSeqNode then
   begin
@@ -621,18 +622,18 @@ begin
   if Node is TreSubExpr then
   begin
     // alternation branches
-    with TreListNodeBase(Node) do
-      for i := 0 to FList.Count - 1 do
-        REAddNodeFirstChars(TRENodeBase(FList[i]), S);
+    NodeBase := TreListNodeBase(Node);
+    for i := 0 to NodeBase.FList.Count - 1 do
+      REAddNodeFirstChars(TRENodeBase(NodeBase.FList[i]), S);
     Exit;
   end;
 
   if Node is TreBranchNode then
   begin
     // sequence: starts at the first node of the branch
-    with TreListNodeBase(Node) do
-      if FList.Count > 0 then
-        REAddSeqFirstChars(TRENodeBase(FList.First), S);
+    NodeBase := TreListNodeBase(Node);
+    if NodeBase.FList.Count > 0 then
+      REAddSeqFirstChars(TRENodeBase(NodeBase.FList.First), S);
     Exit;
   end;
 
