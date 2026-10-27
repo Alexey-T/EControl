@@ -151,28 +151,30 @@ begin
 end;
 
 procedure TecSyntaxFormat.AssignTo(Dest: TPersistent);
-var i: integer;
+var
+  DestFmt: TecSyntaxFormat;
+  i: integer;
 begin
   inherited;
   if Dest is TecSyntaxFormat then
-   with Dest as TecSyntaxFormat do
+  begin
+    DestFmt := TecSyntaxFormat(Dest);
+    DestFmt.FBgColor := Self.BgColor;
+    DestFmt.FFont.Assign(Self.Font);
+    DestFmt.FVertAlign := Self.FVertAlign;
+    DestFmt.FIsBlock := Self.FIsBlock;
+    DestFmt.FFormatType := Self.FFormatType;
+    DestFmt.Hidden := Self.Hidden;
+    DestFmt.ReadOnly := Self.ReadOnly;
+    DestFmt.MultiLineBorder := Self.MultiLineBorder;
+    DestFmt.FChangeCase := Self.ChangeCase;
+    for i := 0 to 3 do
     begin
-      FBgColor := Self.BgColor;
-      FFont.Assign(Self.Font);
-      FVertAlign := Self.FVertAlign;
-      FIsBlock := Self.FIsBlock;
-      FFormatType := Self.FFormatType;
-      Hidden := Self.Hidden;
-      ReadOnly := Self.ReadOnly;
-      MultiLineBorder := Self.MultiLineBorder;
-      FChangeCase := Self.ChangeCase;
-      for i := 0 to 3 do
-       begin
-        FBorderTypes[i] := Self.FBorderTypes[i];
-        FBorderColors[i] := Self.FBorderColors[i];
-       end;
-      FFormatFlags := Self.FFormatFlags;
+      DestFmt.FBorderTypes[i] := Self.FBorderTypes[i];
+      DestFmt.FBorderColors[i] := Self.FBorderColors[i];
     end;
+    DestFmt.FFormatFlags := Self.FFormatFlags;
+  end;
 end;
 
 procedure TecSyntaxFormat.SetFont(Value: TFont);
