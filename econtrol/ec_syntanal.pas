@@ -5831,25 +5831,34 @@ begin
 end;
 
 procedure TecSyntAnalyzer.FormatsChanged(Sender: TCollection; Item: TSyntCollectionItem);
-var i: integer;
-    Rule: TecTagBlockCondition;
+var
+  Rule: TecTagBlockCondition;
+  TokRule: TecTokenRule;
+  AnRule: TecSubAnalyzerRule;
+  i: integer;
 begin
   ClearClientContents;
   if Item = nil then
    begin
     for i := 0 to FBlockRules.Count - 1 do
-     begin
+    begin
       Rule := FBlockRules[i];
       if not FFormats.ValidItem(Rule.Style) then Rule.Style := nil;
       if not FFormats.ValidItem(Rule.TreeItemStyleObj) then Rule.FTreeItemStyleObj := nil;
       if not FFormats.ValidItem(Rule.TreeGroupStyleObj) then Rule.FTreeGroupStyleObj := nil;
-     end;
+    end;
+
     for i := 0 to FTokenRules.Count - 1 do
-      with FTokenRules[i] do
-        if not FFormats.ValidItem(Style) then Style := nil;
+    begin
+      TokRule := FTokenRules[i];
+      if not FFormats.ValidItem(TokRule.Style) then TokRule.Style := nil;
+    end;
+
     for i := 0 to FSubAnalyzers.Count - 1 do
-      with FSubAnalyzers[i] do
-        if not FFormats.ValidItem(Style) then Style := nil;
+    begin
+      AnRule := FSubAnalyzers[i];
+      if not FFormats.ValidItem(AnRule.Style) then AnRule.Style := nil;
+    end;
    end;
   //UpdateClients;
   Change;
