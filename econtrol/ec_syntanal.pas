@@ -5495,15 +5495,15 @@ end;
 
 procedure TecSyntAnalyzer.HighlightKeywords(Client: TecParserResults;
   const Source: ecString; OnlyGlobal: Boolean);
-var iRule, N, iTokenType: integer;
-    Rule: TecTagBlockCondition;
-    Disp: TecBlockDispatch;
+var
+  NTagIdx: integer;
 
   // check one detecter rule; True = stop scanning (buffer invalidated, or CancelNextRules)
   function CheckOneRule(Rule: TecTagBlockCondition): Boolean;
-  var ki, RefIdx: integer;
-      Accept: Boolean;
-      Tag: PecSyntToken;
+  var
+    ki, RefIdx: integer;
+    Accept: Boolean;
+    Tag: PecSyntToken;
   begin
     Result := False;
     if not Client.Buffer.Valid then Exit(True);
@@ -5511,13 +5511,15 @@ var iRule, N, iTokenType: integer;
       begin
        if OnlyGlobal and not AlwaysEnabled then Exit;
        RefIdx := 0;
-       Accept := Check(Source, TecClientSyntAnalyzer(Client), N, RefIdx);
+       Accept := Check(Source, TecClientSyntAnalyzer(Client), NTagIdx, RefIdx);
        if Assigned(OnBlockCheck) then
          OnBlockCheck(Rule, TecClientSyntAnalyzer(Client), Source, RefIdx, Accept);
        if Accept then
          begin
-           if FRefToCondEnd then ki := RefIdx - IdentIndex
-             else ki := N - 1 - CheckOffset - IdentIndex;
+           if FRefToCondEnd then
+             ki := RefIdx - IdentIndex
+           else
+             ki := NTagIdx - 1 - CheckOffset - IdentIndex;
 
            Tag := TecClientSyntAnalyzer(Client).Tags[ki];
            Tag.Rule := Rule;
@@ -5525,21 +5527,25 @@ var iRule, N, iTokenType: integer;
               Tag.TokenType := TokenType;
            //TecClientSyntAnalyzer(Client).Tags[ki] := Tag; //Alexey: no need with pointer
 
-           if CancelNextRules then Result := True;   // 2.27
+           if CancelNextRules then Result := True;
          end;
       end;
   end;
 
+var
+  Disp: TecBlockDispatch;
+  Rule: TecTagBlockCondition;
+  iRule, iTokenType: integer;
 begin
-  N := Client.TagCount;
+  NTagIdx := Client.TagCount;
   Disp := FBlockDisp;
   if Disp <> nil then
   begin
     // v3: dispatch detecters by the last token's type: rules whose first
     // condition needs another token type are skipped without calling Check
     iTokenType := -1;
-    if N > 0 then
-      iTokenType := TecClientSyntAnalyzer(Client).Tags[N - 1].TokenType;
+    if NTagIdx > 0 then
+      iTokenType := TecClientSyntAnalyzer(Client).Tags[NTagIdx - 1].TokenType;
     if (iTokenType >= 0) and (iTokenType <= 31) then
     begin
       for iRule := Disp.Offs[cBlkDetBucket0 + iTokenType] to Disp.Offs[cBlkDetBucket0 + iTokenType + 1] - 1 do
