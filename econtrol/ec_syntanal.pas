@@ -5495,95 +5495,21 @@ end;
 
 procedure TecSyntAnalyzer.HighlightKeywords(Client: TecParserResults;
   const Source: ecString; OnlyGlobal: Boolean);
-var iRule, N, ki, RefIdx, iTokenType: integer;
-    Accept: Boolean;
-    Tag: PecSyntToken;
+var iRule, N, iTokenType: integer;
     Rule: TecTagBlockCondition;
     Disp: TecBlockDispatch;
-begin
-  N := Client.TagCount;
-  Disp := FBlockDisp;
-  if Disp <> nil then
+
+  // check one detecter rule; True = stop scanning (buffer invalidated, or CancelNextRules)
+  function CheckOneRule(Rule: TecTagBlockCondition): Boolean;
+  var ki, RefIdx: integer;
+      Accept: Boolean;
+      Tag: PecSyntToken;
   begin
-    // v3: dispatch detecters by the last token's type: rules whose first
-    // condition needs another token type are skipped without calling Check
-    iTokenType := -1;
-    if N > 0 then
-      iTokenType := TecClientSyntAnalyzer(Client).Tags[N - 1].TokenType;
-    if (iTokenType >= 0) and (iTokenType <= 31) then
-    begin
-      for iRule := Disp.Offs[cBlkDetBucket0 + iTokenType] to Disp.Offs[cBlkDetBucket0 + iTokenType + 1] - 1 do
-      begin
-        if not Client.Buffer.Valid then Exit;
-
-        Rule := Disp.Flat[iRule];
-        with Rule do
-          begin
-           if OnlyGlobal and not AlwaysEnabled then Continue;
-           RefIdx := 0;
-           Accept := Check(Source, TecClientSyntAnalyzer(Client), N, RefIdx);
-           if Assigned(OnBlockCheck) then
-             OnBlockCheck(Rule, TecClientSyntAnalyzer(Client), Source, RefIdx, Accept);
-           if Accept then
-             begin
-               if FRefToCondEnd then ki := RefIdx - IdentIndex
-                 else ki := N - 1 - CheckOffset - IdentIndex;
-
-               Tag := TecClientSyntAnalyzer(Client).Tags[ki];
-               Tag.Rule := Rule;
-               if TokenType >= 0 then
-                  Tag.TokenType := TokenType;
-
-               if CancelNextRules then Exit;   // 2.27
-             end;
-          end;
-      end;
-    end
-    else
-    begin
-      // exotic token type: all detecters in original order
-      for iRule := Disp.Offs[cBlkDetAll] to Disp.Offs[cBlkDetAll + 1] - 1 do
-      begin
-        if not Client.Buffer.Valid then Exit;
-
-        Rule := Disp.Flat[iRule];
-        with Rule do
-          begin
-           if OnlyGlobal and not AlwaysEnabled then Continue;
-           RefIdx := 0;
-           Accept := Check(Source, TecClientSyntAnalyzer(Client), N, RefIdx);
-           if Assigned(OnBlockCheck) then
-             OnBlockCheck(Rule, TecClientSyntAnalyzer(Client), Source, RefIdx, Accept);
-           if Accept then
-             begin
-               if FRefToCondEnd then ki := RefIdx - IdentIndex
-                 else ki := N - 1 - CheckOffset - IdentIndex;
-
-               Tag := TecClientSyntAnalyzer(Client).Tags[ki];
-               Tag.Rule := Rule;
-               if TokenType >= 0 then
-                  Tag.TokenType := TokenType;
-
-               if CancelNextRules then Exit;   // 2.27
-             end;
-          end;
-      end;
-    end;
-    Exit;
-  end;
-
-  // fallback (dispatch caches not built): plain iteration
-  for iRule := 0 to FBlockRules.Count - 1 do
-  begin
-    if not Client.Buffer.Valid then Exit;
-
-    Rule := FBlockRules[iRule];
-    if not (Rule.Enabled and (Rule.FBlockType = btTagDetect) and
-            (Rule.FBlock = nil) and (Rule.FGrammaRule = nil)) then
-      Continue;
+    Result := False;
+    if not Client.Buffer.Valid then Exit(True);
     with Rule do
       begin
-       if OnlyGlobal and not AlwaysEnabled then Continue;
+       if OnlyGlobal and not AlwaysEnabled then Exit;
        RefIdx := 0;
        Accept := Check(Source, TecClientSyntAnalyzer(Client), N, RefIdx);
        if Assigned(OnBlockCheck) then
@@ -5599,18 +5525,50 @@ begin
               Tag.TokenType := TokenType;
            //TecClientSyntAnalyzer(Client).Tags[ki] := Tag; //Alexey: no need with pointer
 
-           if CancelNextRules then Exit;   // 2.27
+           if CancelNextRules then Result := True;   // 2.27
          end;
       end;
+  end;
+
+begin
+  N := Client.TagCount;
+  Disp := FBlockDisp;
+  if Disp <> nil then
+  begin
+    // v3: dispatch detecters by the last token's type: rules whose first
+    // condition needs another token type are skipped without calling Check
+    iTokenType := -1;
+    if N > 0 then
+      iTokenType := TecClientSyntAnalyzer(Client).Tags[N - 1].TokenType;
+    if (iTokenType >= 0) and (iTokenType <= 31) then
+    begin
+      for iRule := Disp.Offs[cBlkDetBucket0 + iTokenType] to Disp.Offs[cBlkDetBucket0 + iTokenType + 1] - 1 do
+        if CheckOneRule(Disp.Flat[iRule]) then Exit;
+    end
+    else
+    begin
+      // exotic token type: all detecters in original order
+      for iRule := Disp.Offs[cBlkDetAll] to Disp.Offs[cBlkDetAll + 1] - 1 do
+        if CheckOneRule(Disp.Flat[iRule]) then Exit;
+    end;
+    Exit;
+  end;
+
+  // fallback (dispatch caches not built): plain iteration
+  for iRule := 0 to FBlockRules.Count - 1 do
+  begin
+    Rule := FBlockRules[iRule];
+    if not (Rule.Enabled and (Rule.FBlockType = btTagDetect) and
+            (Rule.FBlock = nil) and (Rule.FGrammaRule = nil)) then
+      Continue;
+    if CheckOneRule(Rule) then Exit;
   end;
 end;
 
 procedure TecSyntAnalyzer.SelectTokenFormat(Client: TecParserResults;
             const Source: ecString;
             DisableFolding, OnlyGlobal: Boolean; ATokenIndex: integer);
-var i, li, ki, strt, RefIdx, iTokenType, iRegion: integer;
-    Range: TecTextRange;
-    Accept: Boolean;
+var i, iTokenType, iRegion: integer;
     RClient: TecClientSyntAnalyzer;
     Rule: TecTagBlockCondition;
     Disp: TecBlockDispatch;
@@ -5618,6 +5576,75 @@ var i, li, ki, strt, RefIdx, iTokenType, iRegion: integer;
   function CheckIndex(Idx: integer): Boolean; inline;
   begin
    Result := (Idx >= 0) and (Idx < ATokenIndex);
+  end;
+
+  // check one block rule; True = stop scanning (buffer invalidated, or CancelNextRules)
+  function CheckOneRule(Rule: TecTagBlockCondition): Boolean;
+  var li, ki, strt, RefIdx: integer;
+      Range: TecTextRange;
+      Accept: Boolean;
+  begin
+    Result := False;
+    if not Client.Buffer.Valid then Exit(True);
+    with Rule do
+     if not SeparateBlockAnalysis or (BlockType <> btTagDetect) or
+        (Block = nil) or (FGrammaRule = nil) then
+     if Client.IsEnabled(Rule, OnlyGlobal) then
+      begin
+        RefIdx := 0;
+        if FGrammaRule <> nil then
+         begin
+           RefIdx := FGrammaParser.TestRule(ATokenIndex - 1, FGrammaRule, Client);
+           Accept := RefIdx <> -1;
+         end else
+           Accept := Check(Source, RClient, ATokenIndex, RefIdx);
+
+        if Assigned(OnBlockCheck) then
+          OnBlockCheck(Rule, RClient, Source, RefIdx, Accept);
+
+        if Accept then
+         begin
+           Client.ApplyStates(Rule);
+           if FRefToCondEnd then strt := RefIdx
+             else strt := ATokenIndex - 1 - CheckOffset;
+      //    strt := ATokenIndex - 1 - CheckOffset;
+           ki := strt - IdentIndex;
+           if CheckIndex(ki) then
+            case BlockType of
+               btTagDetect: // Tag detection
+                 if not RClient.DetectTag(Rule, ki) then
+                   Exit;
+               btRangeStart: // Start of block
+                begin
+                  if Rule.SelfClose then
+                    RClient.CloseRange(Rule, strt);
+                  li := strt - BlockOffset;
+                  if CheckIndex(li) then
+                   begin
+                    Range := TecTextRange.Create(li, RClient.Tags[li].Range.StartPos);
+                    Range.IdentIdx := ki;
+                    Range.Rule := Rule;
+                    Range.FCondIndex := ATokenIndex - 1;
+                    if NoEndRule then
+                     begin
+                      Range.EndIdx := ATokenIndex - 1 - CheckOffset;
+                      Range.FEndCondIndex := ATokenIndex - 1;
+                      Range.StartIdx := RefIdx - BlockOffset;
+                     end;
+                    RClient.AddRange(Range);
+                   end;
+                end;
+               btRangeEnd:  // End of block
+                 if not RClient.CloseRange(Rule, strt) then
+                   Exit;
+               btLineBreak:
+                 begin
+                   // Alexey: deleted support for line separators
+                 end;
+            end;
+           if CancelNextRules then Result := True;
+         end;
+      end;
   end;
 
 begin
@@ -5653,141 +5680,18 @@ begin
     end;
 
     for i := Disp.Offs[iRegion] to Disp.Offs[iRegion + 1] - 1 do
-    begin
-      if not Client.Buffer.Valid then Exit;
-
-      Rule := Disp.Flat[i];
-      with Rule do
-       if not SeparateBlockAnalysis or (BlockType <> btTagDetect) or
-          (Block = nil) or (FGrammaRule = nil) then
-       if Client.IsEnabled(Rule, OnlyGlobal) then
-        begin
-          RefIdx := 0;
-          if FGrammaRule <> nil then
-           begin
-             RefIdx := FGrammaParser.TestRule(ATokenIndex - 1, FGrammaRule, Client);
-             Accept := RefIdx <> -1;
-           end else
-             Accept := Check(Source, RClient, ATokenIndex, RefIdx);
-
-          if Assigned(OnBlockCheck) then
-            OnBlockCheck(Rule, RClient, Source, RefIdx, Accept);
-
-          if Accept then
-          begin
-           Client.ApplyStates(Rule);
-           if FRefToCondEnd then strt := RefIdx
-             else strt := ATokenIndex - 1 - CheckOffset;
-      //    strt := ATokenIndex - 1 - CheckOffset;
-           ki := strt - IdentIndex;
-           if CheckIndex(ki) then
-            case BlockType of
-               btTagDetect: // Tag detection
-                 if not RClient.DetectTag(Rule, ki) then
-                   Continue;
-               btRangeStart: // Start of block
-                begin
-                  if Rule.SelfClose then
-                    RClient.CloseRange(Rule, strt);
-                  li := strt - BlockOffset;
-                  if CheckIndex(li) then
-                   begin
-                    Range := TecTextRange.Create(li, RClient.Tags[li].Range.StartPos);
-                    Range.IdentIdx := ki;
-                    Range.Rule := Rule;
-                    Range.FCondIndex := ATokenIndex - 1;
-                    if NoEndRule then
-                     begin
-                      Range.EndIdx := ATokenIndex - 1 - CheckOffset;
-                      Range.FEndCondIndex := ATokenIndex - 1;
-                      Range.StartIdx := RefIdx - BlockOffset;
-                     end;
-                    RClient.AddRange(Range);
-                   end;
-                end;
-               btRangeEnd:  // End of block
-                 if not RClient.CloseRange(Rule, strt) then
-                   Continue;
-               btLineBreak:
-                 begin
-                   // Alexey: deleted support for line separators
-                 end;
-            end;
-           if CancelNextRules then Break;
-          end;
-        end;
-    end;
+      if CheckOneRule(Disp.Flat[i]) then Exit;
     Exit;
   end;
 
   // fallback (dispatch caches not built): plain iteration
-    for i := 0 to FBlockRules.Count - 1 do
-    begin
-      if not Client.Buffer.Valid then Exit;
-
-      Rule := FBlockRules[i];
-      if DisableFolding then
-        if Rule.BlockType in [btRangeStart, btRangeEnd] then Continue;
-      with Rule do
-       if not SeparateBlockAnalysis or (BlockType <> btTagDetect) or
-          (Block = nil) or (FGrammaRule = nil) then
-       if Client.IsEnabled(Rule, OnlyGlobal) then
-        begin
-          RefIdx := 0;
-          if FGrammaRule <> nil then
-           begin
-             RefIdx := FGrammaParser.TestRule(ATokenIndex - 1, FGrammaRule, Client);
-             Accept := RefIdx <> -1;
-           end else
-             Accept := Check(Source, RClient, ATokenIndex, RefIdx);
-
-          if Assigned(OnBlockCheck) then
-            OnBlockCheck(Rule, RClient, Source, RefIdx, Accept);
-
-          if Accept then
-          begin
-           Client.ApplyStates(Rule);
-           if FRefToCondEnd then strt := RefIdx
-             else strt := ATokenIndex - 1 - CheckOffset;
-      //    strt := ATokenIndex - 1 - CheckOffset;
-           ki := strt - IdentIndex;
-           if CheckIndex(ki) then
-            case BlockType of
-               btTagDetect: // Tag detection
-                 if not RClient.DetectTag(Rule, ki) then
-                   Continue;
-               btRangeStart: // Start of block
-                begin
-                  if Rule.SelfClose then
-                    RClient.CloseRange(Rule, strt);
-                  li := strt - BlockOffset;
-                  if CheckIndex(li) then
-                   begin
-                    Range := TecTextRange.Create(li, RClient.Tags[li].Range.StartPos);
-                    Range.IdentIdx := ki;
-                    Range.Rule := Rule;
-                    Range.FCondIndex := ATokenIndex - 1;
-                    if NoEndRule then
-                     begin
-                      Range.EndIdx := ATokenIndex - 1 - CheckOffset;
-                      Range.FEndCondIndex := ATokenIndex - 1;
-                      Range.StartIdx := RefIdx - BlockOffset;
-                     end;
-                    RClient.AddRange(Range);
-                   end;
-                end;
-               btRangeEnd:  // End of block
-                 if not RClient.CloseRange(Rule, strt) then
-                   Continue;
-               btLineBreak:
-                 begin
-                   // Alexey: deleted support for line separators
-                 end;
-            end;
-           if CancelNextRules then Break;
-          end;
-        end;
-    end;
+  for i := 0 to FBlockRules.Count - 1 do
+  begin
+    Rule := FBlockRules[i];
+    if DisableFolding then
+      if Rule.BlockType in [btRangeStart, btRangeEnd] then Continue;
+    if CheckOneRule(Rule) then Exit;
+  end;
 end;
 
 procedure TecSyntAnalyzer.SetSampleText(const Value: TStrings);
@@ -5797,26 +5701,67 @@ end;
 
 function TecSyntAnalyzer.GetToken(Client: TecParserResults; const Source: ecString;
                               APos: integer; AOnlyGlobal: Boolean): TecSyntToken;
-var NRuleIndex, NLen, NPosInLine: integer;
-    Rule: TecTokenRule;
-    PntStart, PntEnd: TPoint;
+var NRuleIndex, NPosInLine, NChar, NLenEvt: integer;
+    RuleEvt: TecTokenRule;
     Disp: TecTokenDispatch;
     RuleSet: QWord;
-begin
-  PntStart.X := -1;
-  PntStart.Y := -1;
 
-  if Assigned(FOnParseToken) then
-    begin
-      NLen := 0;
-      Rule := nil;
-      FOnParseToken(Client, Source, APos, NLen, Rule);
-      if Assigned(Rule) then
-        Result := TecSyntToken.Create(Rule,
+  // check one token rule; True + Tok filled when rule fired, False = rule didn't fire
+  function CheckOneRule(Rule: TecTokenRule; var Tok: TecSyntToken): Boolean;
+  var NLen: integer;
+      PntStart, PntEnd: TPoint;
+  begin
+    Result := False;
+    if not Client.IsEnabled(Rule, AOnlyGlobal) then Exit;
+    if (Rule.ColumnFrom > 0) or (Rule.ColumnTo > 0) then
+      begin
+       if NPosInLine = 0 then
+         NPosInLine := Client.FBuffer.StrToCaret(APos - 1).X + 1;
+
+       if (Rule.ColumnFrom > 0) and (NPosInLine < Rule.ColumnFrom) or
+          (Rule.ColumnTo > 0) and (NPosInLine > Rule.ColumnTo) then
+         Exit;
+      end;
+    NLen := Rule.Match(Source, APos);
+    if Assigned(Rule.OnMatchToken) then
+      Rule.OnMatchToken(Rule, Client, Source, APos, NLen);
+    if NLen > 0 then
+      begin
+        Client.ApplyStates(Rule);
+
+        PntStart := Client.Buffer.StrToCaret(APos-1);
+
+        //optimization: if token is short, get PntEnd simpler
+        if PntStart.X + NLen >= Client.Buffer.LineLength(PntStart.Y) then
+          PntEnd := Client.Buffer.StrToCaret(APos+NLen-1)
+        else
+        begin
+          PntEnd.Y := PntStart.Y;
+          PntEnd.X := PntStart.X + NLen;
+        end;
+
+        Tok := TecSyntToken.Create(Rule,
                APos - 1,
                APos + NLen - 1,
+               PntStart,
+               PntEnd
+               );
+        Result := True;
+      end;
+  end;
+
+begin
+  if Assigned(FOnParseToken) then
+    begin
+      NLenEvt := 0;
+      RuleEvt := nil;
+      FOnParseToken(Client, Source, APos, NLenEvt, RuleEvt);
+      if Assigned(RuleEvt) then
+        Result := TecSyntToken.Create(RuleEvt,
+               APos - 1,
+               APos + NLenEvt - 1,
                Client.Buffer.StrToCaret(APos-1),
-               Client.Buffer.StrToCaret(APos+NLen-1)
+               Client.Buffer.StrToCaret(APos+NLenEvt-1)
                )
       else
         Result := Default(TecSyntToken);
@@ -5832,11 +5777,11 @@ begin
     // with an unknown first set (Any: event handlers, wide classes) are in
     // every bucket. No rule can fire at end-of-text (all matches are empty),
     // so the wide bucket serves that case too.
-    NLen := APos;
-    if NLen < 1 then
-      NLen := 1; // Match() clamps the same way
-    if (NLen <= Length(Source)) and (Ord(Source[NLen]) <= 127) then
-      RuleSet := Disp.RuleSets[Ord(Source[NLen])]
+    NChar := APos;
+    if NChar < 1 then
+      NChar := 1; // Match() clamps the same way
+    if (NChar <= Length(Source)) and (Ord(Source[NChar]) <= 127) then
+      RuleSet := Disp.RuleSets[Ord(Source[NChar])]
     else
       RuleSet := Disp.RuleSets[cTokWide]; // non-ASCII first char, or end of text
 
@@ -5850,48 +5795,10 @@ begin
 
       NRuleIndex := BsfQWord(RuleSet);
       RuleSet := RuleSet and (RuleSet - 1); // drop the lowest set bit
-      Rule := FTokenRules[NRuleIndex];
-      if Client.IsEnabled(Rule, AOnlyGlobal) then
-          begin
-            if (Rule.ColumnFrom > 0) or (Rule.ColumnTo > 0) then
-              begin
-               if NPosInLine = 0 then
-                 NPosInLine := Client.FBuffer.StrToCaret(APos - 1).X + 1;
-
-               if (Rule.ColumnFrom > 0) and (NPosInLine < Rule.ColumnFrom) or
-                  (Rule.ColumnTo > 0) and (NPosInLine > Rule.ColumnTo) then
-                  Continue;
-              end;
-            NLen := Rule.Match(Source, APos);
-            if Assigned(Rule.OnMatchToken) then
-              Rule.OnMatchToken(Rule, Client, Source, APos, NLen);
-            if NLen > 0 then
-              begin
-                Client.ApplyStates(Rule);
-
-                PntStart := Client.Buffer.StrToCaret(APos-1);
-
-                //optimization: if token is short, get PntEnd simpler
-                if PntStart.X + NLen >= Client.Buffer.LineLength(PntStart.Y) then
-                  PntEnd := Client.Buffer.StrToCaret(APos+NLen-1)
-                else
-                begin
-                  PntEnd.Y := PntStart.Y;
-                  PntEnd.X := PntStart.X + NLen;
-                end;
-
-                Result := TecSyntToken.Create(Rule,
-                       APos - 1,
-                       APos + NLen - 1,
-                       PntStart,
-                       PntEnd
-                       );
-                Exit;
-              end;
-          end;
+      if CheckOneRule(FTokenRules[NRuleIndex], Result) then Exit;
     end;
 
-    Result := TecSyntToken.Create(nil, -1, -1, PntStart, PntStart);
+    Result := TecSyntToken.Create(nil, -1, -1, Point(-1, -1), Point(-1, -1));
     Exit;
   end;
 
@@ -5905,48 +5812,10 @@ begin
         Exit;
       end;
 
-      Rule := FTokenRules[NRuleIndex];
-      if Client.IsEnabled(Rule, AOnlyGlobal) then
-          begin
-            if (Rule.ColumnFrom > 0) or (Rule.ColumnTo > 0) then
-              begin
-               if NPosInLine = 0 then
-                 NPosInLine := Client.FBuffer.StrToCaret(APos - 1).X + 1;
-
-               if (Rule.ColumnFrom > 0) and (NPosInLine < Rule.ColumnFrom) or
-                  (Rule.ColumnTo > 0) and (NPosInLine > Rule.ColumnTo) then
-                  Continue;
-              end;
-            NLen := Rule.Match(Source, APos);
-            if Assigned(Rule.OnMatchToken) then
-              Rule.OnMatchToken(Rule, Client, Source, APos, NLen);
-            if NLen > 0 then
-              begin
-                Client.ApplyStates(Rule);
-
-                PntStart := Client.Buffer.StrToCaret(APos-1);
-
-                //optimization: if token is short, get PntEnd simpler
-                if PntStart.X + NLen >= Client.Buffer.LineLength(PntStart.Y) then
-                  PntEnd := Client.Buffer.StrToCaret(APos+NLen-1)
-                else
-                begin
-                  PntEnd.Y := PntStart.Y;
-                  PntEnd.X := PntStart.X + NLen;
-                end;
-
-                Result := TecSyntToken.Create(Rule,
-                       APos - 1,
-                       APos + NLen - 1,
-                       PntStart,
-                       PntEnd
-                       );
-                Exit;
-              end;
-          end;
+      if CheckOneRule(FTokenRules[NRuleIndex], Result) then Exit;
     end;
 
-  Result := TecSyntToken.Create(nil, -1, -1, PntStart, PntStart);
+  Result := TecSyntToken.Create(nil, -1, -1, Point(-1, -1), Point(-1, -1));
 end;
 
 procedure TecSyntAnalyzer.FormatsChanged(Sender: TCollection; Item: TSyntCollectionItem);
