@@ -887,7 +887,7 @@ type
     function GetSeparateBlocks: Boolean;
     procedure UpdateSpecialKinds; //Alexey
   protected
-    function GetToken(Client: TecParserResults; const Source: ecString;
+    function GetToken(AClient: TecParserResults; const Source: ecString;
                        APos: integer; AOnlyGlobal: Boolean): TecSyntToken; virtual;
     procedure HighlightKeywords(Client: TecParserResults; const Source: ecString;
                        OnlyGlobal: Boolean); virtual;
@@ -5707,12 +5707,10 @@ begin
   FSampleText.Assign(Value);
 end;
 
-function TecSyntAnalyzer.GetToken(Client: TecParserResults; const Source: ecString;
+function TecSyntAnalyzer.GetToken(AClient: TecParserResults; const Source: ecString;
                               APos: integer; AOnlyGlobal: Boolean): TecSyntToken;
-var NRuleIndex, NPosInLine, NChar, NLenEvt: integer;
-    RuleEvt: TecTokenRule;
-    Disp: TecTokenDispatch;
-    RuleSet: QWord;
+var
+  NPosInLine: integer;
 
   // check one token rule; True + Tok filled when rule fired, False = rule didn't fire
   function CheckOneRule(Rule: TecTokenRule; var Tok: TecSyntToken): Boolean;
@@ -5720,11 +5718,11 @@ var NRuleIndex, NPosInLine, NChar, NLenEvt: integer;
       PntStart, PntEnd: TPoint;
   begin
     Result := False;
-    if not Client.IsEnabled(Rule, AOnlyGlobal) then Exit;
+    if not AClient.IsEnabled(Rule, AOnlyGlobal) then Exit;
     if (Rule.ColumnFrom > 0) or (Rule.ColumnTo > 0) then
       begin
        if NPosInLine = 0 then
-         NPosInLine := Client.FBuffer.StrToCaret(APos - 1).X + 1;
+         NPosInLine := AClient.FBuffer.StrToCaret(APos - 1).X + 1;
 
        if (Rule.ColumnFrom > 0) and (NPosInLine < Rule.ColumnFrom) or
           (Rule.ColumnTo > 0) and (NPosInLine > Rule.ColumnTo) then
@@ -5732,16 +5730,16 @@ var NRuleIndex, NPosInLine, NChar, NLenEvt: integer;
       end;
     NLen := Rule.Match(Source, APos);
     if Assigned(Rule.OnMatchToken) then
-      Rule.OnMatchToken(Rule, Client, Source, APos, NLen);
+      Rule.OnMatchToken(Rule, AClient, Source, APos, NLen);
     if NLen > 0 then
       begin
-        Client.ApplyStates(Rule);
+        AClient.ApplyStates(Rule);
 
-        PntStart := Client.Buffer.StrToCaret(APos-1);
+        PntStart := AClient.Buffer.StrToCaret(APos-1);
 
         //optimization: if token is short, get PntEnd simpler
-        if PntStart.X + NLen >= Client.Buffer.LineLength(PntStart.Y) then
-          PntEnd := Client.Buffer.StrToCaret(APos+NLen-1)
+        if PntStart.X + NLen >= AClient.Buffer.LineLength(PntStart.Y) then
+          PntEnd := AClient.Buffer.StrToCaret(APos+NLen-1)
         else
         begin
           PntEnd.Y := PntStart.Y;
@@ -5758,18 +5756,23 @@ var NRuleIndex, NPosInLine, NChar, NLenEvt: integer;
       end;
   end;
 
+var
+  Disp: TecTokenDispatch;
+  RuleEvt: TecTokenRule;
+  RuleSet: QWord;
+  NRuleIndex, NChar, NLenEvt: integer;
 begin
   if Assigned(FOnParseToken) then
     begin
       NLenEvt := 0;
       RuleEvt := nil;
-      FOnParseToken(Client, Source, APos, NLenEvt, RuleEvt);
+      FOnParseToken(AClient, Source, APos, NLenEvt, RuleEvt);
       if Assigned(RuleEvt) then
         Result := TecSyntToken.Create(RuleEvt,
                APos - 1,
                APos + NLenEvt - 1,
-               Client.Buffer.StrToCaret(APos-1),
-               Client.Buffer.StrToCaret(APos+NLenEvt-1)
+               AClient.Buffer.StrToCaret(APos-1),
+               AClient.Buffer.StrToCaret(APos+NLenEvt-1)
                )
       else
         Result := Default(TecSyntToken);
@@ -5795,7 +5798,7 @@ begin
 
     while RuleSet <> 0 do
     begin
-      if not Client.Buffer.Valid then
+      if not AClient.Buffer.Valid then
       begin
         Result := Default(TecSyntToken);
         Exit;
@@ -5814,7 +5817,7 @@ begin
   // >64 token rules): plain iteration
   for NRuleIndex := 0 to FTokenRules.Count - 1 do
     begin
-      if not Client.Buffer.Valid then
+      if not AClient.Buffer.Valid then
       begin
         Result := Default(TecSyntToken);
         Exit;
