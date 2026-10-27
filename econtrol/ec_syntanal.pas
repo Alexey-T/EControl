@@ -891,8 +891,8 @@ type
                        APos: integer; AOnlyGlobal: Boolean): TecSyntToken; virtual;
     procedure HighlightKeywords(Client: TecParserResults; const Source: ecString;
                        OnlyGlobal: Boolean); virtual;
-    procedure SelectTokenFormat(Client: TecParserResults; const Source: ecString;
-                       DisableFolding, OnlyGlobal: Boolean; ATokenIndex: integer = -1); virtual;
+    procedure SelectTokenFormat(AClient: TecParserResults; const Source: ecString;
+                       ADisableFolding, AOnlyGlobal: Boolean; ATokenIndex: integer = -1); virtual;
     procedure Loaded; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Change; dynamic;
@@ -5568,83 +5568,84 @@ begin
   end;
 end;
 
-procedure TecSyntAnalyzer.SelectTokenFormat(Client: TecParserResults;
+
+procedure TecSyntAnalyzer.SelectTokenFormat(AClient: TecParserResults;
             const Source: ecString;
-            DisableFolding, OnlyGlobal: Boolean; ATokenIndex: integer);
+            ADisableFolding, AOnlyGlobal: Boolean; ATokenIndex: integer);
 var
   RClient: TecClientSyntAnalyzer;
 
-  function CheckIndex(Idx: integer): Boolean; inline;
+  function CheckIndex(AIdx: integer): Boolean; inline;
   begin
-    Result := (Idx >= 0) and (Idx < ATokenIndex);
+    Result := (AIdx >= 0) and (AIdx < ATokenIndex);
   end;
 
   // check one block rule; True = stop scanning (buffer invalidated, or CancelNextRules)
-  function CheckOneRule(Rule: TecTagBlockCondition): Boolean;
+  function CheckOneRule(ARule: TecTagBlockCondition): Boolean;
   var
     Range: TecTextRange;
     li, ki, strt, RefIdx: integer;
     Accept: Boolean;
   begin
     Result := False;
-    if not Client.Buffer.Valid then Exit(True);
-    with Rule do
-     if not SeparateBlockAnalysis or (BlockType <> btTagDetect) or
-        (Block = nil) or (FGrammaRule = nil) then
-     if Client.IsEnabled(Rule, OnlyGlobal) then
+    if not AClient.Buffer.Valid then Exit(True);
+    if not SeparateBlockAnalysis or (ARule.BlockType <> btTagDetect) or
+       (ARule.Block = nil) or (ARule.FGrammaRule = nil) then
+     if AClient.IsEnabled(ARule, AOnlyGlobal) then
       begin
         RefIdx := 0;
-        if FGrammaRule <> nil then
+        if ARule.FGrammaRule <> nil then
          begin
-           RefIdx := FGrammaParser.TestRule(ATokenIndex - 1, FGrammaRule, Client);
+           RefIdx := FGrammaParser.TestRule(ATokenIndex - 1, ARule.FGrammaRule, AClient);
            Accept := RefIdx <> -1;
          end else
-           Accept := Check(Source, RClient, ATokenIndex, RefIdx);
+           Accept := ARule.Check(Source, RClient, ATokenIndex, RefIdx);
 
-        if Assigned(OnBlockCheck) then
-          OnBlockCheck(Rule, RClient, Source, RefIdx, Accept);
+        if Assigned(ARule.OnBlockCheck) then
+          ARule.OnBlockCheck(ARule, RClient, Source, RefIdx, Accept);
 
         if Accept then
          begin
-           Client.ApplyStates(Rule);
-           if FRefToCondEnd then strt := RefIdx
-             else strt := ATokenIndex - 1 - CheckOffset;
-      //    strt := ATokenIndex - 1 - CheckOffset;
-           ki := strt - IdentIndex;
+           AClient.ApplyStates(ARule);
+           if ARule.FRefToCondEnd then
+             strt := RefIdx
+           else
+             strt := ATokenIndex - 1 - ARule.CheckOffset;
+           ki := strt - ARule.IdentIndex;
            if CheckIndex(ki) then
-            case BlockType of
+            case ARule.BlockType of
                btTagDetect: // Tag detection
-                 if not RClient.DetectTag(Rule, ki) then
+                 if not RClient.DetectTag(ARule, ki) then
                    Exit;
                btRangeStart: // Start of block
                 begin
-                  if Rule.SelfClose then
-                    RClient.CloseRange(Rule, strt);
-                  li := strt - BlockOffset;
+                  if ARule.SelfClose then
+                    RClient.CloseRange(ARule, strt);
+                  li := strt - ARule.BlockOffset;
                   if CheckIndex(li) then
                    begin
                     Range := TecTextRange.Create(li, RClient.Tags[li].Range.StartPos);
                     Range.IdentIdx := ki;
-                    Range.Rule := Rule;
+                    Range.Rule := ARule;
                     Range.FCondIndex := ATokenIndex - 1;
-                    if NoEndRule then
+                    if ARule.NoEndRule then
                      begin
-                      Range.EndIdx := ATokenIndex - 1 - CheckOffset;
+                      Range.EndIdx := ATokenIndex - 1 - ARule.CheckOffset;
                       Range.FEndCondIndex := ATokenIndex - 1;
-                      Range.StartIdx := RefIdx - BlockOffset;
+                      Range.StartIdx := RefIdx - ARule.BlockOffset;
                      end;
                     RClient.AddRange(Range);
                    end;
                 end;
                btRangeEnd:  // End of block
-                 if not RClient.CloseRange(Rule, strt) then
+                 if not RClient.CloseRange(ARule, strt) then
                    Exit;
                btLineBreak:
                  begin
                    // Alexey: deleted support for line separators
                  end;
             end;
-           if CancelNextRules then Result := True;
+           if ARule.CancelNextRules then Result := True;
          end;
       end;
   end;
@@ -5655,9 +5656,9 @@ var
   i, iTokenType, iRegion: integer;
 begin
   if ATokenIndex = -1 then
-    ATokenIndex := Client.TagCount;
-  if not (Client is TecClientSyntAnalyzer)  then Exit;
-  RClient := TecClientSyntAnalyzer(Client);
+    ATokenIndex := AClient.TagCount;
+  if not (AClient is TecClientSyntAnalyzer)  then Exit;
+  RClient := TecClientSyntAnalyzer(AClient);
   RClient.FStartSepRangeAnal := ATokenIndex + 1;
 
   Disp := FBlockDisp;
@@ -5666,20 +5667,20 @@ begin
     // v3: dispatch block rules by the token type of Tags[ATokenIndex-1]:
     // rules whose first condition needs another token type are skipped
     // without calling Check. Folding rules are in a separate bucket set,
-    // so the DisableFolding filter is done by the region choice.
+    // so the ADisableFolding filter is done by the region choice.
     iTokenType := -1;
     if ATokenIndex > 0 then
       iTokenType := RClient.Tags[ATokenIndex - 1].TokenType;
     if (iTokenType >= 0) and (iTokenType <= 31) then
     begin
-      if DisableFolding then
+      if ADisableFolding then
         iRegion := cBlkNoFoldBucket0 + iTokenType
       else
         iRegion := cBlkFoldBucket0 + iTokenType;
     end
     else
     begin
-      if DisableFolding then
+      if ADisableFolding then
         iRegion := cBlkAllNoFold
       else
         iRegion := cBlkAll;
@@ -5694,7 +5695,7 @@ begin
   for i := 0 to FBlockRules.Count - 1 do
   begin
     Rule := FBlockRules[i];
-    if DisableFolding then
+    if ADisableFolding then
       if Rule.BlockType in [btRangeStart, btRangeEnd] then Continue;
     if CheckOneRule(Rule) then Exit;
   end;
