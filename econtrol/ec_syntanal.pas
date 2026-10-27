@@ -3466,32 +3466,32 @@ end;
 
 
 function TecClientSyntAnalyzer.CloseRange(ACond: TecTagBlockCondition; ARefTag: integer): Boolean;
-var j: integer;
-    b: boolean;
-    Range: TecTextRange;
+var
+  Range: TecTextRange;
+  iBlock: integer;
+  b: boolean;
 begin
-  for j := FOpenedBlocks.Count - 1 downto 0 do
+  for iBlock := FOpenedBlocks.Count - 1 downto 0 do
   begin
-   Range := TecTextRange(FOpenedBlocks[j]);
-   with Range do
-     if Assigned(Rule) then
+   Range := TecTextRange(FOpenedBlocks[iBlock]);
+   if Assigned(Range.Rule) then
+     begin
+       if ACond.BlockType = btRangeStart then
+         b := ACond.SelfClose and (Range.Rule = ACond)
+       else
+         b := (Range.Rule.FBlockEndCond = ACond) or (Range.Rule = ACond.FBlockEndCond);
+       if b then
        begin
-         if ACond.BlockType = btRangeStart then
-           b := ACond.SelfClose and (Rule = ACond)
-         else
-           b := (Rule.FBlockEndCond = ACond) or (Rule = ACond.FBlockEndCond);
-         if b then
-           begin
-             if ACond.SameIdent and not TagsSame(ARefTag - ACond.IdentIndex, IdentIdx) then Continue;
-             EndIdx := ARefTag - ACond.BlockOffset;
-             if (Rule = ACond) and (EndIdx > 0) then Dec(EndIdx); // for self closing
-             FEndCondIndex := ARefTag;
-             if Assigned(Owner.OnCloseTextRange) then
-               Owner.OnCloseTextRange(Self, Range, StartIdx, EndIdx);
-             FOpenedBlocks.Delete(j);
-             Exit(True);
-           end;
+         if ACond.SameIdent and not TagsSame(ARefTag - ACond.IdentIndex, Range.IdentIdx) then Continue;
+         Range.EndIdx := ARefTag - ACond.BlockOffset;
+         if (Range.Rule = ACond) and (Range.EndIdx > 0) then Dec(Range.EndIdx); // for self closing
+         Range.FEndCondIndex := ARefTag;
+         if Assigned(Owner.OnCloseTextRange) then
+           Owner.OnCloseTextRange(Self, Range, Range.StartIdx, Range.EndIdx);
+         FOpenedBlocks.Delete(iBlock);
+         Exit(True);
        end;
+     end;
   end;
   Result := False;
 end;
