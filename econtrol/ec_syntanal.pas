@@ -5499,7 +5499,7 @@ var
   NTagIdx: integer;
 
   // check one detecter rule; True = stop scanning (buffer invalidated, or CancelNextRules)
-  function CheckOneRule(Rule: TecTagBlockCondition): Boolean;
+  function CheckOneRule(ARule: TecTagBlockCondition): Boolean;
   var
     ki, RefIdx: integer;
     Accept: Boolean;
@@ -5507,29 +5507,26 @@ var
   begin
     Result := False;
     if not Client.Buffer.Valid then Exit(True);
-    with Rule do
-      begin
-       if OnlyGlobal and not AlwaysEnabled then Exit;
-       RefIdx := 0;
-       Accept := Check(Source, TecClientSyntAnalyzer(Client), NTagIdx, RefIdx);
-       if Assigned(OnBlockCheck) then
-         OnBlockCheck(Rule, TecClientSyntAnalyzer(Client), Source, RefIdx, Accept);
-       if Accept then
-         begin
-           if FRefToCondEnd then
-             ki := RefIdx - IdentIndex
-           else
-             ki := NTagIdx - 1 - CheckOffset - IdentIndex;
 
-           Tag := TecClientSyntAnalyzer(Client).Tags[ki];
-           Tag.Rule := Rule;
-           if TokenType >= 0 then
-              Tag.TokenType := TokenType;
-           //TecClientSyntAnalyzer(Client).Tags[ki] := Tag; //Alexey: no need with pointer
+    if OnlyGlobal and not ARule.AlwaysEnabled then Exit;
+    RefIdx := 0;
+    Accept := ARule.Check(Source, TecClientSyntAnalyzer(Client), NTagIdx, RefIdx);
+    if Assigned(ARule.OnBlockCheck) then
+      ARule.OnBlockCheck(ARule, TecClientSyntAnalyzer(Client), Source, RefIdx, Accept);
+    if Accept then
+     begin
+       if ARule.FRefToCondEnd then
+         ki := RefIdx - ARule.IdentIndex
+       else
+         ki := NTagIdx - 1 - ARule.CheckOffset - ARule.IdentIndex;
 
-           if CancelNextRules then Result := True;
-         end;
-      end;
+       Tag := TecClientSyntAnalyzer(Client).Tags[ki];
+       Tag.Rule := ARule;
+       if ARule.TokenType >= 0 then
+          Tag.TokenType := ARule.TokenType;
+
+       if ARule.CancelNextRules then Result := True;
+     end;
   end;
 
 var
