@@ -6222,13 +6222,17 @@ end;
 
 function TecSyntAnalyzer.GetSeparateBlocks: Boolean;
 
-  function HasStateModif(List: TCollection): Boolean;
-  var i: integer;
+  function HasStateModif(AList: TCollection): Boolean;
+  var
+    ColItem: TRuleCollectionItem;
+    i: integer;
   begin
-    for i := 0 to List.Count - 1 do
-      with TRuleCollectionItem(List.Items[i]) do
-        if (StatesAdd <> 0) or (StatesRemove <> 0) then
-          Exit(True);
+    for i := 0 to AList.Count - 1 do
+    begin
+      ColItem := TRuleCollectionItem(AList.Items[i]);
+      if (ColItem.StatesAdd <> 0) or (ColItem.StatesRemove <> 0) then
+        Exit(True);
+    end;
     Result := False;
   end;
 
