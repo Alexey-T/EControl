@@ -5713,27 +5713,28 @@ var
   NPosInLine: integer;
 
   // check one token rule; True + Tok filled when rule fired, False = rule didn't fire
-  function CheckOneRule(Rule: TecTokenRule; var Tok: TecSyntToken): Boolean;
-  var NLen: integer;
-      PntStart, PntEnd: TPoint;
+  function CheckOneRule(ARule: TecTokenRule; var AToken: TecSyntToken): Boolean;
+  var
+    PntStart, PntEnd: TPoint;
+    NLen: integer;
   begin
     Result := False;
-    if not AClient.IsEnabled(Rule, AOnlyGlobal) then Exit;
-    if (Rule.ColumnFrom > 0) or (Rule.ColumnTo > 0) then
+    if not AClient.IsEnabled(ARule, AOnlyGlobal) then Exit;
+    if (ARule.ColumnFrom > 0) or (ARule.ColumnTo > 0) then
       begin
        if NPosInLine = 0 then
          NPosInLine := AClient.FBuffer.StrToCaret(APos - 1).X + 1;
 
-       if (Rule.ColumnFrom > 0) and (NPosInLine < Rule.ColumnFrom) or
-          (Rule.ColumnTo > 0) and (NPosInLine > Rule.ColumnTo) then
+       if (ARule.ColumnFrom > 0) and (NPosInLine < ARule.ColumnFrom) or
+          (ARule.ColumnTo > 0) and (NPosInLine > ARule.ColumnTo) then
          Exit;
       end;
-    NLen := Rule.Match(Source, APos);
-    if Assigned(Rule.OnMatchToken) then
-      Rule.OnMatchToken(Rule, AClient, Source, APos, NLen);
+    NLen := ARule.Match(Source, APos);
+    if Assigned(ARule.OnMatchToken) then
+      ARule.OnMatchToken(ARule, AClient, Source, APos, NLen);
     if NLen > 0 then
       begin
-        AClient.ApplyStates(Rule);
+        AClient.ApplyStates(ARule);
 
         PntStart := AClient.Buffer.StrToCaret(APos-1);
 
@@ -5746,7 +5747,7 @@ var
           PntEnd.X := PntStart.X + NLen;
         end;
 
-        Tok := TecSyntToken.Create(Rule,
+        AToken := TecSyntToken.Create(ARule,
                APos - 1,
                APos + NLen - 1,
                PntStart,
