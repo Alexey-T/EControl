@@ -6578,18 +6578,20 @@ begin
 end;
 
 procedure TecSubAnalyzerRule.AssignTo(Dest: TPersistent);
+var
+  DestRule: TecSubAnalyzerRule;
 begin
   inherited;
   if Dest is TecSubAnalyzerRule then
-   with Dest as TecSubAnalyzerRule do
-    begin
-     StartExpression := Self.StartExpression;
-     EndExpression := Self.EndExpression;
-     SyntAnalyzer := Self.SyntAnalyzer;
-     FromTextBegin := Self.FromTextBegin;
-     ToTextEnd := Self.ToTextEnd;
-     IncludeBounds := Self.IncludeBounds;
-    end;
+  begin
+    DestRule := TecSubAnalyzerRule(Dest);
+    DestRule.StartExpression := Self.StartExpression;
+    DestRule.EndExpression := Self.EndExpression;
+    DestRule.SyntAnalyzer := Self.SyntAnalyzer;
+    DestRule.FromTextBegin := Self.FromTextBegin;
+    DestRule.ToTextEnd := Self.ToTextEnd;
+    DestRule.IncludeBounds := Self.IncludeBounds;
+  end;
 end;
 
 function TecSubAnalyzerRule.GetEndExpression: ecString;
