@@ -1045,7 +1045,7 @@ procedure AppLogException(E: Exception; const AText: string);
 
 var
   EControlErrorLogDir: string = '';
-  EControlErrorLogFilename: string = 'cudatext.error';
+  EControlErrorLogFilename: string = 'econtrol.error';
 
 
 implementation
