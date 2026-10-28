@@ -1161,16 +1161,16 @@ end;
 procedure AppLogException(E: Exception; const AText: string);
 var
   f: System.Text;
-  fn: string;
+  SFileName: string;
 begin
   if EControlErrorLogDir='' then
   begin
     EControlErrorLogDir := {$ifdef windows} ExtractFileDir(ParamStr(0)) {$else} GetEnvironmentVariable('HOME') {$endif};
     if EControlErrorLogDir='' then Exit;
   end;
-  fn := EControlErrorLogDir+DirectorySeparator+EControlErrorLogFilename;
+  SFileName := EControlErrorLogDir+DirectorySeparator+EControlErrorLogFilename;
 
-  AssignFile(f, fn);
+  AssignFile(f, SFileName);
   {$Push}
   {$I-}
   Append(f);
