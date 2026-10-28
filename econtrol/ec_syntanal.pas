@@ -1041,7 +1041,7 @@ var
     IndentFolding_CheckBracketsAreClosed: boolean;
   end;
 
-procedure AppLogException(E: Exception);
+procedure AppLogException(E: Exception; const AText: string);
 
 var
   EControlErrorLogFilename: string = 'cudatext.error';
@@ -1157,7 +1157,7 @@ begin
     An.OnUpdateBuffer(nil);
 end;
 
-procedure AppLogException(E: Exception);
+procedure AppLogException(E: Exception; const AText: string);
 var
   f: System.Text;
   fn: string;
@@ -1176,6 +1176,8 @@ begin
     Rewrite(f);
   Writeln(f, '---');
   Writeln(f, 'Date: '+DateTimeToStr(Now));
+  if AText<>'' then
+    Writeln(f, 'Text: '+AText);
   Writeln(f, 'Exception: '+E.ClassName+', message: '+E.Message);
   DumpExceptionBacktrace(f);
   CloseFile(f);
@@ -1216,7 +1218,7 @@ begin
         on E: Exception do
         begin
           EditorParserExceptionMessage:= 'Exception: '+E.ClassName+', message: '+E.Message;
-          AppLogException(E);
+          AppLogException(E, 'An.ParseInThread in TecParserThread.Execute');
           Res := eprAppTerminated;
         end;
       end;
