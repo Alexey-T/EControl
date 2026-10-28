@@ -1163,7 +1163,7 @@ var
   fn: string;
 begin
   {$ifdef windows}
-  fn := GetEnvironmentVariable('TEMP')+DirectorySeparator+EControlErrorLogFilename;
+  fn := ExtractFilePath(ParamStr(0))+EControlErrorLogFilename;
   {$else}
   fn := GetEnvironmentVariable('HOME')+DirectorySeparator+EControlErrorLogFilename;
   {$endif}
