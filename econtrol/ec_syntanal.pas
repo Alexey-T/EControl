@@ -1044,6 +1044,7 @@ var
 procedure AppLogException(E: Exception; const AText: string);
 
 var
+  EControlErrorLogDir: string = '';
   EControlErrorLogFilename: string = 'cudatext.error';
 
 
@@ -1162,11 +1163,12 @@ var
   f: System.Text;
   fn: string;
 begin
-  {$ifdef windows}
-  fn := ExtractFilePath(ParamStr(0))+EControlErrorLogFilename;
-  {$else}
-  fn := GetEnvironmentVariable('HOME')+DirectorySeparator+EControlErrorLogFilename;
-  {$endif}
+  if EControlErrorLogDir='' then
+  begin
+    EControlErrorLogDir := {$ifdef windows} ExtractFileDir(ParamStr(0)) {$else} GetEnvironmentVariable('HOME') {$endif};
+    if EControlErrorLogDir='' then Exit;
+  end;
+  fn := EControlErrorLogDir+DirectorySeparator+EControlErrorLogFilename;
 
   AssignFile(f, fn);
   {$Push}
