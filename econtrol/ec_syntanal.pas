@@ -1045,7 +1045,7 @@ procedure AppLogException(E: Exception; const AText: string);
 
 var
   EControlErrorLogDir: string = '';
-  EControlErrorLogFilename: string = 'econtrol.error';
+  EControlErrorLogFilename: string = 'econtrol_error.log';
 
 
 implementation
