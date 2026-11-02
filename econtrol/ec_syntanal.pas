@@ -4748,7 +4748,8 @@ begin
   // so both will be readable:
   //   CodeTemplates = <>
   //   CodeTemplates = < item ... end >
-  Reader.SkipValue;
+  Reader.Driver.SkipValue;
+  // '.Driver' here is needed only for FPC 3.2.2 which did not have 'Reader.SkipValue', FPC 3.2.3-fixes has it
 end;
 
 procedure TecSyntAnalyzer.LoadExtraData(const AFileName: string);
