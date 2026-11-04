@@ -649,6 +649,10 @@ type
 
     FStartSepRangeAnal: integer;
     FRepeateAnalysis: Boolean;
+    //set by Stop(): parsing is cancelled (current pass and pending re-parse),
+    //cleared by TextChangedOnLine(); needed to close editor tabs fast,
+    //while they are still parsing huge files
+    FStopped: Boolean;
     FOnParseDone: TecParseDoneEvent;
     FOnProgressFirst: TNotifyEvent;
     FOnProgressSecond: TNotifyEvent;
@@ -3399,6 +3403,14 @@ end;
 
 procedure TecClientSyntAnalyzer.Stop;
 begin
+  //latch the cancellation, so that the parser thread not only aborts the
+  //current ParseInThread() pass, but also drops any pending re-parse request
+  //(FChangeOccured/EventParseNeeded), which was set by a text change;
+  //parsing is re-enabled only by TextChangedOnLine()
+  FStopped := True;
+  FChangeOccured := False;
+  EventParseNeeded.ResetEvent;
+
   if not IsFinished then
   begin
     FBuffer.Valid := False;
@@ -3421,6 +3433,7 @@ begin
   KindIndexer := nil;
 
   FFinished := False;
+  FStopped := False;
   FLastAnalPos := 0;
   FStartSepRangeAnal := 0;
 
@@ -3729,6 +3742,11 @@ var
   tick: QWord;
   {$endif}
 begin
+  //parsing was cancelled by Stop(): don't reset the stop-flags below,
+  //report 'normal finish' so the thread gets idle without re-parsing
+  if FStopped then
+    Exit(eprNormal);
+
   Result := eprNormal;
   FBuffer.Valid := True;
   FFinished := False;
@@ -3745,7 +3763,7 @@ begin
   end;
 
   repeat
-    if FFinished then
+    if FFinished or FStopped then
       Exit(eprNormal);
 
     if Application.Terminated then
@@ -3796,6 +3814,9 @@ begin
 
           if Application.Terminated then
             Exit(eprAppTerminated);
+
+          if FStopped then
+            Exit(eprNormal);
 
           if not FBuffer.Valid then
             Exit(eprBufferInvalidated);
@@ -4675,6 +4696,9 @@ procedure TecClientSyntAnalyzer.TextChangedOnLine(ALine: integer);
 begin
   if ALine < 0 then
     ALine := 0;
+
+  //re-enable parsing, which was cancelled by Stop()
+  FStopped := False;
 
   FChangeOccured := True;
   if FChangeAtLine < 0 then
