@@ -45,6 +45,10 @@
         <UnitName Value="ec_Lists"/>
       </Item>
       <Item>
+        <Filename Value="ec_lists_unistr.pas"/>
+        <UnitName Value="ec_lists_unistr"/>
+      </Item>
+      <Item>
         <Filename Value="ec_syntax_rule.pas"/>
         <UnitName Value="ec_syntax_rule"/>
       </Item>

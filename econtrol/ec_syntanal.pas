@@ -24,6 +24,7 @@ uses
   ec_RegExpr,
   ec_StrUtils,
   ec_Lists,
+  ec_lists_unistr,
   ec_gramma,
   ec_syntax_collection,
   ec_syntax_format,
@@ -1409,6 +1410,8 @@ var
   ReObj: TecRegExpr;
   SToken: ecString;
   i, N: integer;
+  Lst: TecUnicodeStringList;
+  St, Len: integer;
 begin
   Result := False;
   if FTokenTypes <> 0 then
@@ -1448,8 +1451,24 @@ begin
           end;
      end else
      begin
-       SToken := AToken.GetStr(Source, True);
-       Result := (FTagList as TStringList).Find(UTF8Encode(SToken), N);
+       // Search the sorted UnicodeString list directly by the token's
+       // PWideChar buffer: no SToken allocation, no UTF8Encode conversion
+       // (optimization step A3).
+       Lst := TecUnicodeStringList(FTagList);
+       St := AToken.Range.StartPos + 1;
+       Len := AToken.Range.EndPos - AToken.Range.StartPos;
+       // trim leading spaces, like GetStr(Source, True) did
+       while (Len > 0) and (St > 0) and (St <= Length(Source)) and IsSpaceChar(Source[St]) do
+       begin
+         Inc(St);
+         Dec(Len);
+       end;
+       if Len > 0 then
+         Result := Lst.FindBuffer(@Source[St], Len, N)
+       else
+         // empty (whitespace-only) token: nothing to search for, the
+         // token does not match (AFix3: no nil lookup in the list)
+         Result := False;
        if FCondType = tcNotEqual then
          Result := not Result;
      end;
@@ -1462,14 +1481,19 @@ constructor TecSingleTagCondition.Create(Collection: TCollection);
 begin
   inherited;
   FCondType := tcEqual;
-  FTagList := TStringList.Create;
-  TStringList(FTagList).UseLocale := False; //Alexey, makes Find() faster by 30%
-  TStringList(FTagList).Sorted := True;
-  TStringList(FTagList).Delimiter := ' ';
-  TStringList(FTagList).Duplicates := dupIgnore;
-  TStringList(FTagList).CaseSensitive := True;
-  TStringList(FTagList).OnChange := TagListChanged;
-  TStringList(FTagList).QuoteChar := ' ';
+  // TecUnicodeStringList (optimization step A1): sorted UnicodeString storage
+  // with direct PWideChar search, replaces TStringList+UTF8Encode.
+  // TStrings descendant: .lcf streaming (TagList.Strings) is unchanged.
+  FTagList := TecUnicodeStringList.Create;
+  with FTagList as TecUnicodeStringList do
+  begin
+    Sorted := True;
+    Duplicates := dupIgnore;
+    CaseSensitive := True;
+    Delimiter := ' ';
+    QuoteChar := ' ';
+    OnChange := TagListChanged;
+  end;
 end;
 
 destructor TecSingleTagCondition.Destroy;
@@ -1482,26 +1506,29 @@ end;
 
 procedure TecSingleTagCondition.SetIgnoreCase(const Value: Boolean);
 begin
-  TStringList(FTagList).CaseSensitive := not Value;
+  (FTagList as TecUnicodeStringList).CaseSensitive := not Value;
 end;
 
 function TecSingleTagCondition.GetIgnoreCase: Boolean;
 begin
-  Result := not TStringList(FTagList).CaseSensitive;
+  Result := not (FTagList as TecUnicodeStringList).CaseSensitive;
 end;
 
 procedure TecSingleTagCondition.UpdateRegexes;
 var
   ReObj: TecRegExpr;
   i: integer;
+  Lst: TecUnicodeStringList;
 begin
   if FRegexes = nil then
   begin
     FRegexes := TFPObjectList.Create(True);
+    Lst := TecUnicodeStringList(FTagList);
     for i := 0 to FTagList.Count - 1 do
     begin
       ReObj := TecRegExpr.Create;
-      ReObj.Expression := FTagList[i];
+      // GetUnicode: raw UnicodeString, no UTF-8 round-trip
+      ReObj.Expression := Lst.GetUnicode(i);
       SetDefaultModifiers(ReObj);
       ReObj.Compile;
       FRegexes.Add(ReObj);
@@ -1511,7 +1538,7 @@ end;
 
 procedure TecSingleTagCondition.SetTagList(const Value: TStrings);
 begin
-  TStringList(FTagList).DelimitedText := Value.Text;
+  FTagList.DelimitedText := Value.Text; // Delimiter/QuoteChar are set in Create
   Changed(False);
 end;
 
