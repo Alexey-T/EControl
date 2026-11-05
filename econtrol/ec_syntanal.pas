@@ -24,7 +24,7 @@ uses
   ec_RegExpr,
   ec_StrUtils,
   ec_Lists,
-  ec_lists_unistr,
+  ec_Lists_UniStr,
   ec_gramma,
   ec_syntax_collection,
   ec_syntax_format,
