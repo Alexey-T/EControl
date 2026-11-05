@@ -1433,27 +1433,25 @@ begin
        UpdateRegexes;
        SToken := AToken.GetStr(Source, True); // Alexey
 
-       //it was try/except around this block - bad! Alexey
        for i := 0 to FTagList.Count - 1 do
-          begin
-            ReObj := TecRegExpr(FRegexes[i]);
-            if FCondType = tcMask then
-              Result := ReObj.MatchLength(SToken, 1) > 0
-            else
-              begin
-                N := 1;
-                Result := ReObj.Match(SToken, N);
-                if Result then
-                  Result := N > Length(SToken);
-              end;
+        begin
+          ReObj := TecRegExpr(FRegexes[i]);
+          if FCondType = tcMask then
+            Result := ReObj.MatchLength(SToken, 1) > 0
+          else
+            begin
+              N := 1;
+              Result := ReObj.Match(SToken, N);
+              if Result then
+                Result := N > Length(SToken);
+            end;
 
-            if Result then break;
-          end;
+          if Result then break;
+        end;
      end else
      begin
        // Search the sorted UnicodeString list directly by the token's
        // PWideChar buffer: no SToken allocation, no UTF8Encode conversion
-       // (optimization step A3).
        Lst := TecUnicodeStringList(FTagList);
        St := AToken.Range.StartPos + 1;
        Len := AToken.Range.EndPos - AToken.Range.StartPos;
@@ -1466,8 +1464,6 @@ begin
        if Len > 0 then
          Result := Lst.FindBuffer(@Source[St], Len, N)
        else
-         // empty (whitespace-only) token: nothing to search for, the
-         // token does not match (AFix3: no nil lookup in the list)
          Result := False;
        if FCondType = tcNotEqual then
          Result := not Result;
