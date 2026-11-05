@@ -683,7 +683,15 @@ type
   public
     PublicDataNeedTo: integer; //line index on editor bottom, parser checks that it reached this index
     PublicDataNeedTo2: integer; //the same, but for the paired (splitted) editor
-    PublicData: TecPublicData;
+    // Double-buffer scheme (analysis doc, P5.3 "Double-buffer swap"):
+    // both buffers are allocated once, in constructor; PublicData is just a
+    // reference to one of them, flipped by UpdatePublicDataCore() on every
+    // publish. Nothing is created/freed in the publish path: the idle buffer
+    // is cleared and refilled, which also keeps the lists' capacity warm,
+    // so Assign() does no memory (re)allocation on repeated publishes.
+    PublicData: TecPublicData; //points to one of PublicData_A/PublicData_B
+    PublicData_A: TecPublicData; //first publish buffer, allocated once
+    PublicData_B: TecPublicData; //second publish buffer, allocated once
 
     FileName: string;
     ParserThread: TecParserThread;
@@ -3384,7 +3392,9 @@ begin
 
   inherited OnAddRangeSimple := AddRangeSimple;
 
-  PublicData := TecPublicData.Create;
+  PublicData_A := TecPublicData.Create;
+  PublicData_B := TecPublicData.Create;
+  PublicData := PublicData_A;
 
   EventParseNeeded := TEvent.Create(nil, False, False, '');
   EventParseIdle := TEvent.Create(nil, True{ManualReset}, True{Signaled}, '');
@@ -3416,8 +3426,10 @@ begin
   FreeAndNil(EventParseNeeded);
   FreeAndNil(CriSecForData);
 
-  if Assigned(PublicData) then
-    FreeAndNil(PublicData);
+  //buffers are freed with the analyzer; PublicData just points to one of them
+  FreeAndNil(PublicData_A);
+  FreeAndNil(PublicData_B);
+  PublicData := nil;
 
   FreeAndNil(FRanges);
   FreeAndNil(FOpenedBlocks);
@@ -3615,8 +3627,15 @@ procedure TecClientSyntAnalyzer.ClearPublicData;
 var
   OldData, NewData: TecPublicData;
 begin
+  //double-buffer swap: publish the idle buffer, cleared;
+  //no TecPublicData is allocated/freed here
   OldData := PublicData;
-  NewData := TecPublicData.Create;
+  if OldData = PublicData_A then
+    NewData := PublicData_B
+  else
+    NewData := PublicData_A;
+
+  NewData.Clear;
 
   CriSecForData.Enter;
   try
@@ -3624,14 +3643,21 @@ begin
   finally
     CriSecForData.Leave;
   end;
-
-  FreeAndNil(OldData);
 end;
 
 procedure TecClientSyntAnalyzer.UpdatePublicDataCore;
 //updating of data for 400Kb file 'torrent.cpp' takes 3-4ms on Alexey's PC,
 //so nothing to optimize here,
 //CriticalSection is not bad
+//
+//Double-buffer swap (analysis doc, P5.3): the analyzer owns two buffers,
+// PublicData_A/PublicData_B, allocated once. On each publish the idle buffer
+// is cleared and filled (before the CriticalSection), then PublicData is
+// flipped to it (inside the CriticalSection). The previously published
+// buffer becomes the idle one: it is NOT freed, it will be refilled by the
+// next call. This removes all allocations/frees of TecPublicData (and its
+// inner lists) from the publish path and keeps list capacities warm, so
+// Tokens.Assign() etc move data without memory (re)allocation.
 var
   TagPtr: PecSyntToken;
   NCount, NLastParsedLine: integer;
@@ -3650,9 +3676,19 @@ begin
   TagPtr := FTagList._GetItemPtr(NCount-1);
   NLastParsedLine := TagPtr^.Range.PointStart.Y;
 
+  //OldData/NewData point to the two buffers, in alternating order
+  //on each call
   OldData := PublicData;
+  if OldData = PublicData_A then
+    NewData := PublicData_B
+  else
+    NewData := PublicData_A;
 
-  NewData := TecPublicData.Create;
+  //no NewData.Clear() here: Tokens and SublexRanges are emptied by their
+  //Assign(), FoldRanges by CopyRangesFold(), and the rest of the fields is
+  //overwritten right below - only the flags need an explicit reset
+  NewData.Finished := False;
+  NewData.FinishedPartially := False;
   NewData.Tokens.Assign(FTagList);
   CopyRangesFold(NewData.FoldRanges);
   NewData.SublexRanges.Assign(FSubLexerBlocks);
@@ -3660,8 +3696,7 @@ begin
   NewData.LineTo := NLastParsedLine;
 
   //code in CriticalSection is minimal, it only changes pointer;
-  //the filling (of NewData) is done before;
-  //the freeing is done after
+  //the filling (of NewData) is done before
   CriSecForData.Enter;
   try
     PublicData := NewData;
@@ -3669,7 +3704,8 @@ begin
     CriSecForData.Leave;
   end;
 
-  FreeAndNil(OldData);
+  //OldData is not freed: it stays alive as the fill buffer for the next
+  //call (which is also safer for readers that took it under the CriSec)
 
   //tick:= GetTickCount64-tick;
   //Writeln('UpData: ', IntToStr(tick));
