@@ -488,12 +488,44 @@ type
 
   TecOnAddRangeSimple = procedure(AStartIdx, AEndIdx: integer) of object;
 
+  { TecPublicDataFoldRange }
+
+  // Snapshot item of TecPublicData.FoldRanges (analysis doc, P5.3,
+  // "array of record" continuation): plain record with the fields of the
+  // old TecTextRange object copy. Filled by CopyRangesFold() with a single
+  // array allocation, no per-item objects are created/freed.
+  // No TecTextRange references are kept: those objects live in the
+  // analyzer's FRanges and are freed by any next re-parse (e.g. by
+  // UpdateFoldRangesOnChange deleting changed ranges), so object
+  // references in a published snapshot dangle very easily, and readers
+  // of an older snapshot crashed on them. Rule is the only reference
+  // kept: rule objects live with the lexer itself, not with the parse.
+  // Parent is the index of the parent item in the same FoldRanges array
+  // (-1 for top-level items), so the snapshot is fully self-contained:
+  // readers can walk the parent chain at any snapshot age.
+  TecPublicDataFoldRange = record
+    StartPos: integer;
+    StartIdx: integer;
+    EndIdx: integer;
+    IdentIdx: integer;
+    Rule: TecTagBlockCondition;
+    Parent: integer; //index of the parent item in the FoldRanges array, -1 = top level
+    Index: integer; //creation index, like TecTextRange.Index
+    function IsClosed: boolean; //EndIdx <> -1
+  end;
+
+  PecPublicDataFoldRange = ^TecPublicDataFoldRange;
+
+  // Published fold-range snapshot: flat array of records instead of a
+  // TSortedList of TecTextRange copies (P5.3b).
+  TecPublicDataFoldRanges = array of TecPublicDataFoldRange;
+
   { TecPublicData }
 
   TecPublicData = class
   public
     Tokens: TecTokenList;
-    FoldRanges: TSortedList;
+    FoldRanges: TecPublicDataFoldRanges;
     SublexRanges: TecSubLexerRanges;
     TokenIndexer: array of integer;
     LineTo: integer; //index of last parsed line (calculated from Tokens)
@@ -717,10 +749,16 @@ type
     procedure DoProgressSecond;
     procedure DoProgressBoth;
 
-    function RangeFormat(const FmtStr: ecString; Range: TecTextRange): ecString;
-    function GetRangeName(Range: TecTextRange; ATags: TecTokenList): ecString;
-    function GetRangeGroup(Range: TecTextRange): ecString;
-    function GetCollapsedText(Range: TecTextRange): ecString;
+    //below APIs work on PublicData.FoldRanges items by index (ARangeIndex:
+    //index in PublicData.FoldRanges): the ranges array and the token list
+    //are read from the analyzer's own PublicData field, so callers don't
+    //pass them. Callers must hold CriSecForData, like for all PublicData
+    //reads (PublicData is swapped only under that lock). Parent-chain walks
+    //never touch the analyzer's live TecTextRange objects
+    function RangeFormat(const FmtStr: ecString; ARangeIndex: integer): ecString;
+    function GetRangeName(ARangeIndex: integer): ecString;
+    function GetRangeGroup(ARangeIndex: integer): ecString;
+    function GetCollapsedText(ARangeIndex: integer): ecString;
     procedure Stop;
 
     procedure TextChangedOnLine(ALine: integer);
@@ -738,7 +776,7 @@ type
     property RangeCount: integer read GetRangeCount;
     property Ranges[Index: integer]: TecTextRange read GetRanges;
 
-    procedure CopyRangesFold(L: TSortedList);
+    procedure CopyRangesFold(var ADest: TecPublicDataFoldRanges);
   end;
 
   { TLoadableComponent }
@@ -1056,6 +1094,12 @@ var
 
 procedure AppLogException(E: Exception; const AText: string);
 
+// Level of ARanges[APos]: the same value which TecTextRange.Level gave
+// for the old object copies. Walks the Parent indexes of the snapshot,
+// no live analyzer objects are involved, so it is safe to call for a
+// snapshot of any age (even after the analyzer was re-parsed/cleared).
+function FoldRangeLevel(const ARanges: TecPublicDataFoldRanges; APos: integer): integer;
+
 var
   EControlErrorLogDir: string = '';
   EControlErrorLogFilename: string = 'econtrol_error.log';
@@ -1266,7 +1310,7 @@ begin
   Application.MainForm.Caption := Format('file "%s",  %d tokens, %d ranges', [
     An.FileName,
     An.PublicData.Tokens.Count,
-    An.PublicData.FoldRanges.Count
+    Length(An.PublicData.FoldRanges)
     ]);
 end;
 
@@ -4239,7 +4283,7 @@ type
     );
 
 function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
-  Range: TecTextRange): ecString;
+  ARangeIndex: integer): ecString;
 
 { HAW: hans@werschner.de [Oct'07] ......... additions to formatting token parts ......
 
@@ -4411,15 +4455,17 @@ function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
 var
   N, i, j, to_idx: SizeInt;
   idx: integer;
-  rng: TecTextRange;
+  Ranges: TecPublicDataFoldRanges; //reference to PublicData.FoldRanges, no data is copied
+  rng: PecPublicDataFoldRange;
   LineMode: TecParserLineMode;
   rngtoken, rngResult: ecString;
   swp_idx, rngdir, rngoffset, rngmax: integer;
-  to_rng: TecTextRange;
+  to_rng: PecPublicDataFoldRange;
 begin
   idx := 0;
   Result := FmtStr;
-  if Range=nil then Exit;
+  Ranges := PublicData.FoldRanges;
+  if (ARangeIndex < 0) or (ARangeIndex > High(Ranges)) then Exit;
 
   //2026.07:
   //this 'CSS' value is not used in CudaText lexers anymore
@@ -4487,14 +4533,17 @@ begin
        // now we have a style name, and can resume after "%:ssssss:"
      end;
 
-     rng    := Range;
+     rng    := @Ranges[ARangeIndex];
      rngdir := 1;                     // HAW: positive increment (for "%..e..")
                                       //      negative for "..e.." clauses
      rngmax := 1000000000;            // HAW: allow a great amount of tokens
 
      while Assigned(rng) and (UpCase(char(Ord(Result[j]))) = 'P') do
       begin
-       rng := rng.Parent;
+       if rng^.Parent >= 0 then
+         rng := @Ranges[rng^.Parent]
+       else
+         rng := nil;
        if (rng = nil) or (j = Length(Result)) then Continue;
        inc(j);
       end;
@@ -4502,16 +4551,16 @@ begin
      case UpCase(char(Ord(Result[j]))) of
        'S':
          begin
-           if Assigned(rng.Rule) then
-             idx := rng.StartIdx + rng.Rule.BlockOffset
+           if Assigned(rng^.Rule) then
+             idx := rng^.StartIdx + rng^.Rule.BlockOffset
            else
              idx := 0;
          end;
        'E':
          begin
            rngdir := -1;      // HAW: mark downwards direction
-           if (rng.EndIdx <> -1) and Assigned(rng.Rule) and Assigned(rng.Rule.BlockEndCond) then
-             idx := rng.EndIdx + rng.Rule.BlockEndCond.BlockOffset
+           if (rng^.EndIdx <> -1) and Assigned(rng^.Rule) and Assigned(rng^.Rule.BlockEndCond) then
+             idx := rng^.EndIdx + rng^.Rule.BlockEndCond.BlockOffset
            else
              idx := 1000000000;
          end;
@@ -4545,14 +4594,14 @@ begin
          if  rngtoken = ''  then
            continue;
          inc( j );
-         if (rngdir > 0) and Assigned(rng.Rule) and Assigned(rng.Rule.BlockEndCond) then  begin  // upwards search
-           while  idx <= (rng.EndIdx + rng.Rule.BlockEndCond.BlockOffset) do  begin
+         if (rngdir > 0) and Assigned(rng^.Rule) and Assigned(rng^.Rule.BlockEndCond) then  begin  // upwards search
+           while  idx <= (rng^.EndIdx + rng^.Rule.BlockEndCond.BlockOffset) do  begin
              if TagSameAs(idx, rngtoken) then  break;
              inc( idx );
            end;
          end  else
-         if (rngdir < 0) and Assigned(rng.Rule) then         // downwards search
-           while  idx >= (rng.StartIdx + rng.Rule.BlockOffset) do  begin
+         if (rngdir < 0) and Assigned(rng^.Rule) then         // downwards search
+           while  idx >= (rng^.StartIdx + rng^.Rule.BlockOffset) do  begin
              if TagSameAs(idx, rngtoken) then  break;
              dec( idx );
            end;
@@ -4572,8 +4621,8 @@ begin
      if  (j < length( Result ))  and  (Result[j] = '~')  then
        // a numeric value alone sets just the maximum tokens to use
        if IsDigitChar(Result[j+1]) then  begin  // only positive values !
-         if Assigned(to_rng.Rule) and Assigned(to_rng.Rule.BlockEndCond) then
-           to_idx := to_rng.EndIdx + to_rng.Rule.BlockEndCond.BlockOffset;
+         if Assigned(to_rng^.Rule) and Assigned(to_rng^.Rule.BlockEndCond) then
+           to_idx := to_rng^.EndIdx + to_rng^.Rule.BlockEndCond.BlockOffset;
          LineMode := plmExplicitRange;
        end else
        begin
@@ -4584,21 +4633,24 @@ begin
 
          rngdir := 1;
          if  Result[j] <> '['   then  begin
-           // to_rng := Range;  // be sure that we start with the range itself
+           // to_rng := rng;  // be sure that we start with the range itself
            while UpCase(char(Ord(Result[j]))) = 'P' do
             begin
-             to_rng := rng.Parent;
+             if rng^.Parent >= 0 then
+               to_rng := @Ranges[rng^.Parent]
+             else
+               to_rng := nil;
              if (to_rng = nil) or (j = Length(Result)) then Continue;
              inc(j);
             end;
 
-           if Assigned(to_rng.Rule) then
+           if Assigned(to_rng^.Rule) then
            case UpCase(char(Ord(Result[j]))) of
-             'S': to_idx := to_rng.StartIdx + to_rng.Rule.BlockOffset;
+             'S': to_idx := to_rng^.StartIdx + to_rng^.Rule.BlockOffset;
              'E': begin
                     rngdir := -1;       // HAW: mark downwards direction
-                    if (to_rng.EndIdx <> -1) and Assigned(to_rng.Rule.BlockEndCond) then
-                     to_idx := to_rng.EndIdx + to_rng.Rule.BlockEndCond.BlockOffset
+                    if (to_rng^.EndIdx <> -1) and Assigned(to_rng^.Rule.BlockEndCond) then
+                     to_idx := to_rng^.EndIdx + to_rng^.Rule.BlockEndCond.BlockOffset
                     else
                      to_idx := 1000000000;
                   end;
@@ -4621,14 +4673,14 @@ begin
            if  rngtoken = ''  then
              continue;
            inc( j );
-           if (rngdir > 0) and Assigned(rng.Rule) and Assigned(rng.Rule.BlockEndCond) then begin  // upwards search
-             while  to_idx <= (rng.EndIdx + rng.Rule.BlockEndCond.BlockOffset) do  begin
+           if (rngdir > 0) and Assigned(rng^.Rule) and Assigned(rng^.Rule.BlockEndCond) then begin  // upwards search
+             while  to_idx <= (rng^.EndIdx + rng^.Rule.BlockEndCond.BlockOffset) do  begin
                if TagSameAs(to_idx, rngtoken) then  break;
                inc( to_idx );
              end;
            end  else
-           if (rngdir < 0) and Assigned(rng.Rule) then // downwards search
-             while  to_idx >= (rng.StartIdx + rng.Rule.BlockOffset) do  begin
+           if (rngdir < 0) and Assigned(rng^.Rule) then // downwards search
+             while  to_idx >= (rng^.StartIdx + rng^.Rule.BlockOffset) do  begin
                if TagSameAs(to_idx, rngtoken) then  break;
                dec( to_idx );
              end;
@@ -4719,29 +4771,39 @@ begin
     end;
 end;
 
-function TecClientSyntAnalyzer.GetRangeName(Range: TecTextRange; ATags: TecTokenList): ecString;
+function TecClientSyntAnalyzer.GetRangeName(ARangeIndex: integer): ecString;
+var
+  Ranges: TecPublicDataFoldRanges; //reference to PublicData.FoldRanges, no data is copied
 begin
   Result := '';
-  if Assigned(Range.Rule) and (Range.Rule.NameFmt <> '') then
-    Result := RangeFormat(Range.Rule.NameFmt, Range);
+  Ranges := PublicData.FoldRanges;
+  if (ARangeIndex < 0) or (ARangeIndex > High(Ranges)) then Exit;
+  if Assigned(Ranges[ARangeIndex].Rule) and (Ranges[ARangeIndex].Rule.NameFmt <> '') then
+    Result := RangeFormat(Ranges[ARangeIndex].Rule.NameFmt, ARangeIndex);
   if Result = '' then
-    Result := GetTokenStrEx(Range.IdentIdx, ATags);
+    Result := GetTokenStrEx(Ranges[ARangeIndex].IdentIdx, PublicData.Tokens);
 end;
 
-function TecClientSyntAnalyzer.GetRangeGroup(Range: TecTextRange): ecString;
+function TecClientSyntAnalyzer.GetRangeGroup(ARangeIndex: integer): ecString;
+var
+  Ranges: TecPublicDataFoldRanges; //reference to PublicData.FoldRanges, no data is copied
 begin
-  if Assigned(Range.Rule) then
-    Result := RangeFormat(Range.Rule.GroupFmt, Range)
+  Ranges := PublicData.FoldRanges;
+  if (ARangeIndex < 0) or (ARangeIndex > High(Ranges)) or not Assigned(Ranges[ARangeIndex].Rule) then
+    Result := ''
   else
-    Result := '';
+    Result := RangeFormat(Ranges[ARangeIndex].Rule.GroupFmt, ARangeIndex);
 end;
 
-function TecClientSyntAnalyzer.GetCollapsedText(Range: TecTextRange): ecString;
+function TecClientSyntAnalyzer.GetCollapsedText(ARangeIndex: integer): ecString;
+var
+  Ranges: TecPublicDataFoldRanges; //reference to PublicData.FoldRanges, no data is copied
 begin
-  if Assigned(Range.Rule) then
-    Result := RangeFormat(Range.Rule.CollapseFmt, Range)
+  Ranges := PublicData.FoldRanges;
+  if (ARangeIndex < 0) or (ARangeIndex > High(Ranges)) or not Assigned(Ranges[ARangeIndex].Rule) then
+    Result := ''
   else
-    Result := '';
+    Result := RangeFormat(Ranges[ARangeIndex].Rule.CollapseFmt, ARangeIndex);
 end;
 
 function TecClientSyntAnalyzer.IsEnabled(ARule: TRuleCollectionItem; AOnlyGlobal: Boolean): Boolean;
@@ -4797,19 +4859,78 @@ begin
   Result := True;
 end;
 
-procedure TecClientSyntAnalyzer.CopyRangesFold(L: TSortedList);
+procedure TecClientSyntAnalyzer.CopyRangesFold(var ADest: TecPublicDataFoldRanges);
 var
-  R, RR: TecTextRange;
-  NCount, i: integer;
+  R: TecTextRange;
+  Dst: PecPublicDataFoldRange;
+  //temporary open-addressing hash map: TecTextRange object pointer ->
+  //its position in FRanges (== position in ADest); built here once,
+  //so each item's Parent object is resolved to an ADest index in O(1)
+  Map: array of integer;
+  NCount, i, PIdx, Cap: integer;
+  Slot, Mask: PtrUInt;
 begin
-  L.Clear;
+  //P5.3b: single array allocation (or none, when the idle buffer already
+  //has this length), then a flat fill - no TecTextRange objects are
+  //created/freed here anymore.
+  //Parent is stored as an index in ADest itself (not as an object ref):
+  //FRanges objects are freed by the next re-parse, and object refs in an
+  //older snapshot dangled on that (crashes in readers).
   NCount := FRanges.Count;
-  for i := 0 to NCount-1 do
+  if Length(ADest) <> NCount then
+    SetLength(ADest, NCount);
+
+  if NCount = 0 then Exit;
+
+  Cap := 16;
+  while Cap < NCount * 2 do
+    Cap := Cap shl 1;
+  Mask := PtrUInt(Cap - 1);
+  SetLength(Map, Cap);
+  for i := 0 to Cap - 1 do
+    Map[i] := -1;
+
+  for i := 0 to NCount - 1 do
+  begin
+    //Fibonacci hashing of the pointer; wrap-around is fine, so local
+    //checks-off, like FPC does for its own pointer hash tables
+    {$push}{$Q-}{$R-}
+    Slot := ((PtrUInt(Pointer(FRanges[i])) shr 4) * PtrUInt(2654435761)) and Mask;
+    {$pop}
+    while Map[Slot] >= 0 do
+      Slot := (Slot + 1) and Mask;
+    Map[Slot] := i;
+  end;
+
+  Dst := @ADest[0];
+  for i := 0 to NCount - 1 do
   begin
     R := TecTextRange(FRanges[i]);
-    RR := TecTextRange.Create(0, 0);
-    RR.Assign(R);
-    L.Add(RR);
+    Dst^.StartPos := R.StartPos;
+    Dst^.StartIdx := R.StartIdx;
+    Dst^.EndIdx := R.EndIdx;
+    Dst^.IdentIdx := R.IdentIdx;
+    Dst^.Rule := R.Rule;
+    if R.Parent = nil then
+      Dst^.Parent := -1
+    else
+    begin
+      {$push}{$Q-}{$R-}
+      Slot := ((PtrUInt(R.Parent) shr 4) * PtrUInt(2654435761)) and Mask;
+      {$pop}
+      //linear probe; a real parent is always present in the map, the
+      //'not found' branch is pure paranoia for broken range data
+      PIdx := -1;
+      repeat
+        PIdx := Map[Slot];
+        if PIdx < 0 then Break;
+        if Pointer(FRanges[PIdx]) = Pointer(R.Parent) then Break;
+        Slot := (Slot + 1) and Mask;
+      until False;
+      Dst^.Parent := PIdx;
+    end;
+    Dst^.Index := R.Index;
+    Inc(Dst);
   end;
 end;
 
@@ -6375,12 +6496,37 @@ begin
    end;
 end;
 
+{ TecPublicDataFoldRange }
+
+function TecPublicDataFoldRange.IsClosed: boolean;
+begin
+  Result := EndIdx <> -1;
+end;
+
+function FoldRangeLevel(const ARanges: TecPublicDataFoldRanges; APos: integer): integer;
+//Same walk as the old TecTextRange.GetLevel: count the ancestors. Parent
+//values are indexes in ARanges, so no live analyzer objects are touched;
+//the extra bound is pure paranoia (a broken Parent cycle cannot hang here)
+var
+  p: integer;
+begin
+  Result := 0;
+  if (APos < 0) or (APos > High(ARanges)) then Exit;
+  p := ARanges[APos].Parent;
+  while p >= 0 do
+   begin
+     inc(Result);
+     if Result > Length(ARanges) then Break;
+     if p > High(ARanges) then Break;
+     p := ARanges[p].Parent;
+   end;
+end;
+
 { TecPublicData }
 
 constructor TecPublicData.Create;
 begin
   Tokens := TecTokenList.Create;
-  FoldRanges := TSortedList.Create(True);
   SublexRanges := TecSubLexerRanges.Create;
 end;
 
@@ -6388,7 +6534,6 @@ destructor TecPublicData.Destroy;
 begin
   Clear;
   FreeAndNil(Tokens);
-  FreeAndNil(FoldRanges);
   FreeAndNil(SublexRanges);
   inherited Destroy;
 end;
@@ -6396,7 +6541,7 @@ end;
 procedure TecPublicData.Clear;
 begin
   Tokens.Clear;
-  FoldRanges.Clear;
+  FoldRanges := nil;
   SublexRanges.Clear;
   TokenIndexer := nil;
 
