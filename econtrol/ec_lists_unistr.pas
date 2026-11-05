@@ -173,14 +173,6 @@ begin
 end;
 
 function ListStrToUnicode(const S: string): UnicodeString;
-// Converts the AnsiString bytes handed over the TStrings API to UnicodeString:
-//   1) valid UTF-8 (the normal case)          -> UTF8Decode
-//   2) otherwise a single-byte system codepage -> codepage-aware conversion
-//      (Windows ANSI codepages, for bytes the FPC reader produced from
-//      '#NNNN' > 255 escapes there)
-//   3) otherwise Latin-1 byte->U+00xx          -> lossless last resort, keeps
-//      raw '#NNNN' 128..255 bytes as their character values instead of the
-//      '?' that a bare UTF8Decode() would produce
 var
   R: RawByteString;
   i: integer;
@@ -189,14 +181,6 @@ begin
     Exit('');
   if IsValidUtf8(S) then
     Exit(UTF8Decode(S));
-  if (DefaultSystemCodePage > 2) and (DefaultSystemCodePage <> 65001) then
-  begin
-    // copy bytes only, tag with the system codepage, let the RTL convert
-    R := S;
-    SetCodePage(R, DefaultSystemCodePage, False);
-    Result := UnicodeString(R);
-    Exit;
-  end;
   SetLength(Result, Length(S));
   for i := 1 to Length(S) do
     Result[i] := WideChar(byte(S[i]));
