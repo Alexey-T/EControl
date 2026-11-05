@@ -4467,46 +4467,6 @@ begin
   Ranges := PublicData.FoldRanges;
   if (ARangeIndex < 0) or (ARangeIndex > High(Ranges)) then Exit;
 
-  //2026.07:
-  //this 'CSS' value is not used in CudaText lexers anymore
-  //CudaText CSS lexer now uses value %SK1 to format nodes
-  (*
-  //special handling for CSS lexer
-  if AFmtStr='CSS' then
-  begin
-    Result := '';
-    to_idx := Range.StartPos;
-    i := to_idx;
-    repeat
-      case Buffer.FText[i] of
-        '{', '}',
-        '>', // support <?php> tag
-        '/': // support CSS comments, but comment must not be in the middle of node name
-          Break;
-        #10:
-          begin
-            // if EOL is at to_idx position, only skip it; ie support this:
-            //   tagname
-            //   {
-            //   ...
-            //   }
-            if i<>to_idx then
-              Break;
-          end;
-      end;
-      Dec(i);
-      if i<1 then Break;
-    until False;
-
-    // strip trailing space/EOL
-    while (to_idx>0) and _IsCharSpaceOrEol(Buffer.FText[to_idx]) do
-      Dec(to_idx);
-
-    Result := Copy(Buffer.FText, i+1, to_idx-i);
-    Exit;
-  end;
-  *)
-
    // HAW: obsolete -> to_idx := Length(Result);
    //      the variable "j" is now always pointing to the next character to process.
    //      Only during numeric sub-operand scan, the "N" will keep the found digits
@@ -4517,14 +4477,9 @@ begin
     begin
      j := i + 1;
 
-     //rngstyle := '';                  // HAW: keep style name
      if  Result[j] = ':' then  begin  // HAW: begin of embedded style name
        inc( j );
        while  (j <= length( Result ))  and  (Result[j] <> ':') do begin
-         { //Alexey: was not used
-         if  Result[j] > ' '  then
-           rngstyle := rngstyle+Result[j];
-           }
          inc( j );
        end;
        if  (j > length( Result ))  or  (Result[j] <> ':')  then
