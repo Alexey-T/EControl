@@ -755,7 +755,7 @@ type
     //pass them. Callers must hold CriSecForData, like for all PublicData
     //reads (PublicData is swapped only under that lock). Parent-chain walks
     //never touch the analyzer's live TecTextRange objects
-    function RangeFormat(const FmtStr: ecString; ARangeIndex: integer): ecString;
+    function RangeFormat(const AFmtStr: ecString; ARangeIndex: integer): ecString;
     function GetRangeName(ARangeIndex: integer): ecString;
     function GetRangeGroup(ARangeIndex: integer): ecString;
     function GetCollapsedText(ARangeIndex: integer): ecString;
@@ -4227,7 +4227,7 @@ begin
     end;
 end;
 
-function RangeNumber(var APos: SizeInt; const FmtStrNumber: ecString; var NumValue: integer): boolean;
+function RangeNumber(var APos: SizeInt; const AFmtStrNumber: ecString; var ANumValue: integer): boolean;
 { changes by Alexey:
 optimized to avoid StrToIntDef call.
 moved out of RangeFormat() scope.
@@ -4239,21 +4239,21 @@ var
   bPlus, bMinus: boolean;
 begin
   Result := False;
-  NLen := Length(FmtStrNumber);
+  NLen := Length(AFmtStrNumber);
   NDigits := 0;
   NResult := 0;
   bPlus := False;
   bMinus := False;
   iChar := APos;
   if (iChar <= 0) or (iChar > NLen) then Exit;
-  ch := FmtStrNumber[iChar];
+  ch := AFmtStrNumber[iChar];
   bPlus := ch = '+';
   bMinus := ch = '-';
   if bPlus or bMinus then
     inc(iChar);
 
   while iChar <= NLen do begin
-    ch := FmtStrNumber[iChar];
+    ch := AFmtStrNumber[iChar];
     if IsDigitChar(ch) then begin
       NResult := NResult * 10 + (Ord(ch) - Ord('0'));
       inc(NDigits);
@@ -4266,7 +4266,7 @@ begin
   if NDigits > 0 then begin
     if bMinus then
       NResult := -NResult;
-    NumValue := NResult;
+    ANumValue := NResult;
     APos := iChar;
     Result := True;
   end;
@@ -4282,7 +4282,7 @@ type
                          // from the lefter nearest '}' or line-break to token_1
     );
 
-function TecClientSyntAnalyzer.RangeFormat(const FmtStr: ecString;
+function TecClientSyntAnalyzer.RangeFormat(const AFmtStr: ecString;
   ARangeIndex: integer): ecString;
 
 { HAW: hans@werschner.de [Oct'07] ......... additions to formatting token parts ......
@@ -4463,7 +4463,7 @@ var
   to_rng: PecPublicDataFoldRange;
 begin
   idx := 0;
-  Result := FmtStr;
+  Result := AFmtStr;
   Ranges := PublicData.FoldRanges;
   if (ARangeIndex < 0) or (ARangeIndex > High(Ranges)) then Exit;
 
@@ -4472,7 +4472,7 @@ begin
   //CudaText CSS lexer now uses value %SK1 to format nodes
   (*
   //special handling for CSS lexer
-  if FmtStr='CSS' then
+  if AFmtStr='CSS' then
   begin
     Result := '';
     to_idx := Range.StartPos;
