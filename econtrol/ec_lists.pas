@@ -110,6 +110,24 @@ type
 
   TecStateChanges = TFPGList<TecStateChange>;
 
+// Binary search of a raw UTF-16 buffer in a sorted TStringList (P2b):
+// the list must be sorted with UseLocale=False (plain byte-wise order,
+// like TecSingleTagCondition.FTagList), then the item order is identical
+// to the code-unit order of the equivalent UnicodeString, so the buffer
+// can be compared against the items directly, byte to code unit.
+// No string allocation and no UTF8Encode conversion is done for the
+// searched token. Items are ASCII in practice (lexer keyword lists);
+// a byte >= $80 is compared as its raw value, so '#NNNN' 128..255
+// escapes in .lcf keep their char value. Case folding (for a
+// case-insensitive list) is ASCII-only, exactly like FPC's TStringList
+// comparison with UseLocale=False.
+// Returns True when found; AIndex gets the found position, or the
+// insertion position otherwise (like TStringList.Find; with duplicate
+// items any matching position can be returned - callers use only the
+// boolean result).
+function StringList_FindUnicodeBuffer(AList: TStringList; ABuf: PWideChar;
+  ALen: integer; out AIndex: integer): Boolean;
+
 implementation
 
 { TecStateChange }
@@ -467,6 +485,91 @@ end;
 function GRangeList<GRange>.InternalGet(AIndex: integer): PGRange;
 begin
   Result := inherited;
+end;
+
+{ StringList_FindUnicodeBuffer }
+
+function SL_CompareItemBuffer(const S: string; ABuf: PWideChar; ALen: integer;
+  ACaseSensitive: boolean): integer; inline;
+// Sign is 'item vs buffer', like TStringList.DoCompareText(item, buffer):
+// negative when the item sorts before the buffer, 0 when equal.
+// Items are ASCII: one item byte is compared to one buffer code unit.
+var
+  i, n, LenS: integer;
+  b, c: integer;
+begin
+  i := 1;
+  n := 0;
+  LenS := Length(S);
+  while (i <= LenS) and (n < ALen) do
+  begin
+    b := byte(S[i]);
+    Inc(i);
+    c := word(ABuf[n]);
+    Inc(n);
+    if b = c then
+      Continue;
+    if not ACaseSensitive then
+    begin
+      // ASCII-only folding, like FPC TStringList with UseLocale=False
+      if (b >= Ord('a')) and (b <= Ord('z')) then
+        Dec(b, 32);
+      if (c >= Ord('a')) and (c <= Ord('z')) then
+        Dec(c, 32);
+      if b = c then
+        Continue;
+    end;
+    if b < c then
+      Exit(-1)
+    else
+      Exit(1);
+  end;
+  // one compared string is a prefix of the other: the longer is greater
+  if (i > LenS) and (n < ALen) then
+    Result := -1
+  else
+  if (i <= LenS) and (n >= ALen) then
+    Result := 1
+  else
+    Result := 0;
+end;
+
+function StringList_FindUnicodeBuffer(AList: TStringList; ABuf: PWideChar;
+  ALen: integer; out AIndex: integer): Boolean;
+var
+  L, R, M, C: integer;
+  CaseSens: boolean;
+begin
+  if (ABuf = nil) and (ALen > 0) then
+  begin
+    Result := False;
+    AIndex := 0;
+    Exit;
+  end;
+  CaseSens := AList.CaseSensitive;
+  L := 0;
+  R := AList.Count - 1;
+  while L <= R do
+  begin
+    M := (L + R) shr 1;
+    //note: the item is fetched straight into the const parameter, no
+    //local copy with an extra refcount is made
+    C := SL_CompareItemBuffer(AList[M], ABuf, ALen, CaseSens);
+    if C < 0 then
+      L := M + 1
+    else
+    if C > 0 then
+      R := M - 1
+    else
+    begin
+      //found: exit at once, no extra loop steps to the leftmost
+      //duplicate (callers use only the boolean result)
+      AIndex := M;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+  AIndex := L;
 end;
 
 { TSortedList }

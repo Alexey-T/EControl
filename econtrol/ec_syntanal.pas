@@ -24,7 +24,6 @@ uses
   ec_RegExpr,
   ec_StrUtils,
   ec_Lists,
-  ec_Lists_UniStr,
   ec_gramma,
   ec_syntax_collection,
   ec_syntax_format,
@@ -1462,7 +1461,6 @@ var
   ReObj: TecRegExpr;
   SToken: ecString;
   i, N: integer;
-  Lst: TecUnicodeStringList;
   St, Len: integer;
 begin
   Result := False;
@@ -1502,9 +1500,10 @@ begin
         end;
      end else
      begin
-       // Search the sorted UnicodeString list directly by the token's
-       // PWideChar buffer: no SToken allocation, no UTF8Encode conversion
-       Lst := TecUnicodeStringList(FTagList);
+       // Search the sorted TStringList directly by the token's PWideChar
+       // buffer: no SToken allocation, no UTF8Encode conversion
+       // (P2b: plain TStringList again, items are ASCII in practice;
+       // StringList_FindUnicodeBuffer is in ec_Lists)
        St := AToken.Range.StartPos + 1;
        Len := AToken.Range.EndPos - AToken.Range.StartPos;
        // trim leading spaces, like GetStr(Source, True) did
@@ -1514,7 +1513,7 @@ begin
          Dec(Len);
        end;
        if Len > 0 then
-         Result := Lst.FindBuffer(@Source[St], Len, N)
+         Result := StringList_FindUnicodeBuffer(TStringList(FTagList), @Source[St], Len, N)
        else
          Result := False;
        if FCondType = tcNotEqual then
@@ -1529,12 +1528,15 @@ constructor TecSingleTagCondition.Create(Collection: TCollection);
 begin
   inherited;
   FCondType := tcEqual;
-  // TecUnicodeStringList (optimization step A1): sorted UnicodeString storage
-  // with direct PWideChar search, replaces TStringList+UTF8Encode.
+  // Plain TStringList (P2b): tag lists hold ASCII keyword strings in
+  // practice, so UnicodeString storage is not needed. CheckToken() searches
+  // it with StringList_FindUnicodeBuffer() by the token's PWideChar buffer,
+  // so no per-call allocation/conversion happens either.
   // TStrings descendant: .lcf streaming (TagList.Strings) is unchanged.
-  FTagList := TecUnicodeStringList.Create;
-  with FTagList as TecUnicodeStringList do
+  FTagList := TStringList.Create;
+  with FTagList as TStringList do
   begin
+    UseLocale := False; //Alexey, makes Find() faster by 30%
     Sorted := True;
     Duplicates := dupIgnore;
     CaseSensitive := True;
@@ -1554,29 +1556,26 @@ end;
 
 procedure TecSingleTagCondition.SetIgnoreCase(const Value: Boolean);
 begin
-  (FTagList as TecUnicodeStringList).CaseSensitive := not Value;
+  (FTagList as TStringList).CaseSensitive := not Value;
 end;
 
 function TecSingleTagCondition.GetIgnoreCase: Boolean;
 begin
-  Result := not (FTagList as TecUnicodeStringList).CaseSensitive;
+  Result := not (FTagList as TStringList).CaseSensitive;
 end;
 
 procedure TecSingleTagCondition.UpdateRegexes;
 var
   ReObj: TecRegExpr;
   i: integer;
-  Lst: TecUnicodeStringList;
 begin
   if FRegexes = nil then
   begin
     FRegexes := TFPObjectList.Create(True);
-    Lst := TecUnicodeStringList(FTagList);
     for i := 0 to FTagList.Count - 1 do
     begin
       ReObj := TecRegExpr.Create;
-      // GetUnicode: raw UnicodeString, no UTF-8 round-trip
-      ReObj.Expression := Lst.GetUnicode(i);
+      ReObj.Expression := FTagList[i];
       SetDefaultModifiers(ReObj);
       ReObj.Compile;
       FRegexes.Add(ReObj);
