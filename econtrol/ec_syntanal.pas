@@ -705,7 +705,7 @@ type
     procedure UpdatePublicData(AParseFinished: boolean);
     procedure UpdatePublicDataOnTextChange;
   protected
-    procedure AddRange(Range: TecTextRange);
+    procedure AddRange(ARange: TecTextRange);
     procedure AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
     function HasOpened(ARule: TRuleCollectionItem; AParent: TecTagBlockCondition; AStrict: Boolean): Boolean;
     function IsEnabled(ARule: TRuleCollectionItem; AOnlyGlobal: Boolean): Boolean; override;
@@ -3533,14 +3533,14 @@ begin
   ClearPublicData;
 end;
 
-procedure TecClientSyntAnalyzer.AddRange(Range: TecTextRange);
+procedure TecClientSyntAnalyzer.AddRange(ARange: TecTextRange);
 begin
-  Range.Index := FRanges.Count;
-  FRanges.Add(Range);
+  ARange.Index := FRanges.Count;
+  FRanges.Add(ARange);
   if FOpenedBlocks.Count > 0 then
-    Range.Parent := TecTextRange(FOpenedBlocks[FOpenedBlocks.Count - 1]);
-  if Range.EndIdx = -1 then
-    FOpenedBlocks.Add(Range);
+    ARange.Parent := TecTextRange(FOpenedBlocks[FOpenedBlocks.Count - 1]);
+  if ARange.EndIdx = -1 then
+    FOpenedBlocks.Add(ARange);
 end;
 
 procedure TecClientSyntAnalyzer.AddRangeSimple(AStartIdx, AEndIdx: integer); //Alexey
