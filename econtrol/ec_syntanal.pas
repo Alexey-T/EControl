@@ -45,9 +45,9 @@ EventParseNeeded.SetEvent
 
 //main thread, renderer
 //---------------------
-CriSec.Enter
+CriticalSection.Enter
 Render(PublicData)
-CriSec.Leave
+CriticalSection.Leave
 
 //parser thread
 //-------------
@@ -58,7 +58,7 @@ repeat
   try
     //this 'repeat' block is ParseInThread()
     repeat
-      if ExtractTag() then //text ended?
+      if ExtractTag() then //True if text ended
       begin
         Finished
         Break
@@ -71,9 +71,9 @@ repeat
     until False
 
     FlushData(PublicData)
-    CriSec.Enter
+    CriticalSection.Enter
     CopyDataTo(PublicData)
-    CriSec.Leave
+    CriticalSection.Leave
   finally
     EventParseIdle.SetEvent
   end
