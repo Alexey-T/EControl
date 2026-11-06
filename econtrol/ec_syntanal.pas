@@ -4840,10 +4840,10 @@ var
   //its position in FRanges (== position in ADest); built here once,
   //so each item's Parent object is resolved to an ADest index in O(1)
   Map: array of integer;
-  NCount, i, PIdx, Cap: integer;
+  NCount, iRange, NParentIdx, NCap: integer;
   Slot, Mask: PtrUInt;
 begin
-  //P5.3b: single array allocation (or none, when the idle buffer already
+  //single array allocation (or none, when the idle buffer already
   //has this length), then a flat fill - no TecTextRange objects are
   //created/freed here anymore.
   //Parent is stored as an index in ADest itself (not as an object ref):
@@ -4855,26 +4855,26 @@ begin
 
   if NCount = 0 then Exit;
 
-  Cap := 16;
-  while Cap < NCount * 2 do
-    Cap := Cap shl 1;
-  Mask := PtrUInt(Cap - 1);
-  SetLength(Map, Cap);
-  for i := 0 to Cap - 1 do
-    Map[i] := -1;
+  NCap := 16;
+  while NCap < NCount * 2 do
+    NCap := NCap shl 1;
+  Mask := PtrUInt(NCap - 1);
+  SetLength(Map, NCap);
+  for iRange := 0 to NCap - 1 do
+    Map[iRange] := -1;
 
-  for i := 0 to NCount - 1 do
+  for iRange := 0 to NCount - 1 do
   begin
-    Slot := _PointerHash(Pointer(FRanges[i]), Mask);
+    Slot := _PointerHash(Pointer(FRanges[iRange]), Mask);
     while Map[Slot] >= 0 do
       Slot := (Slot + 1) and Mask;
-    Map[Slot] := i;
+    Map[Slot] := iRange;
   end;
 
   Dst := @ADest[0];
-  for i := 0 to NCount - 1 do
+  for iRange := 0 to NCount - 1 do
   begin
-    R := TecTextRange(FRanges[i]);
+    R := TecTextRange(FRanges[iRange]);
     Dst^.StartPos := R.StartPos;
     Dst^.StartIdx := R.StartIdx;
     Dst^.EndIdx := R.EndIdx;
@@ -4887,14 +4887,14 @@ begin
       Slot := _PointerHash(R.Parent, Mask);
       //linear probe; a real parent is always present in the map, the
       //'not found' branch is pure paranoia for broken range data
-      PIdx := -1;
+      NParentIdx := -1;
       repeat
-        PIdx := Map[Slot];
-        if PIdx < 0 then Break;
-        if Pointer(FRanges[PIdx]) = Pointer(R.Parent) then Break;
+        NParentIdx := Map[Slot];
+        if NParentIdx < 0 then Break;
+        if Pointer(FRanges[NParentIdx]) = Pointer(R.Parent) then Break;
         Slot := (Slot + 1) and Mask;
       until False;
-      Dst^.Parent := PIdx;
+      Dst^.Parent := NParentIdx;
     end;
     Dst^.Index := R.Index;
     Inc(Dst);
