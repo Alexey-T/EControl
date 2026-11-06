@@ -3034,6 +3034,9 @@ function TecParserResults.ExtractTag(var APos: integer; ADisableFolding: Boolean
 // Function returns True if end of the text is reached
 var
   Source: ecString;
+  //set to True in GetOwnerLexer when it closes a sub-lexer block; the main
+  //body re-runs GetOwnerLexer only when the walk result could change
+  bSublexerClosed: boolean;
 
    procedure GetOwnerLexer(out ACurLexer: TecSyntAnalyzer; var ATokenExtracted: Boolean);
    var
@@ -3120,6 +3123,9 @@ print(1);
 
             if NMatchLen > 0 then
              begin
+               //sub-lexer block is closed here: 2nd GetOwnerLexer call must
+               //re-run the walk, it can stop at another block
+               bSublexerClosed := True;
                if Sub.Rule.IncludeBounds then
                  begin
                    Sub.Range.EndPos := APos - 1 + NMatchLen;
@@ -3256,9 +3262,12 @@ var
   CurToken: TecSyntToken;
   bTokenExtracted: boolean;
   bEnded: boolean;
+  bSublexerOpened: boolean;
   NNextPos: integer;
+  NPosBeforeSpaces: integer;
 begin
   bTokenExtracted := False;
+  bSublexerClosed := False;
   Source := FBuffer.FText;
   GetOwnerLexer(CurLexer, bTokenExtracted);
   if bTokenExtracted then Exit(False);
@@ -3268,6 +3277,7 @@ begin
   // we had 2 calls of TryOpenSublexer, but this first one is not needed
   //TryOpenSubLexer;
 
+  NPosBeforeSpaces := APos;
   if CurLexer.SkipSpaces then
   begin
     if CurLexer.ParseEndOfLine then
@@ -3281,8 +3291,13 @@ begin
   Result := bEnded;
   if Result then Exit;
 
-  TryOpenSubLexer(CurLexer);
-  GetOwnerLexer(CurLexer, bTokenExtracted);
+  bSublexerOpened := TryOpenSubLexer(CurLexer);
+  //2nd GetOwnerLexer call is needed only when something changed after the
+  //1st call: a sub-lexer block was opened; or a block was closed by the
+  //1st call (walk can stop at another block now); or spaces were skipped,
+  //so a block's end expression can match at the new position
+  if bSublexerOpened or bSublexerClosed or (APos <> NPosBeforeSpaces) then
+    GetOwnerLexer(CurLexer, bTokenExtracted);
 
   if bTokenExtracted then Exit(False);
 
