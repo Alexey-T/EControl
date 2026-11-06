@@ -4541,10 +4541,7 @@ begin
          end;
          if  j > length( Result ) then
            continue;
-         while  (rngtoken <> '')  and  (rngtoken[length( rngtoken )] < ' ')  do
-           rngtoken := copy( rngtoken, 1, length( rngtoken )-1 );
-         while  (rngtoken <> '')  and  (rngtoken[1] < ' ')  do
-           rngtoken := copy( rngtoken, 2, length( rngtoken )-1 );
+         rngtoken := Trim(rngtoken);
          if  rngtoken = ''  then
            continue;
          inc( j );
@@ -4620,10 +4617,7 @@ begin
            end;
            if  j > length( Result ) then
              continue;
-           while  (rngtoken <> '')  and  (rngtoken[length( rngtoken )] < ' ')  do
-             rngtoken := copy( rngtoken, 1, length( rngtoken )-1 );
-           while  (rngtoken <> '')  and  (rngtoken[1] < ' ')  do
-             rngtoken := copy( rngtoken, 2, length( rngtoken )-1 );
+           rngtoken := Trim(rngtoken);
            if  rngtoken = ''  then
              continue;
            inc( j );
