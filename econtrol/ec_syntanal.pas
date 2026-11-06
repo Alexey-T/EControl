@@ -3567,10 +3567,6 @@ begin
 
   Range := TecTextRange.Create(AStartIdx, NStartPos);
   Range.EndIdx := AEndIdx;
-  {
-  // AutoFoldComment range has Rule=nil
-  Range.Rule := Owner.CommentRule1;
-  }
   AddRange(Range);
 end;
 
