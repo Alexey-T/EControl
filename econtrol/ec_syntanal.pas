@@ -31,13 +31,62 @@ uses
   ATStringProc_TextBuffer,
   ec_proc_StreamComponent;
 
-{ v3: first-char dispatch of token rules (see TecTokenDispatch).
+{
+Alexey T: the entire logic of thread
+====================================
+
+//main thread, OnChange
+//---------------------
+FlagStop:=True
+EventParseIdle.WaitFor(inf)
+Buffer_Setup
+Parser_Setup(Buffer)
+EventParseNeeded.SetEvent
+
+//main thread, renderer
+//---------------------
+CriSec.Enter
+Render(PublicData)
+CriSec.Leave
+
+//parser thread
+//-------------
+repeat
+  EventParseNeeded.WaitFor(inf)
+  EventParseIdle.ResetEvent
+  FlagStop:=False
+  try
+    //this 'repeat' block is ParseInThread()
+    repeat
+      if ExtractTag() then //text ended?
+      begin
+        Finished
+        Break
+      end
+      else
+        Show_some_progress
+
+      if FlagStop then
+        Break
+    until False
+
+    FlushData(PublicData)
+    CriSec.Enter
+    CopyDataTo(PublicData)
+    CriSec.Leave
+  finally
+    EventParseIdle.SetEvent
+  end
+until False
+}
+
+{ first-char dispatch of token rules (see TecTokenDispatch).
   Char #N (N = 0..127) maps to bucket N; first chars >= #128 and end of
   text map to the wide bucket cTokWide. }
 const
   cTokWide = 128;
 
-  { v3: dispatch regions of block rules (see TecBlockDispatch):
+  { dispatch regions of block rules (see TecBlockDispatch):
     region r spans Flat[Offs[r]..Offs[r+1]-1] }
   cBlkAll = 0;             // all rules, original order (fallback for exotic token types)
   cBlkAllNoFold = 1;       // all rules minus btRangeStart/btRangeEnd
@@ -256,7 +305,7 @@ type
     FDynSelectMin: Boolean;
     FCancelNextRules: Boolean;
     FOnBlockCheck: TecBlockCheckEvent;
-    FFirstCondMask: DWORD; // v3: TokenTypes of Conditions[0] when it can pre-filter rules by the last token's type; 0 = no pre-filter
+    FFirstCondMask: DWORD; // TokenTypes of Conditions[0] when it can pre-filter rules by the last token's type; 0 = no pre-filter
     FDrawStaple: Boolean;
     FGroupIndex: integer;
     FCollapseFmt: ecString;
@@ -278,8 +327,8 @@ type
     FAutoCloseMode: TecAutoCloseMode;
     procedure ConditionsChanged(Sender: TObject);
     procedure PrewarmRegexes;
-    procedure UpdateFirstCondMask; // v3
-    procedure SetOnBlockCheck(const Value: TecBlockCheckEvent); // v3: fires Changed so dispatch caches stay correct
+    procedure UpdateFirstCondMask;
+    procedure SetOnBlockCheck(const Value: TecBlockCheckEvent); // fires Changed so dispatch caches stay correct
     function GetBlockEndName: string;
     procedure SetBlockEndName(const Value: string);
     procedure SetBlockType(const Value: TecTagBlockType);
@@ -390,13 +439,13 @@ type
     FOnMatchToken: TecMatchTokenEvent;
     FColumnTo: integer;
     FColumnFrom: integer;
-    FFirstChars: TecReFirstCharSet; // v3: possible first chars, for dispatch without calling Match()
+    FFirstChars: TecReFirstCharSet; // possible first chars, for dispatch without calling Match()
     function GetExpression: ecString;
     procedure SetExpression(const Value: ecString);
     procedure SetTokenType(const Value: integer);
     procedure SetColumnFrom(const Value: integer);
     procedure SetColumnTo(const Value: integer);
-    procedure SetOnMatchToken(const Value: TecMatchTokenEvent); // v3: fires Changed so dispatch caches stay correct
+    procedure SetOnMatchToken(const Value: TecMatchTokenEvent); // fires Changed so dispatch caches stay correct
   protected
     procedure AssignTo(Dest: TPersistent); override;
     function GetItemBaseName: string; override;
@@ -407,7 +456,7 @@ type
     // compiles the rule's regex now, so Match() never compiles lazily from
     // several parser threads at once (Match() is lock-free)
     procedure PrewarmRegex;
-    // v3: recompute the possible-first-chars set of the expression
+    // recompute the possible-first-chars set of the expression
     procedure UpdateFirstChars;
     function Match(const Source: ecString; Pos: integer): integer;
     property OnMatchToken: TecMatchTokenEvent read FOnMatchToken write SetOnMatchToken;
@@ -451,7 +500,7 @@ type
     destructor Destroy; override;
     function MatchStart(const Source: ecString; Pos: integer): integer;
     function MatchEnd(const Source: ecString; Pos: integer): integer;
-    // v3: compile start/end regexes now, so Match*() never compiles lazily
+    // compile start/end regexes now, so Match*() never compiles lazily
     procedure PrewarmRegexes;
   published
     property StartExpression: ecString read GetStartExpression write SetStartExpression;
@@ -625,53 +674,6 @@ type
     procedure DummyProc;
   end;
 
-  (* Alexey: the entire logic of thread is:
-
-  //main thread, OnChange
-  //---------------------
-  FlagStop:=True
-  EventParseIdle.WaitFor(inf)
-  Buffer_Setup
-  Parser_Setup(Buffer)
-  EventParseNeeded.SetEvent
-
-  //main thread, renderer
-  //---------------------
-  CriSec.Enter
-  Render(PublicData)
-  CriSec.Leave
-
-  //parser thread
-  //-------------
-  repeat
-    EventParseNeeded.WaitFor(inf)
-    EventParseIdle.ResetEvent
-    FlagStop:=False
-    try
-      //this 'repeat' block is ParseInThread()
-      repeat
-        if ExtractTag() then //text ended?
-        begin
-          Finished
-          Break
-        end
-        else
-          Show_some_progress
-
-        if FlagStop then
-          Break
-      until False
-
-      FlushData(PublicData)
-      CriSec.Enter
-      CopyDataTo(PublicData)
-      CriSec.Leave
-    finally
-      EventParseIdle.SetEvent
-    end
-  until False
-  *)
-
   { TecClientSyntAnalyzer }
 
   TecClientSyntAnalyzer = class(TecParserResults)
@@ -814,7 +816,7 @@ type
 
   TecTripleState = (etsStateNone, etsStateFalse, etsStateTrue);
 
-  { v3: dispatch cache for token rules, built once at lexer load / rule
+  { dispatch cache for token rules, built once at lexer load / rule
     change time. Parser threads only READ the object pointer (consistent
     snapshot), so parsing stays lock-free. Rebuilds swap in a new object and
     retire the old one (freed when the analyzer dies).
@@ -832,7 +834,7 @@ type
     RuleSets: array[0..cTokWide] of QWord;
   end;
 
-  { v3: dispatch cache for block rules, built once at lexer load / rule
+  { dispatch cache for block rules, built once at lexer load / rule
     change time. Parser threads only READ the object pointer (consistent
     snapshot: the flat array and its offsets always match), so parsing
     stays lock-free. Rebuilds swap in a new object and retire the old one
@@ -871,9 +873,9 @@ type
     FTokenRules: TecTokenRuleCollection;
     FBlockRules: TecBlockRuleCollection;
     FBlockRules_Detecters: array of TecTagBlockCondition; //Alexey
-    FBlockDisp: TecBlockDispatch;   // v3: nil = not built (hot loops fall back to plain iteration)
-    FTokenDisp: TecTokenDispatch;   // v3: nil = not built (GetToken falls back to plain iteration)
-    FRetiredDisp: TFPObjectList;    // v3: replaced dispatch objects, freed on Destroy
+    FBlockDisp: TecBlockDispatch;   // nil = not built (hot loops fall back to plain iteration)
+    FTokenDisp: TecTokenDispatch;   // nil = not built (GetToken falls back to plain iteration)
+    FRetiredDisp: TFPObjectList;    // replaced dispatch objects, freed on Destroy
     FExtentions: string;
     FLexerName: string;
     FCoping: Boolean;
@@ -912,7 +914,7 @@ type
     procedure TokenRuleChanged(Sender: TCollection; Item: TSyntCollectionItem);
     procedure BlocksChanged(Sender: TCollection; Item: TSyntCollectionItem);
     procedure SubLexRuleChanged(Sender: TCollection; Item: TSyntCollectionItem);
-    // v3: dispatch cache builders (token-type buckets for block rules,
+    // dispatch cache builders (token-type buckets for block rules,
     // first-char buckets for token rules)
     procedure RebuildBlockCaches;
     procedure BuildTokenBuckets;
@@ -1711,7 +1713,7 @@ var i, offs, idx, skipped, skip_cond, NConditions: integer;
 begin
   Result := False;
   offs := CheckOffset;
-  // v3: the token-type pre-filter for Conditions[0] moved to the callers
+  // the token-type pre-filter for Conditions[0] moved to the callers
   // (TecSyntAnalyzer.RebuildBlockCaches precomputes FFirstCondMask), so the
   // per-rule call overhead is skipped together with the whole Check() call
   if FUsesRegexes then
@@ -1845,7 +1847,7 @@ begin
 end;
 
 procedure TecTagBlockCondition.UpdateFirstCondMask;
-// v3: precompute the TokenTypes mask of Conditions[0], so callers can skip
+// precompute the TokenTypes mask of Conditions[0], so callers can skip
 // the rule (without calling Check) when the current token's type cannot
 // satisfy the first condition. 0 = pre-filter not possible.
 var
@@ -1865,7 +1867,7 @@ begin
 end;
 
 procedure TecTagBlockCondition.SetOnBlockCheck(const Value: TecBlockCheckEvent);
-// v3: fires Changed so the dispatch caches are rebuilt (masked rules with
+// fires Changed so the dispatch caches are rebuilt (masked rules with
 // events must stay unfiltered)
 begin
   if @FOnBlockCheck = @Value then Exit;
@@ -2223,7 +2225,7 @@ begin
   FFormat := nil;
   FRegExpr := TecRegExpr.Create;
   SetDefaultModifiers(FRegExpr);
-  // v3: conservative default until the first analysis (rule stays eligible)
+  // conservative default until the first analysis (rule stays eligible)
   FFirstChars.Any := True;
   FFirstChars.NonAscii := True;
 end;
@@ -2266,7 +2268,7 @@ begin
 end;
 
 procedure TecTokenRule.UpdateFirstChars;
-// v3: recompute the possible-first-chars set used by GetToken dispatch.
+// recompute the possible-first-chars set used by GetToken dispatch.
 // Must be called after the expression / modifiers changed (PrewarmRegex
 // does it) or at analyzer load time (BuildTokenBuckets does it for all rules).
 begin
@@ -2283,7 +2285,7 @@ begin
 end;
 
 procedure TecTokenRule.SetOnMatchToken(const Value: TecMatchTokenEvent);
-// v3: fires Changed so the dispatch caches are rebuilt (filtered rules with
+// fires Changed so the dispatch caches are rebuilt (filtered rules with
 // events must stay unfiltered)
 begin
   if @FOnMatchToken = @Value then Exit;
@@ -5424,7 +5426,7 @@ begin
 end;
 
 procedure TecSyntAnalyzer.SwapTokenDispatch(ADisp: TecTokenDispatch);
-// v3: single pointer store; readers keep a consistent snapshot. The old
+// single pointer store; readers keep a consistent snapshot. The old
 // object is retired (not freed) because a parser thread may still read it.
 begin
   if FTokenDisp <> nil then
@@ -5437,7 +5439,7 @@ begin
 end;
 
 procedure TecSyntAnalyzer.SwapBlockDispatch(ADisp: TecBlockDispatch);
-// v3: single pointer store; readers keep a consistent snapshot. The old
+// single pointer store; readers keep a consistent snapshot. The old
 // object is retired (not freed) because a parser thread may still read it.
 begin
   if FBlockDisp <> nil then
@@ -5450,7 +5452,7 @@ begin
 end;
 
 procedure TecSyntAnalyzer.RebuildBlockCaches;
-// v3: buckets of block rules by the token type of the last parsed token.
+// buckets of block rules by the token type of the last parsed token.
 // A rule lands in bucket t when its first condition accepts token type t
 // (FFirstCondMask); rules without a mask (or with events) land in all
 // buckets. Order inside every region preserves the original rule order,
@@ -5580,7 +5582,7 @@ begin
 end;
 
 procedure TecSyntAnalyzer.BuildTokenBuckets;
-// v3: buckets of token rules by the first char of the token (the classic
+// buckets of token rules by the first char of the token (the classic
 // highlighter dispatch). A rule lands in bucket c when its expression can
 // start with char c (FFirstChars); rules with an unknown first set (Any)
 // land in all buckets. Set bits are iterated in rising order in GetToken,
@@ -5711,7 +5713,7 @@ begin
   Disp := FBlockDisp;
   if Disp <> nil then
   begin
-    // v3: dispatch detecters by the last token's type: rules whose first
+    // dispatch detecters by the last token's type: rules whose first
     // condition needs another token type are skipped without calling Check
     iTokenType := -1;
     if NTagIdx > 0 then
@@ -5837,7 +5839,7 @@ begin
   Disp := FBlockDisp;
   if Disp <> nil then
   begin
-    // v3: dispatch block rules by the token type of Tags[ATokenIndex-1]:
+    // dispatch block rules by the token type of Tags[ATokenIndex-1]:
     // rules whose first condition needs another token type are skipped
     // without calling Check. Folding rules are in a separate bucket set,
     // so the ADisableFolding filter is done by the region choice.
@@ -5956,7 +5958,7 @@ begin
   Disp := FTokenDisp;
   if Disp <> nil then
   begin
-    // v3: first-char dispatch (the classic highlighter trick): only rules
+    // first-char dispatch (the classic highlighter trick): only rules
     // whose expression can start with the current char are tried; rules
     // with an unknown first set (Any: event handlers, wide classes) are in
     // every bucket. No rule can fire at end-of-text (all matches are empty),
@@ -6044,7 +6046,7 @@ var
   AnRule: TecSubAnalyzerRule;
   i: integer;
 begin
-  // v3: refresh the dispatch caches before clients reparse (skipped while
+  // refresh the dispatch caches before clients reparse (skipped while
   // streaming: Loaded builds them once when loading finishes)
   if not (csLoading in ComponentState) then
     RebuildBlockCaches;
@@ -6127,7 +6129,7 @@ begin
   for i := 0 to FTokenRules.Count - 1 do
     FTokenRules[i].PrewarmRegex;
 
-  //v3: same for sub-lexer start/end regexes
+  //same for sub-lexer start/end regexes
   for i := 0 to FSubAnalyzers.Count - 1 do
     FSubAnalyzers[i].PrewarmRegexes;
 
@@ -6136,7 +6138,7 @@ begin
   for i := 0 to FMasters.Count - 1 do
     TecSyntAnalyzer(FMasters[i]).DetectBlockSeparate;
 
-  //v3: build the dispatch caches (token-type buckets for block rules,
+  //build the dispatch caches (token-type buckets for block rules,
   //first-char buckets for token rules); also rebuilds FBlockRules_Detecters
   RebuildBlockCaches;
   BuildTokenBuckets;
@@ -6212,7 +6214,7 @@ end;
 procedure TecSyntAnalyzer.SubLexRuleChanged(Sender: TCollection;
   Item: TSyntCollectionItem);
 begin
-  // v3: keep the changed rule's start/end regexes pre-warmed
+  // keep the changed rule's start/end regexes pre-warmed
   if Item is TecSubAnalyzerRule then
     TecSubAnalyzerRule(Item).PrewarmRegexes;
   DetectBlockSeparate;
@@ -6318,7 +6320,7 @@ begin
     if Item = nil then
       for i := 0 to FTokenRules.Count - 1 do
         FTokenRules[i].PrewarmRegex;
-  // v3: refresh the first-char dispatch (skipped while streaming: Loaded
+  // refresh the first-char dispatch (skipped while streaming: Loaded
   // builds it once when loading finishes)
   if not (csLoading in ComponentState) then
     BuildTokenBuckets;
@@ -6816,7 +6818,7 @@ begin
 end;
 
 procedure TecSubAnalyzerRule.PrewarmRegexes;
-// v3: compile start/end regexes at load time, so MatchStart/MatchEnd never
+// compile start/end regexes at load time, so MatchStart/MatchEnd never
 // lazily compile from parser threads
 begin
   FStartRegExpr.Compile;
