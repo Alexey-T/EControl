@@ -461,7 +461,7 @@ end;
 
 procedure GRangeList<GRange>.ClearFromIndex(AIndex: integer); inline;
 begin
-  if AIndex >= 0 then
+  if IsIndexValid(AIndex) then
     DeleteRange(AIndex, Count-1);
 end;
 

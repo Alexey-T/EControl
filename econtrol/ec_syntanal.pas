@@ -687,6 +687,7 @@ type
     //cleared by TextChangedOnLine(); needed to close editor tabs fast,
     //while they are still parsing huge files
     FStopped: Boolean;
+    FDataComplete: Boolean;
     FOnParseDone: TecParseDoneEvent;
     FOnProgressFirst: TNotifyEvent;
     FOnProgressSecond: TNotifyEvent;
@@ -704,7 +705,6 @@ type
     function GetOpenedCount: integer;
     procedure ClearPublicData;
     procedure UpdatePublicDataCore;
-    procedure UpdatePublicData(AParseFinished: boolean);
     procedure UpdatePublicDataOnTextChange;
   protected
     procedure AddRange(ARange: TecTextRange);
@@ -732,9 +732,29 @@ type
     EventParseIdle: TEvent;
     CriSecForData: TCriticalSection;
 
-    constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
+    //True after the whole text was parsed (by the thread or by
+    //ParseFragment); False after Stop/Clear/text change
+    property DataComplete: Boolean read FDataComplete;
+
+    constructor Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer;
+      AWithThread: Boolean = True);
     destructor Destroy; override;
     procedure Clear; override;
+    //synchronous parsing of a short text, in the current thread; only for
+    //instances made with AWithThread=False; the parsed data is in the
+    //internal structures; call UpdatePublicData(True) after it to get the
+    //result in own PublicData (SpliceLineFragment reads the internal
+    //data of the fragment directly, without a publish)
+    function ParseFragment(const AText: UnicodeString): Boolean;
+    //publish the parsed data into PublicData; the parse thread calls it
+    //itself at the parse end, only thread-less instances (e.g. tests,
+    //which use ParseFragment) need to call it directly
+    procedure UpdatePublicData(AParseFinished: boolean);
+    //re-parse of one edited line without the thread: replaces tokens of
+    //ALine with the result of AFragment (made by ParseFragment);
+    //False = not applicable, nothing is changed
+    function SpliceLineFragment(AFragment: TecClientSyntAnalyzer; ALine: integer;
+      const ANewLineText: UnicodeString; out AReason: string): Boolean;
     function PriorTokenAt(Pos: integer): integer;
     function FindTokenAt(Pos: integer): integer;
 
@@ -3443,7 +3463,8 @@ end;
 
 { TecClientSyntAnalyzer }
 
-constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer);
+constructor TecClientSyntAnalyzer.Create(AOwner: TecSyntAnalyzer; ABuffer: TATStringBuffer;
+  AWithThread: Boolean = True);
 begin
   inherited Create(AOwner, ABuffer);
 
@@ -3456,18 +3477,22 @@ begin
   PublicData_B := TecPublicData.Create;
   PublicData := PublicData_A;
 
-  EventParseNeeded := TEvent.Create(nil, False, False, '');
-  EventParseIdle := TEvent.Create(nil, True{ManualReset}, True{Signaled}, '');
   CriSecForData := TCriticalSection.Create;
 
-  try
-    ParserThread := TecParserThread.Create(True);
-    ParserThread.An := Self;
-    ParserThread.Start;
-  except
-    //if lot of ui-tabs opened with threads (350+), Win10 x32 memory is ending
-    ParserThread := nil;
-    raise;
+  if AWithThread then
+  begin
+    //events of the parser thread: an instance without the thread has none
+    EventParseNeeded := TEvent.Create(nil, False, False, '');
+    EventParseIdle := TEvent.Create(nil, True{ManualReset}, True{Signaled}, '');
+    try
+      ParserThread := TecParserThread.Create(True);
+      ParserThread.An := Self;
+      ParserThread.Start;
+    except
+      //if lot of ui-tabs opened with threads (350+), Win10 x32 memory is ending
+      ParserThread := nil;
+      raise;
+    end;
   end;
 end;
 
@@ -3503,8 +3528,10 @@ begin
   //(FChangeOccured/EventParseNeeded), which was set by a text change;
   //parsing is re-enabled only by TextChangedOnLine()
   FStopped := True;
+  FDataComplete := False;
   FChangeOccured := False;
-  EventParseNeeded.ResetEvent;
+  if EventParseNeeded <> nil then
+    EventParseNeeded.ResetEvent;
 
   if not IsFinished then
   begin
@@ -3529,6 +3556,7 @@ begin
 
   FFinished := False;
   FStopped := False;
+  FDataComplete := False;
   FLastAnalPos := 0;
   FStartSepRangeAnal := 0;
 
@@ -3940,6 +3968,7 @@ begin
 
       if not Finished then
         Exit(eprBufferInvalidated);
+      FDataComplete := True;
       UpdatePublicData(True); //after Finished, coz Finished must close Python ranges
     end
     else
@@ -4220,6 +4249,1045 @@ end;
 function TecClientSyntAnalyzer.GetRanges(Index: integer): TecTextRange;
 begin
   Result := TecTextRange(FRanges[Index]);
+end;
+
+function TecClientSyntAnalyzer.ParseFragment(const AText: UnicodeString): Boolean;
+var
+  NPos, NTagCount, iToken: integer;
+  bDisableFolding: boolean;
+  TempRule: TRuleCollectionItem;
+  own: TecSyntAnalyzer;
+begin
+  Result := False;
+  if ParserThread <> nil then Exit;
+
+  FFinished := True; //so Clear/Stop don't wait
+  Clear;
+  Buffer.SetupSlow(AText);
+  Buffer.Valid := True;
+  FFinished := False;
+  FStopped := False;
+  FChangeAtLine := -1;
+
+  NPos := 0;
+  bDisableFolding := GetDisabledFolding;
+  while not ExtractTag(NPos, bDisableFolding) do
+    if not Buffer.Valid then Exit;
+
+  if FOwner.SeparateBlockAnalysis then
+  begin
+    NTagCount := TagCount;
+    for iToken := FStartSepRangeAnal + 1 to NTagCount do
+    begin
+      TempRule := Tags[iToken - 1].Rule;
+      if TempRule = nil then Continue;
+      own := TempRule.SyntOwner;
+      FOwner.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, own <> FOwner, iToken);
+      if own <> FOwner then
+        own.SelectTokenFormat(Self, FBuffer.FText, bDisableFolding, False, iToken);
+    end;
+  end;
+
+  if not Finished then Exit;
+  FDataComplete := True;
+  //no publish here: the fragment is shown nowhere, the caller reads its
+  //token data directly (FTagList, CopyRangesFold), a publish would copy
+  //all fragment tokens for nothing
+  Result := True;
+end;
+
+function TecClientSyntAnalyzer.SpliceLineFragment(AFragment: TecClientSyntAnalyzer;
+  ALine: integer; const ANewLineText: UnicodeString; out AReason: string): Boolean;
+const
+  //if the line part before the first touched token is longer, the fragment
+  //starts at that token, otherwise at the line begin, so the lexer gets
+  //the whole left context of the line
+  cMaxLenBeforeToken = 400;
+var
+  //data of the nested functions below (the rest of the vars is declared
+  //below them, as close to the main body as the compiler allows)
+  Map: array of integer;
+  NFirst, NLast, NDcnt: integer;
+  RelaxWordConds: array of TecSingleTagCondition;
+
+  //fragment token A vs old token B, AOffset = position of the fragment
+  //begin in coordinates of the old text
+  function SameTok(constref A: TecSyntToken; AOffset: integer;
+    constref B: TecSyntToken): Boolean;
+  begin
+    Result := (A.Range.StartPos + AOffset = B.Range.StartPos) and
+      (A.Range.EndPos + AOffset = B.Range.EndPos) and
+      (A.Rule = B.Rule) and (A.TokenType = B.TokenType);
+  end;
+
+  //old token index -> new token index; False if the token is not found
+  function MapIdx(AOld: integer; out ANew: integer): Boolean;
+  begin
+    Result := True;
+    ANew := AOld;
+    if AOld < 0 then Exit;
+    if AOld >= NLast then
+      ANew := AOld + NDcnt
+    else
+    if AOld >= NFirst then
+    begin
+      ANew := Map[AOld - NFirst];
+      Result := ANew >= 0;
+    end;
+  end;
+
+  //count of leading spaces/tabs; ABlank = the line has nothing else
+  function LineIndent(const S: UnicodeString; out ABlank: boolean): integer;
+  begin
+    Result := 0;
+    while (Result < Length(S)) and ((S[Result + 1] = ' ') or (S[Result + 1] = #9)) do
+      Inc(Result);
+    ABlank := Result = Length(S);
+  end;
+
+  //the token changed its type: is it safe for the block detection? Safe
+  //when no condition of any block rule changes its match state over the
+  //old and the new token (conditions with a word list, skip-conditions
+  //too: their skipped word can change), so no rule chain can begin or
+  //stop matching at it. E.g. an inserted letter breaks the word of a
+  //keyword token with a special style, and the plain id token matches
+  //no word condition. Conditions without a word list (they match by
+  //token type only) are accepted on purpose: e.g. in the C++ lexer the
+  //func rules check "name(...) {" with type-only Id conditions, and
+  //without this exception a letter inserted into the "void" keyword
+  //would always go the slow way. The tests (50 lexers, all token kinds,
+  //insert/backspace/delete at start/middle/end) compare every fast way
+  //result with a full re-parse, and pass for this relaxation
+  function TypeChangeSafe(const AOldSrc: ecString; AOld: PecSyntToken;
+    const ANewSrc: ecString; ANew: PecSyntToken): Boolean;
+  var
+    k: integer;
+  begin
+    Result := False;
+    if (AOld^.TokenType < 0) or (AOld^.TokenType > 31) then Exit;
+    if (ANew^.TokenType < 0) or (ANew^.TokenType > 31) then Exit;
+    for k := 0 to High(RelaxWordConds) do
+      if RelaxWordConds[k].CheckToken(AOldSrc, AOld) <>
+         RelaxWordConds[k].CheckToken(ANewSrc, ANew) then Exit;
+    Result := True;
+  end;
+
+var
+  //data of the main body only
+  FT: TecTokenList;
+  FR: TecPublicDataFoldRanges;
+  FragUsed: array of boolean;
+  FragToks: array of TecSyntToken;
+  States: array of TecStateChange;
+  Tok: TecSyntToken;
+  Sc: TecStateChange;
+  R: TecTextRange;
+  Sub: PecSubLexerRange;
+  BlRule: TecTagBlockCondition;
+  Cond: TecSingleTagCondition;
+  SOld, SPartial, SNewFull: UnicodeString;
+  SaveTok: array of TecSyntToken;
+  NStart, NLenOld, NLenNew, NCp, NCs, NDlt: integer;
+  NCount, NKeep, NWin, NWinEnd: integer;
+  NFragStart, NFragsCnt, NPreNew, NSufFrag, NSufOld: integer;
+  NWinCnt: integer;
+  RefIdx, k, NLineY, NLineY2: integer;
+  i, j, idx: integer;
+  bFound, bCntChanged: boolean;
+  bSomeOld, bSomeNew, bAllOld, bAllNew: boolean;
+  bIndent, bOldBlank, bNewBlank: boolean;
+  bPrependBreak: boolean;
+  NOldInd, NNewInd: integer;
+
+begin
+  Result := False;
+  AReason := '?';
+  if (AFragment = nil) or (AFragment = Self) then
+  begin
+    AReason := 'nil_or_self';
+    Exit;
+  end;
+  if AFragment.FOwner <> FOwner then
+  begin
+    AReason := 'bad_owner';
+    Exit;
+  end;
+  if AFragment.ParserThread <> nil then
+  begin
+    AReason := 'thread_used';
+    Exit;
+  end;
+  if not FFinished then
+  begin
+    AReason := 'not_finished';
+    Exit;
+  end;
+  if (FOpenedBlocks.Count > 0) then
+  begin
+    AReason := 'opened_blocks';
+    Exit;
+  end;
+  if (ALine < 0) or (ALine >= Buffer.Count) then
+  begin
+    AReason := 'index_buffer';
+    Exit;
+  end;
+  if ALine > High(TokenIndexer) then
+  begin
+    AReason := 'index_tok_indexer';
+    Exit;
+  end;
+  if ALine > High(KindIndexer) then
+  begin
+    AReason := 'index_kind_indexer';
+    Exit;
+  end;
+
+  NStart := Buffer.OffsetOfLineIndex(ALine);
+  NLenOld := Buffer.LineLength(ALine);
+  NLenNew := Length(ANewLineText);
+  SOld := Buffer.SubString(NStart + 1, NLenOld);
+  if SOld = ANewLineText then Exit(True);
+  //line continuation char at the end: tokens of the next line can depend on it
+  if (SOld<>'') and (SOld[Length(SOld)]='\') then
+  begin
+    AReason := 'backslash_old';
+    Exit;
+  end;
+  if (ANewLineText<>'') and (ANewLineText[Length(ANewLineText)]='\') then
+  begin
+    AReason := 'backslash_new';
+    Exit;
+  end;
+
+  //indent-based folding (e.g. Python): ends of blocks depend on the
+  //indentation of the following lines, which the fragment can't see.
+  //The flag is the exact condition: the auto-close of indent-based
+  //ranges runs only for a token of a special kind, and the flag is
+  //computed from the special token kinds ('^'-prefixed token type
+  //names, UpdateSpecialKinds). A lexer with indent-group rules but
+  //without such kinds (e.g. Jinja2, Gherkin of the CudaText lexers)
+  //has the auto-close inert, so its range ends don't depend on the
+  //indentation or on the bracket balance
+  bIndent := FOwner.IndentBasedFolding;
+  if bIndent then
+  begin
+    NOldInd := LineIndent(SOld, bOldBlank);
+    NNewInd := LineIndent(ANewLineText, bNewBlank);
+    if (bOldBlank <> bNewBlank) or
+      (not bOldBlank and (NOldInd <> NNewInd)) then
+    begin
+      AReason:= 'indent_change';
+      Exit;
+    end;
+  end;
+
+  //tokens of the line; multi-line tokens are not supported
+  NCount := FTagList.Count;
+  NFirst := TokenIndexer[ALine];
+  if NFirst >= 0 then
+  begin
+    if (NFirst >= NCount) or (FTagList.InternalGet(NFirst)^.Range.PointStart.Y <> ALine) then
+    begin
+      AReason := 'mul_line_token_1';
+      Exit;
+    end;
+    NLast := NFirst;
+    while (NLast < NCount) and (FTagList.InternalGet(NLast)^.Range.PointStart.Y <= ALine) do
+      Inc(NLast);
+    if FTagList.InternalGet(NLast - 1)^.Range.PointEnd.Y <> ALine then
+    begin
+      AReason := 'mul_line_token_2';
+      Exit;
+    end;
+  end
+  else
+  begin
+    //line without tokens
+    NFirst := NCount;
+    for i := ALine + 1 to High(TokenIndexer) do
+      if TokenIndexer[i] >= 0 then
+      begin
+        NFirst := TokenIndexer[i];
+        Break;
+      end;
+    NLast := NFirst;
+  end;
+
+  //common prefix/suffix of the old and new line text -> edited range
+  NCp := 0;
+  while (NCp < NLenOld) and (NCp < NLenNew) and (SOld[NCp + 1] = ANewLineText[NCp + 1]) do
+    Inc(NCp);
+  NCs := 0;
+  while (NCs < NLenOld - NCp) and (NCs < NLenNew - NCp) and
+    (SOld[NLenOld - NCs] = ANewLineText[NLenNew - NCs]) do
+    Inc(NCs);
+
+  //first token touching the edited range
+  NKeep := NFirst;
+  while (NKeep < NLast) and (FTagList.InternalGet(NKeep)^.Range.EndPos <= NStart + NCp) do
+    Inc(NKeep);
+  NFragStart := NStart;
+  if (NKeep < NLast) and
+    (FTagList.InternalGet(NKeep)^.Range.StartPos - NStart > cMaxLenBeforeToken) then
+    NFragStart := FTagList.InternalGet(NKeep)^.Range.StartPos
+  else
+    NKeep := NFirst;
+
+  //SPartial: tail of the new line text + line-break. When the fragment
+  //begins at the line begin, the break of the previous line is prepended:
+  //token rules with a lookbehind (like "(?<=\s)") must see the same
+  //character before the line's first char as they see in the full text,
+  //else the fragment tokenizes the line begin differently (e.g. the YAML
+  //lexer opens a string at a quote preceded by a line break, but the
+  //fragment without the break sees a lone quote, which stays a symbol).
+  //Not for the first line of the text (it has no preceding break in the
+  //full text either) and not for fragments beginning mid-line (there the
+  //preceding char is not a break). NFragStart is one less, so SameTok's
+  //position offsets are correct
+  bPrependBreak := (NFragStart = NStart) and (ALine > 0);
+  if bPrependBreak then
+  begin
+    Dec(NFragStart);
+    SPartial := #10 + ANewLineText + #10;
+  end
+  else
+    SPartial := Copy(ANewLineText, NFragStart - NStart + 1, NLenNew - (NFragStart - NStart)) + #10;
+  if not AFragment.ParseFragment(SPartial) then
+  begin
+    AReason := 'parse_error';
+    Exit;
+  end;
+  //read the fragment data directly: no publish of the fragment (it is
+  //shown nowhere), FTagList holds the parsed tokens already
+  FT := AFragment.FTagList;
+  NFragsCnt := FT.Count;
+
+  //a token captured the appended line-break: multi-line token. With the
+  //prepended break the edited line is line 1 of the fragment, so a token
+  //on line 0 (the prepended break itself, e.g. for a rule matching the
+  //break char, or an "\A"-anchored rule) is rejected too
+  for i := 0 to NFragsCnt - 1 do
+  begin
+    Tok := FT.InternalGet(i)^;
+    if bPrependBreak then
+    begin
+      if (Tok.Range.PointStart.Y <> 1) or (Tok.Range.PointEnd.Y > 1) then
+      begin
+        AReason := 'mul_line_token_3';
+        Exit;
+      end;
+    end
+    else
+      if (Tok.Range.PointStart.Y > 0) or (Tok.Range.PointEnd.Y > 0) then
+      begin
+        AReason := 'mul_line_token_4';
+        Exit;
+      end;
+  end;
+
+  //sub-lexer blocks and lexer states need the context of previous lines
+  if AFragment.PublicData.SublexRanges.Count > 0 then
+  begin
+    AReason := 'sublexers_exist';
+    Exit;
+  end;
+
+  //the state after the edited line must not change: the tail tokens are
+  //kept as they are, and a changed state (e.g. a broken style-on marker
+  //of a state-based lexer, like Markdown italic) would make them stale -
+  //a full re-parse would tokenize them differently. The state before the
+  //line must be 0 (the fragment parses the line from state 0), and the
+  //fragment's final state must equal the state which the old parse
+  //tokenized the tail with (the exact check; the old conservative
+  //version rejected any non-zero final state)
+  if ParserStateAtPos(NFirst) <> 0 then
+  begin
+    AReason := 'state_bad_first';
+    Exit;
+  end;
+  if AFragment.FCurState <> ParserStateAtPos(NLast) then
+  begin
+    AReason := 'state_bad_last';
+    Exit;
+  end;
+
+  for i := 0 to FSubLexerBlocks.Count - 1 do
+  begin
+    Sub := FSubLexerBlocks.InternalGet(i);
+    if Sub^.Range.StartPos >= NStart + NLenOld then Break;
+    if (Sub^.Range.EndPos < 0) or (Sub^.Range.EndPos >= NStart) then
+    begin
+      AReason := 'sublexers_range';
+      Exit;
+    end;
+  end;
+
+  //tokens from marker rules (multi-line strings, comments, styles,
+  //sublexer markers: TecSubAnalyzerRule with a start and end expression)
+  //can cross line boundaries: the fragment of one line cannot know
+  //whether such a construct was open at the line begin, and whether it
+  //really ends at the line end, so any edit on a line with such tokens
+  //goes the old way. Both the tokens of the old line and the tokens of
+  //the fragment are checked: an edit can break such a construct too,
+  //e.g. deleting the "*/" of a comment lets it run to the next lines
+  for i := NFirst to NLast - 1 do
+    if FTagList.InternalGet(i)^.Rule is TecSubAnalyzerRule then
+    begin
+      AReason := 'sublexers_rule_old';
+      Exit;
+    end;
+
+  for i := 0 to NFragsCnt - 1 do
+    if FT.InternalGet(i)^.Rule is TecSubAnalyzerRule then
+    begin
+      AReason := 'sublexers_rule_new';
+      Exit;
+    end;
+
+  //the line and the fragment must agree on having tokens at all. The
+  //rule of the LAST token of the line must keep: it is the last chance
+  //to catch a construct which continues past the line end in the full
+  //text, but stops at the fragment end - a "styled" token of a
+  //state-based lexer (Markdown: the edit breaks the style-on marker,
+  //the fragment re-parses the line without the style state, its last
+  //token becomes a plain one, while the tokens of the next lines keep
+  //the stale style), or a $-anchored token rule (a typed quote opens a
+  //string which runs to the next lines in the full text, but matches
+  //up to the fragment end). For a fragment beginning mid-line (long
+  //lines), the rule of its FIRST token must keep too: the text before
+  //its begin is cut, so the fragment can tokenize that token
+  //differently than the full text (the lookbehind of its rule sees no
+  //char). A fragment beginning at the line begin has the full left
+  //context (the prepended break, or the text begin for the first
+  //line), so its first token may change only from the edit itself,
+  //e.g. an edited keyword token loses its tag rule and becomes a
+  //plain id ("return" of C++)
+  if (NLast > NFirst) <> (NFragsCnt > 0) then
+  begin
+    AReason := 'having_tokens_dif';
+    Exit;
+  end;
+
+  if NFragsCnt > 0 then
+  begin
+    //the rule of the FIRST token of the fragment must keep (only for a
+    //fragment beginning mid-line: the text before its begin is cut, so
+    //the fragment can tokenize that token differently than the full
+    //text, the lookbehind of its rule sees no char). A fragment
+    //beginning at the line begin has the full left context (the
+    //prepended break, or the text begin for the first line), so its
+    //first token may change only from the edit itself. The rule of the
+    //LAST token of the line is verified at the end of the checks (the
+    //extended-fragment verification below): a changed rule, or any
+    //other not-reproduced last token, can be a construct which matched
+    //up to the fragment end but continues on the next lines in the
+    //full text - e.g. a typed '/' opens a Ruby regexp which runs to
+    //the next '/' a dozen lines below, while the one-line fragment
+    //tokenizes it as a plain Symbol
+    if (NFragStart > NStart) and
+      (FTagList.InternalGet(NKeep)^.Rule <> FT.InternalGet(0)^.Rule) then
+      begin
+        AReason := 'token_rule_change';
+        Exit;
+      end;
+  end;
+
+  //data for TypeChangeSafe: all block-rule conditions with a word list,
+  //skip-conditions too (a changed token can stop being the skipped word)
+  SetLength(RelaxWordConds, 0);
+  for i := 0 to FOwner.BlockRules.Count - 1 do
+  begin
+    BlRule := FOwner.BlockRules[i];
+    if BlRule.BlockType in [btTagDetect, btLineBreak] then Continue;
+    for j := 0 to BlRule.ConditionList.Count - 1 do
+    begin
+      Cond := BlRule.ConditionList[j];
+      if Cond.TagList.Count > 0 then
+      begin
+        SetLength(RelaxWordConds, Length(RelaxWordConds) + 1);
+        RelaxWordConds[High(RelaxWordConds)] := Cond;
+      end;
+    end;
+  end;
+
+  //tokens before the edited range: the fragment must reproduce them
+  //exactly, this proves that the lexer context is not lost. Like the
+  //suffix below, the tokens are paired while they are the same: the
+  //text boundary of the common prefix can cut a changed token (e.g. an
+  //inserted letter merges into a keyword token: the whole text of
+  //"const" is inside the common prefix of "consta", but the token
+  //changed), so the text boundary is not used
+  NWin := NKeep;
+  NPreNew := 0;
+  while (NWin < NLast) and (NPreNew < NFragsCnt) and
+    SameTok(FT.InternalGet(NPreNew)^, NFragStart, FTagList.InternalGet(NWin)^) do
+  begin
+    Inc(NWin);
+    Inc(NPreNew);
+  end;
+
+  NDlt := NLenNew - NLenOld;
+  NDcnt := NFragsCnt - (NLast - NKeep);
+  SetLength(Map, NLast - NFirst);
+  for i := 0 to High(Map) do
+    Map[i] := -1;
+  for i := NKeep to NWin - 1 do
+    Map[i - NFirst] := i;
+
+  //tokens after the edited range: the fragment must reproduce them too,
+  //then ranges pointing to them keep valid token indexes. The suffix
+  //tokens are paired backward from the line end while they are the same:
+  //the text boundary of the common suffix can cut a changed token (e.g.
+  //an inserted letter merges into a keyword token: the whole text of
+  //"const" is inside the common suffix of "consta", but the token
+  //changed), so the text boundary is not used
+  NWinEnd := NLast;
+  NSufFrag := NFragsCnt;
+  while (NWinEnd > NWin) and (NSufFrag > NPreNew) and
+    SameTok(FT.InternalGet(NSufFrag - 1)^, NFragStart - NDlt,
+      FTagList.InternalGet(NWinEnd - 1)^) do
+  begin
+    Dec(NWinEnd);
+    Dec(NSufFrag);
+  end;
+  NSufOld := NLast - NWinEnd;
+  for i := 0 to NSufOld - 1 do
+    Map[NWinEnd + i - NFirst] := NKeep + NSufFrag + i;
+
+  //the edited region must keep matching for block rules: their rules match
+  //over token sequences, a rule can fire at a token of another line with
+  //its condition chain crossing this line (chains match backward from the
+  //token the rule fires at), so the chain must keep matching the same
+  //tokens. With an equal token count the old and new tokens are compared
+  //pairwise (TypeChangeSafe): a chain then keeps matching the same token
+  //indexes, and a word condition can change its matching only when it
+  //matches the word of the old or of the new token (e.g. a keyword token
+  //with a special style becomes a plain id, when a letter is typed inside
+  //"const" of C++). A changed token count has no pairwise comparison, so
+  //the middle is verified as a whole:
+  //- no range may begin on an edited token: its new token index is not
+  //  comparable (the ranges beginning on the line are re-detected by the
+  //  fragment below, and compared by their mapped start index);
+  //- every block-rule condition must see the old and the new middle the
+  //  same way: a condition matches some of the old tokens iff it matches
+  //  some of the new ones, and a skip condition (it lets a chain skip
+  //  over tokens backward) matches all of the old tokens iff it matches
+  //  all of the new ones. Then a chain spanning over the edited region
+  //  with skip conditions skips over both middles the same way, and an
+  //  edit cannot introduce into the middle a new token which a condition
+  //  of a chain ending below the line would match (e.g. a typed ':' would
+  //  let a "case ... : ... {" chain of the C++ lexer fire over the line).
+  //  The chain of every range which begins below the line is re-verified
+  //  after the splice (before the function returns), so a chain which
+  //  stopped matching makes the splice fail. Conditions without a word
+  //  list match by token type only, like in the pairwise case
+  bCntChanged := (NWinEnd - NWin) <> (NSufFrag - NPreNew);
+  if not bCntChanged then
+  begin
+    for i := 0 to NWinEnd - NWin - 1 do
+      if not TypeChangeSafe(Buffer.FText, FTagList.InternalGet(NWin + i),
+        AFragment.Buffer.FText, FT.InternalGet(NPreNew + i)) then
+        begin
+          AReason := 'type_safe_change';
+          Exit;
+        end;
+  end
+  else
+  begin
+    //indent-based folding (Python): the end of an indent-based range is
+    //computed over the whole range span - a line with unclosed brackets
+    //()[]{} inside the block extends the block end (CheckBracketsClosed),
+    //so a changed token count, which can change the bracket balance of
+    //the edited line, can move the ends of the ranges below
+    if bIndent then
+    begin
+      AReason := 'indent_based_unclosed';
+      Exit;
+    end;
+    for i := 0 to FRanges.Count - 1 do
+    begin
+      R := TecTextRange(FRanges[i]);
+      if (R.StartIdx >= NWin) and (R.StartIdx < NWinEnd) then
+      begin
+        AReason := 'range_bad';
+        Exit;
+      end;
+    end;
+    for i := 0 to FOwner.BlockRules.Count - 1 do
+    begin
+      BlRule := FOwner.BlockRules[i];
+      if BlRule.BlockType = btLineBreak then Continue;
+      for j := 0 to BlRule.ConditionList.Count - 1 do
+      begin
+        Cond := BlRule.ConditionList[j];
+        bSomeOld := False;
+        bAllOld := True;
+        for k := NWin to NWinEnd - 1 do
+          if Cond.CheckToken(Buffer.FText, FTagList.InternalGet(k)) then
+            bSomeOld := True
+          else
+            bAllOld := False;
+        bSomeNew := False;
+        bAllNew := True;
+        for k := NPreNew to NSufFrag - 1 do
+          if Cond.CheckToken(AFragment.Buffer.FText, FT.InternalGet(k)) then
+            bSomeNew := True
+          else
+            bAllNew := False;
+        if (bSomeOld <> bSomeNew) or
+           ((Cond.CondType = tcSkip) and (bAllOld <> bAllNew)) then
+           begin
+             AReason := 'range_skip';
+             Exit;
+           end;
+      end;
+    end;
+  end;
+
+  //a range must not END on an edited token: such a block can begin on
+  //another line, the fragment of one line cannot re-verify its end. A
+  //block beginning on an edited token is ok: the fragment re-detects
+  //it and the check of the fragment ranges below compares them
+  for i := 0 to FRanges.Count - 1 do
+  begin
+    R := TecTextRange(FRanges[i]);
+    if (R.EndIdx >= NWin) and (R.EndIdx < NWinEnd) then
+    begin
+      AReason := 'range_1';
+      Exit;
+    end;
+    if (R.IdentIdx >= NWin) and (R.IdentIdx < NWinEnd) then
+    begin
+      AReason := 'range_2';
+      Exit;
+    end;
+    if (R.FCondIndex >= NWin) and (R.FCondIndex < NWinEnd) then
+    begin
+      AReason := 'range_3';
+      Exit;
+    end;
+    if (R.FEndCondIndex >= NWin) and (R.FEndCondIndex < NWinEnd) then
+    begin
+      AReason := 'range_4';
+      Exit;
+    end;
+  end;
+
+  //window tokens map to the fragment tokens with the same index, so
+  //ranges beginning on them keep valid token indexes. Only for an equal
+  //token count: a changed count has no pairwise mapping, and no range
+  //may have a landmark in the middle (checked above: no range begins on
+  //an edited token, and the landmark checks rejected the other indexes)
+  if not bCntChanged then
+    for i := 0 to NWinEnd - NWin - 1 do
+      Map[NWin + i - NFirst] := NKeep + NPreNew + i;
+
+  //all ranges must keep valid token indexes
+  for i := 0 to FRanges.Count - 1 do
+  begin
+    R := TecTextRange(FRanges[i]);
+    if not MapIdx(R.StartIdx, idx) then
+    begin
+      AReason := 'map_index_start';
+      Exit;
+    end;
+    if not MapIdx(R.EndIdx, idx) then
+    begin
+      AReason := 'map_index_end';
+      Exit;
+    end;
+    if not MapIdx(R.IdentIdx, idx) then
+    begin
+      AReason := 'map_index_ident';
+      Exit;
+    end;
+    if not MapIdx(R.FCondIndex, idx) then
+    begin
+      AReason := 'map_index_cond';
+      Exit;
+    end;
+    if not MapIdx(R.FEndCondIndex, idx) then
+    begin
+      AReason := 'map_index_cond_end';
+      Exit;
+    end;
+  end;
+
+  //blocks beginning in the replaced part: the fragment must find the same ones
+  //read the fragment data directly: no publish of the fragment, the same
+  //copy CopyRangesFold does for a publish, into a local array
+  AFragment.CopyRangesFold(FR);
+  SetLength(FragUsed, Length(FR));
+  for i := 0 to FRanges.Count - 1 do
+  begin
+    R := TecTextRange(FRanges[i]);
+    if (R.StartIdx < NKeep) or (R.StartIdx >= NLast) then Continue;
+    MapIdx(R.StartIdx, idx);
+    bFound := False;
+    for j := 0 to High(FR) do
+      if (not FragUsed[j]) and (FR[j].Rule = R.Rule) and (FR[j].StartIdx = idx - NKeep) then
+      begin
+        FragUsed[j] := True;
+        bFound := True;
+        Break;
+      end;
+    if not bFound then
+    begin
+      //a block which begins on the line, but whose rule fires only on
+      //a later line (FCondIndex-CheckOffset is the cond0 token, e.g.
+      //the "{" of a C++ function signature): the one-line fragment
+      //cannot re-detect it. Keep the old range when the edit is left
+      //of the range start token: the rule chain of the block begins
+      //at that token or right of it, so the edit cannot change the
+      //detection. An edit on/right of the start token still goes the
+      //old way (mostly already rejected by the range-end checks above)
+      if (R.FCondIndex - R.Rule.CheckOffset < NLast) or
+         (NWinEnd > R.StartIdx) then
+      begin
+        AReason := 'range_not_found';
+        Exit;
+      end;
+      Continue;
+    end;
+  end;
+
+  for j := 0 to High(FragUsed) do
+    if not FragUsed[j] then
+    begin
+      AReason := 'frag_used';
+      Exit;
+    end;
+
+  //the last token of the line was not reproduced by the fragment (the
+  //suffix match above paired no trailing token: the edit changed it, or
+  //the count change moved it): verify it against a construct which
+  //matched up to the fragment end, but continues on the next lines in
+  //the full text - a lazy rule without an end-of-text alternative falls
+  //back to another rule inside the one-line fragment, while in the full
+  //text it matches: e.g. a typed '/' opens a Ruby regexp which runs to
+  //the next '/' a dozen lines below, so the one-line fragment shows a
+  //plain Symbol while the full parse shows a multi-line regexp token.
+  //The fragment is parsed again with the next lines appended (up to 30),
+  //and the tokens of the edited line must be the same as without them:
+  //then no rule matched over the line end. The last line of the text
+  //needs no verification: nothing follows it, so the one-line fragment
+  //already sees the whole text after the line. The fragment must also
+  //have reproduced the context of the line's begin: either the leading
+  //tokens (the prefix match above), or at least the rule of the line's
+  //first token - else the line's tokens come from a context the fragment
+  //cannot reproduce (an HTML tag state of the PHP lexer tokenizes the
+  //words as "tag text", while the state-0 fragment makes them plain
+  //text), and the line's data is not comparable. After the comparison
+  //the fragment is parsed back, so the splice below continues with the
+  //original line data
+  if (NFragsCnt > 0) and (NSufOld = 0) then
+  begin
+    if ALine + 1 < Buffer.Count then
+    begin
+      if (NPreNew = 0) and
+         (FT.InternalGet(0)^.Rule <> FTagList.InternalGet(NKeep)^.Rule) then
+      begin
+        AReason := 'frag_rule';
+        Exit;
+      end;
+      SetLength(SaveTok, NFragsCnt);
+      for i := 0 to NFragsCnt - 1 do
+        SaveTok[i] := FT.InternalGet(i)^;
+      if bPrependBreak then
+        NLineY := 1
+      else
+        NLineY := 0;
+      //the next lines, with their line breaks, up to 30: a construct
+      //which needs a closing delimiter resolves inside them
+      k := ALine + 30;
+      if k > Buffer.Count then
+        k := Buffer.Count;
+      NLineY2 := Buffer.OffsetOfLineIndex(k) - Buffer.OffsetOfLineIndex(ALine + 1);
+      if not AFragment.ParseFragment(SPartial +
+        Buffer.SubString(Buffer.OffsetOfLineIndex(ALine + 1) + 1, NLineY2)) then
+        begin
+          AReason := 'frag_parse_1';
+          Exit;
+        end;
+      k := 0;
+      for i := 0 to FT.Count - 1 do
+      begin
+        Tok := FT.InternalGet(i)^;
+        if Tok.Range.PointStart.Y > NLineY then Break;
+        if Tok.Range.PointStart.Y < NLineY then Continue;
+        //a token of the line ending on a later line: the construct
+        //crossed the line end
+        if (k >= NFragsCnt) or (Tok.Range.PointEnd.Y > NLineY) then
+        begin
+          AReason := 'frag_later_line';
+          Exit;
+        end;
+        if (Tok.Range.StartPos <> SaveTok[k].Range.StartPos) or
+           (Tok.Range.EndPos <> SaveTok[k].Range.EndPos) or
+           (Tok.Rule <> SaveTok[k].Rule) or
+           (Tok.TokenType <> SaveTok[k].TokenType) then
+         begin
+           AReason := 'frag_tok_type';
+           Exit;
+         end;
+        Inc(k);
+      end;
+      if k <> NFragsCnt then
+      begin
+        AReason := 'frag_count_bad';
+        Exit;
+      end;
+      if not AFragment.ParseFragment(SPartial) then
+      begin
+        AReason := 'frag_parse_2';
+        Exit;
+      end;
+    end;
+  end;
+
+  //the published data is fixed in place below, without the full re-copy
+  //of UpdatePublicDataCore (it copies all tokens and ranges: 3-4ms on
+  //the 400Kb torrent.cpp). This needs PublicData.Tokens to hold exactly
+  //the items of FTagList as of the last publish (the parse thread
+  //publishes at its end, and a fast-path edit does not call DoChange).
+  //The count check is the cheap invariant test: any flow which changed
+  //FTagList without a publish breaks it, and such a state goes the old
+  //way, like any other doubt here
+  if PublicData.Tokens.Count <> NCount then
+  begin
+    AReason := 'pubdata_tok_count';
+    Exit;
+  end;
+
+  //all checks passed: put the fragment into the data of this analyzer.
+  //The list structure is not rebuilt - the old way (ClearFromIndex + Add
+  //of the fragment tokens + re-Add of all tail items) moved the whole
+  //tail of a big file on every edit. Instead:
+  //- the window [NKeep..NLast) is overwritten in place: fragment token
+  //  i goes into slot NKeep+i;
+  //- Insert/Delete is done only for the difference of the token count.
+  //  The equal-count case (the typical one: a letter typed inside a
+  //  name or a string constant) needs neither. The count changes when
+  //  the edit splits or merges tokens (e.g. a typed '/' splits an id
+  //  into Id/Symbol/Id, a typed quote makes a string constant swallow
+  //  the rest of the line); the checks above verified such middles as
+  //  a whole;
+  //- the tail items keep their slots: the lines below the edited one
+  //  don't move, so only the absolute positions StartPos/EndPos shift
+  //  by the length change of the line, PointStart/PointEnd (line,
+  //  column) are not touched; nothing to do at all when the line
+  //  length didn't change
+  //The published token list gets the same operations: it holds the same
+  //items as FTagList (checked above), so both lists stay equal, with
+  //the same result as the full Tokens.Assign of UpdatePublicDataCore
+
+  //the tail first: the loop runs by the old indexes, the Insert/Delete
+  //of the window below shifts them
+  if NDlt <> 0 then
+    for i := NLast to NCount - 1 do
+    begin
+      Inc(FTagList.InternalGet(i)^.Range.StartPos, NDlt);
+      Inc(FTagList.InternalGet(i)^.Range.EndPos, NDlt);
+      Inc(PublicData.Tokens.InternalGet(i)^.Range.StartPos, NDlt);
+      Inc(PublicData.Tokens.InternalGet(i)^.Range.EndPos, NDlt);
+    end;
+
+  //the window: the fragment tokens with adjusted positions
+  SetLength(FragToks, NFragsCnt);
+  for i := 0 to NFragsCnt - 1 do
+  begin
+    Tok := FT.InternalGet(i)^;
+    Tok.Range.StartPos := Tok.Range.StartPos + NFragStart;
+    Tok.Range.EndPos := Tok.Range.EndPos + NFragStart;
+    if bPrependBreak then
+    begin
+      //the edited line is line 1 of the fragment: the token columns
+      //are the columns of the new line text as they are
+      Tok.Range.PointStart := Point(Tok.Range.PointStart.X, ALine);
+      Tok.Range.PointEnd := Point(Tok.Range.PointEnd.X, ALine);
+    end
+    else
+    begin
+      Tok.Range.PointStart := Point(Tok.Range.PointStart.X + NFragStart - NStart, ALine);
+      Tok.Range.PointEnd := Point(Tok.Range.PointEnd.X + NFragStart - NStart, ALine);
+    end;
+    FragToks[i] := Tok;
+  end;
+
+  NWinCnt := NLast - NKeep;
+  for i := 0 to Min(NFragsCnt, NWinCnt) - 1 do
+  begin
+    FTagList.InternalGet(NKeep + i)^ := FragToks[i];
+    PublicData.Tokens.InternalGet(NKeep + i)^ := FragToks[i];
+  end;
+  if NFragsCnt > NWinCnt then
+    //the line got more tokens: insert only the new ones
+    for i := NWinCnt to NFragsCnt - 1 do
+    begin
+      FTagList.Insert(NKeep + i, FragToks[i]);
+      PublicData.Tokens.Insert(NKeep + i, FragToks[i]);
+    end
+  else
+  if NFragsCnt < NWinCnt then
+  begin
+    //the line got fewer tokens: delete only the excess
+    FTagList.DeleteRange(NKeep + NFragsCnt, NKeep + NWinCnt - 1);
+    PublicData.Tokens.DeleteRange(NKeep + NFragsCnt, NKeep + NWinCnt - 1);
+  end;
+
+  //sub-lexer blocks after the edited line: shift their positions like
+  //the tail tokens; blocks touching the line were rejected above, so
+  //only the position shift is needed. The block detection depends only
+  //on the tokens after the line, which are not changed by the splice
+  for i := 0 to FSubLexerBlocks.Count - 1 do
+  begin
+    Sub := FSubLexerBlocks.InternalGet(i);
+    if Sub^.Range.StartPos >= NStart + NLenOld then
+    begin
+      Inc(Sub^.Range.StartPos, NDlt);
+      if Sub^.Range.EndPos >= 0 then
+        Inc(Sub^.Range.EndPos, NDlt);
+      if Sub^.CondStartPos >= 0 then
+        Inc(Sub^.CondStartPos, NDlt);
+      if Sub^.CondEndPos >= 0 then
+        Inc(Sub^.CondEndPos, NDlt);
+      //PointStart/PointEnd: lines after the edited line don't move
+    end;
+  end;
+  //published sub-lexer blocks: re-copy of the shifted set (cheap: the
+  //count is small, and it is empty for most lexers)
+  PublicData.SublexRanges.Assign(FSubLexerBlocks);
+
+  for i := 0 to FRanges.Count - 1 do
+  begin
+    R := TecTextRange(FRanges[i]);
+    MapIdx(R.StartIdx, idx);
+    R.StartIdx := idx;
+    MapIdx(R.EndIdx, idx);
+    R.EndIdx := idx;
+    MapIdx(R.IdentIdx, idx);
+    R.IdentIdx := idx;
+    MapIdx(R.FCondIndex, idx);
+    R.FCondIndex := idx;
+    MapIdx(R.FEndCondIndex, idx);
+    R.FEndCondIndex := idx;
+    if R.StartIdx >= NKeep then
+      R.StartPos := FTagList.InternalGet(R.StartIdx)^.Range.StartPos;
+  end;
+  //published fold ranges: re-copy from the remapped ranges (cheap: the
+  //count is some hundreds at most, unlike all tokens)
+  CopyRangesFold(PublicData.FoldRanges);
+
+  //lexer states: before the replaced part and after the line are kept,
+  //inside it they are taken from the fragment
+  SetLength(States, FStateChanges.Count);
+  for i := 0 to High(States) do
+    States[i] := FStateChanges[i];
+  FStateChanges.Clear;
+  for i := 0 to High(States) do
+    if States[i].TokenCount < NKeep then
+      FStateChanges.Add(States[i]);
+  for i := 0 to AFragment.FStateChanges.Count - 1 do
+  begin
+    Sc := AFragment.FStateChanges[i];
+    Inc(Sc.TokenCount, NKeep);
+    FStateChanges.Add(Sc);
+  end;
+  for i := 0 to High(States) do
+    if States[i].TokenCount >= NLast then
+    begin
+      Sc := States[i];
+      Inc(Sc.TokenCount, NDcnt);
+      FStateChanges.Add(Sc);
+    end;
+
+  if NFragsCnt > 0 then
+  begin
+    TokenIndexer[ALine] := NKeep;
+    Tok := FTagList.InternalGet(NKeep)^;
+    if Assigned(Tok.Style) then
+      KindIndexer[ALine] := Tok.Style.TokenKind
+    else
+      KindIndexer[ALine] := etkOther;
+  end
+  else
+  begin
+    TokenIndexer[ALine] := -1;
+    KindIndexer[ALine] := etkOther;
+  end;
+  for i := ALine + 1 to High(TokenIndexer) do
+    if TokenIndexer[i] >= NLast then
+      Inc(TokenIndexer[i], NDcnt);
+
+  FLastAnalPos := 0;
+  FStartSepRangeAnal := NKeep;
+  //the next run of the parser thread re-parses this line too
+  if FChangeAtLine < 0 then
+    FChangeAtLine := ALine
+  else
+    FChangeAtLine := Min(FChangeAtLine, ALine);
+
+  //the rest of the published data. TokenIndexer needs nothing: the
+  //published field aliases the analyzer's array (UpdatePublicDataCore
+  //assigns it by reference, and nothing reallocates it between the
+  //last publish and this splice), so the fixes above are already
+  //visible in PublicData. In-place changes of the published buffer are
+  //safe: the parse thread is idle (the caller checked it before, and
+  //FFinished is checked above), so readers of PublicData run in this
+  //thread only - the double-buffer flip of UpdatePublicDataCore exists
+  //for the parse-thread publishes
+  if FTagList.Count > 0 then
+    PublicData.LineTo := FTagList.InternalGet(FTagList.Count - 1)^.Range.PointStart.Y
+  else
+    PublicData.LineTo := 0;
+  PublicData.Finished := True;
+  PublicData.FinishedPartially := True;
+
+  //a changed token count: the chain of a block rule (it matches
+  //backward from the token the rule fires at) could stop matching over
+  //the edited tokens. Re-run the rule of every range with its chain-end
+  //below the edited line on the spliced token list: the chain must
+  //still fire at the same token, and for a rule which takes the range
+  //start from the chain's ref token, the ref must point at the same
+  //(remapped) token index. A failed chain makes the splice return False:
+  //the data is already spliced, but the caller re-parses on False like
+  //for any other rejected edit, and the parse from the changed line
+  //(FChangeAtLine is set above) rebuilds it. Only ranges of btRangeStart
+  //rules are checked: their chain-end is FCondIndex, the ranges of other
+  //rule kinds either don't exist (btTagDetect re-styles a token only) or
+  //have no multi-condition chains in practice (btRangeEnd of the C++
+  //lexer is a lone '}')
+  if bCntChanged then
+  begin
+    SNewFull := '';
+    for i := 0 to FRanges.Count - 1 do
+    begin
+      R := TecTextRange(FRanges[i]);
+      if not (R.Rule is TecTagBlockCondition) then Continue;
+      BlRule := TecTagBlockCondition(R.Rule);
+      if BlRule.BlockType <> btRangeStart then Continue;
+      //FCondIndex is remapped already: the chain end must be below the
+      //edited line (the new tail begins at NLast + NDcnt)
+      if R.FCondIndex < NLast + NDcnt then Continue;
+      if SNewFull = '' then
+        SNewFull := Copy(Buffer.FText, 1, NStart) + ANewLineText +
+          Copy(Buffer.FText, NStart + NLenOld + 1, MaxInt);
+      if not BlRule.Check(SNewFull, Self, R.FCondIndex + 1, RefIdx) then
+      begin
+        AReason := 'count_change_cond_idx';
+        Exit;
+      end;
+      if BlRule.FRefToCondEnd or BlRule.NoEndRule then
+        if RefIdx - BlRule.BlockOffset <> R.StartIdx then
+        begin
+          AReason := 'count_change_start_idx';
+          Exit;
+        end;
+    end;
+  end;
+
+  Result := True;
 end;
 
 procedure TecClientSyntAnalyzer.ParseAll(AResetContent: Boolean);
@@ -4781,6 +5849,7 @@ begin
 
   //re-enable parsing, which was cancelled by Stop()
   FStopped := False;
+  FDataComplete := False;
 
   FChangeOccured := True;
   if FChangeAtLine < 0 then
@@ -4791,7 +5860,8 @@ begin
   if FBuffer.TextLength <= Owner.FullRefreshSize then
     FChangeAtLine := 0;
 
-  EventParseNeeded.SetEvent;
+  if EventParseNeeded <> nil then
+    EventParseNeeded.SetEvent;
 
   //avoid too many repaints, CudaText issue #3461
   PublicData.FinishedPartially := False;
