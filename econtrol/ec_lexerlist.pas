@@ -55,11 +55,6 @@ type
 
 implementation
 
-function SBeginsWithChar(const S: string; ch: char): boolean; inline;
-begin
-  Result:= (S<>'') and (S[1]=ch);
-end;
-
 function SItemListed(const AItem, AList: string): boolean;
 const
   sep=' ';
@@ -233,16 +228,16 @@ begin
   fname:= '/'+AFileName;
 
   //usual extension
-  ext1:= LowerCase(ExtractFileExt(AFileName));
-  if SBeginsWithChar(ext1, '.') then
+  ext1:= ExtractFileExt(AFileName);
+  if (ext1<>'') and (ext1[1]='.') then
     Delete(ext1, 1, 1);
 
   //double extension
   ext2:= '';
   if ext1<>'' then
   begin
-    ext2:= LowerCase(ExtractFileExt(ChangeFileExt(AFileName, '')));
-    if SBeginsWithChar(ext2, '.') then
+    ext2:= ExtractFileExt(ChangeFileExt(AFileName, ''));
+    if (ext2<>'') and (ext2[1]='.') then
       Delete(ext2, 1, 1);
     if ext2<>'' then
       ext2:= ext2+'.'+ext1;
