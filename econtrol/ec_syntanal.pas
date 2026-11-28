@@ -4558,6 +4558,18 @@ begin
     AReason := 'parse_error';
     Exit;
   end;
+  //a huge text has folding disabled in the main parse
+  //(GetDisabledFolding: MaxLinesWhenParserEnablesFolding), so the main
+  //analyzer has no fold ranges at all. The fragment analyzer has a few
+  //lines, its own GetDisabledFolding is False, so its parse creates
+  //ranges - and below they have no main counterpart, which would reject
+  //the splice ('frag_used'), while a full re-parse creates no ranges
+  //either. Drop them like the main parse does
+  if GetDisabledFolding then
+  begin
+    AFragment.FRanges.Clear;
+    AFragment.FOpenedBlocks.Clear;
+  end;
   //read the fragment data directly: no publish of the fragment (it is
   //shown nowhere), FTagList holds the parsed tokens already
   FT := AFragment.FTagList;
