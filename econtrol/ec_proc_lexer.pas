@@ -33,10 +33,10 @@ end;
 
 {
 This finds lexer by Extensions-property of lexer.
-It is space-separated items. In lower case.
+It is space-separated items.
 Items are
-- usual extension: "pas" finds "anyname.pas"
-- double extension (higher priority): "some.html" finds "dir/myfile.some.html"
+- usual extension: "pas" finds "any/dir/anyname.pas"
+- double extension, higher priority: "some.html" finds "any/dir/myfile.some.html"
   (before lexer HTML finds it)
 - full filename: "/name.ext" finds "any/dir/name.ext"
 }
@@ -48,20 +48,22 @@ var
 begin
   Result:= nil;
 
-  //strip path, lower case
-  FileName:= LowerCase(ExtractFileName(FileName));
+  //strip path
+  FileName:= ExtractFileName(FileName);
   fname:= '/'+FileName;
 
   //usual extension
   ext1:= ExtractFileExt(FileName);
-  if SBeginsWith(ext1, '.') then Delete(ext1, 1, 1);
+  if (ext1<>'') and (ext1[1]='.') then
+    Delete(ext1, 1, 1);
 
   //double extension
   ext2:= '';
   if ext1<>'' then
   begin
     ext2:= ExtractFileExt(ChangeFileExt(FileName, ''));
-    if SBeginsWith(ext2, '.') then Delete(ext2, 1, 1);
+    if (ext2<>'') and (ext2[1]='.') then
+      Delete(ext2, 1, 1);
     if ext2<>'' then
       ext2:= ext2+'.'+ext1;
   end;
